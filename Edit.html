@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>עריכת אימונים</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      margin: 0; padding: 15px 15px 60px;
+      background: #f0f2f5; color: #333; text-align: right;
+    }
+    h2 {
+      border-bottom: 3px solid #007bff;
+      display: inline-block; padding-bottom: 5px; margin-bottom: 5px;
+    }
+    .top-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 8px;
+    }
+    .tabs {
+      display: flex; gap: 8px; margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1; padding: 12px; border: 2px solid #007bff;
+      background: white; color: #007bff; border-radius: 10px;
+      font-size: 16px; font-weight: bold; cursor: pointer;
+    }
+    .tab-btn.active { background: #007bff; color: white; }
+    .card {
+      background: white; padding: 12px; border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.07); margin-bottom: 10px;
+      border: 1px solid #e0e0e0; position: relative;
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    .card-fields { flex: 1; }
+    input {
+      width: 100%; padding: 9px; margin: 4px 0;
+      border: 1px solid #ddd; border-radius: 8px; font-size: 15px;
+    }
+    input.name-input { font-weight: bold; border-right: 4px solid #007bff; }
+    input.target-input { color: #28a745; font-size: 13px; direction: ltr; text-align: left; }
+    .drag-handle {
+      cursor: grab; font-size: 20px; padding: 4px 2px; color: #aaa;
+      touch-action: none; user-select: none;
+    }
+    .remove-btn {
+      background: #ff4d4d; color: white; border: none;
+      border-radius: 50%; width: 28px; height: 28px;
+      cursor: pointer; font-size: 14px; flex-shrink: 0; margin-top: 4px;
+    }
+    .btn {
+      padding: 14px; border: none; border-radius: 10px;
+      font-size: 16px; font-weight: bold; cursor: pointer; width: 100%;
+    }
+    .btn-save   { background: #28a745; color: white; margin-top: 20px; }
+    .btn-add    { background: #f8f9fa; color: #007bff; border: 2px dashed #007bff; margin-top: 10px; }
+    .btn-back   { background: #6c757d; color: white; font-size: 14px; padding: 8px 14px; width: auto; border-radius: 8px; }
+    .empty-msg  { text-align: center; color: #999; padding: 20px; }
+    .count-badge {
+      background: #007bff; color: white; border-radius: 50%;
+      width: 22px; height: 22px; display: inline-flex;
+      align-items: center; justify-content: center;
+      font-size: 12px; margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <h2>✏️ עריכת אימונים</h2>
+    <button class="btn btn-back" onclick="goBack()">← חזור ליומן</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabA" onclick="switchTab('A')">
+      <span id="countA" class="count-badge">0</span>אימון A
+    </button>
+    <button class="tab-btn" id="tabB" onclick="switchTab('B')">
+      <span id="countB" class="count-badge">0</span>אימון B
+    </button>
+  </div>
+
+  <div id="listA"></div>
+  <div id="listB" style="display:none;"></div>
+
+  <button class="btn btn-add" onclick="addExercise()">+ הוסף תרגיל</button>
+  <button class="btn btn-save" onclick="saveAll()">💾 שמור שינויים</button>
+
+  <script>
+    let currentTab = 'A';
+    let templates = { A: [], B: [] };
+
+    function goBack() {
+      window.location.href = window.location.href.split('?')[0];
+    }
+
+    // טעינה ראשונית
+    document.getElementById('listA').innerHTML = '<div class="empty-msg">טוען...</div>';
+    google.script.run
+      .withSuccessHandler(data => {
+        if (data && data.error) {
+          document.getElementById('listA').innerHTML =
+            '<div class="empty-msg" style="color:red">שגיאה: ' + data.error + '</div>';
+          return;
+        }
+        if (data) templates = data;
+        renderAll();
+      })
+      .withFailureHandler(err => {
+        document.getElementById('listA').innerHTML =
+          '<div class="empty-msg" style="color:red">שגיאת שרת: ' + err.message + '</div>';
+      })
+      .getWorkoutTemplates();
+
+    function renderAll() {
+      renderList('A');
+      renderList('B');
+      updateCounts();
+    }
+
+    function renderList(type) {
+      const container = document.getElementById('list' + type);
+      if (templates[type].length === 0) {
+        container.innerHTML = '<div class="empty-msg">אין תרגילים. לחץ "+ הוסף תרגיל" להוספה.</div>';
+        return;
+      }
+      container.innerHTML = '';
+      templates[type].forEach((ex, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.idx = idx;
+        card.dataset.type = type;
+        card.dataset.id = ex.id || '';
+        card.innerHTML = `
+          <span class="drag-handle" title="גרור לסידור מחדש">⠿</span>
+          <div class="card-fields">
+            <input type="text" class="name-input"   value="${escHtml(ex.name)}"   placeholder="שם תרגיל">
+            <input type="text" class="target-input" value="${escHtml(ex.target)}" placeholder="יעד (לדוגמה: 3 X 8-10)">
+          </div>
+          <button class="remove-btn" onclick="removeExercise('${type}', ${idx})">✕</button>
+        `;
+        container.appendChild(card);
+      });
+      initDragSort(container, type);
+    }
+
+    function switchTab(type) {
+      currentTab = type;
+      document.getElementById('listA').style.display = type === 'A' ? 'block' : 'none';
+      document.getElementById('listB').style.display = type === 'B' ? 'block' : 'none';
+      document.getElementById('tabA').classList.toggle('active', type === 'A');
+      document.getElementById('tabB').classList.toggle('active', type === 'B');
+    }
+
+    function addExercise() {
+      collectCurrentEdits();
+      templates[currentTab].push({ name: '', target: '' });
+      renderList(currentTab);
+      updateCounts();
+      // גלול לתחתית
+      const container = document.getElementById('list' + currentTab);
+      const lastCard = container.lastElementChild;
+      if (lastCard) lastCard.querySelector('.name-input').focus();
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function removeExercise(type, idx) {
+      collectCurrentEdits();
+      templates[type].splice(idx, 1);
+      renderList(type);
+      updateCounts();
+    }
+
+    function collectCurrentEdits() {
+      ['A', 'B'].forEach(type => {
+        const container = document.getElementById('list' + type);
+        const cards = container.querySelectorAll('.card');
+        const updated = [];
+        cards.forEach(card => {
+          updated.push({
+            name:   card.querySelector('.name-input').value,
+            target: card.querySelector('.target-input').value,
+            id:     card.dataset.id || ''
+          });
+        });
+        if (updated.length > 0) templates[type] = updated;
+      });
+    }
+
+    function updateCounts() {
+      document.getElementById('countA').innerText = templates.A.length;
+      document.getElementById('countB').innerText = templates.B.length;
+    }
+
+    function saveAll() {
+      collectCurrentEdits();
+      const all = [];
+      ['A', 'B'].forEach(type => {
+        templates[type].forEach(ex => {
+          if (ex.name.trim()) all.push({ type, name: ex.name.trim(), target: ex.target.trim(), id: ex.id || '' });
+        });
+      });
+
+      if (all.length === 0) { alert('אין תרגילים לשמור.'); return; }
+
+      const btn = document.querySelector('.btn-save');
+      btn.disabled = true; btn.innerText = 'שומר... ⏳';
+
+      google.script.run.withSuccessHandler(msg => {
+        alert(msg);
+        btn.disabled = false; btn.innerText = '💾 שמור שינויים';
+      }).saveWorkoutTemplates(all);
+    }
+
+    function escHtml(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    }
+
+    // גרירה לסידור מחדש (תמיכה במגע ועכבר)
+    function initDragSort(container, type) {
+      let dragging = null;
+
+      container.querySelectorAll('.drag-handle').forEach(handle => {
+        handle.addEventListener('mousedown', e => startDrag(e, handle.closest('.card'), container, type));
+        handle.addEventListener('touchstart', e => startDrag(e, handle.closest('.card'), container, type), { passive: true });
+      });
+    }
+
+    function startDrag(e, card, container, type) {
+      collectCurrentEdits();
+      card.style.opacity = '0.5';
+      let lastOver = null;
+
+      const moveHandler = ev => {
+        const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+        const cards = [...container.querySelectorAll('.card')];
+        for (const c of cards) {
+          if (c === card) continue;
+          const rect = c.getBoundingClientRect();
+          if (y > rect.top && y < rect.bottom) {
+            if (lastOver !== c) {
+              lastOver = c;
+              const cards2 = [...container.querySelectorAll('.card')];
+              const fromIdx = cards2.indexOf(card);
+              const toIdx   = cards2.indexOf(c);
+              if (fromIdx < toIdx) c.after(card);
+              else c.before(card);
+            }
+            break;
+          }
+        }
+      };
+
+      const upHandler = () => {
+        card.style.opacity = '';
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup',   upHandler);
+        document.removeEventListener('touchmove', moveHandler);
+        document.removeEventListener('touchend',  upHandler);
+        // סנכרון מחדש של המערך
+        const newOrder = [];
+        container.querySelectorAll('.card').forEach(c => {
+          newOrder.push({
+            name:   c.querySelector('.name-input').value,
+            target: c.querySelector('.target-input').value
+          });
+        });
+        templates[type] = newOrder;
+      };
+
+      document.addEventListener('mousemove', moveHandler);
+      document.addEventListener('mouseup',   upHandler);
+      document.addEventListener('touchmove', moveHandler, { passive: true });
+      document.addEventListener('touchend',  upHandler);
+    }
+  </script>
+</body>
+</html>
