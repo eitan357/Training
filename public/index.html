@@ -735,7 +735,8 @@ function firebaseErrMsg(code) {
     'auth/invalid-email':         'כתובת מייל לא תקינה',
     'auth/too-many-requests':     'יותר מדי ניסיונות — נסה שוב מאוחר יותר',
     'auth/popup-closed-by-user':  'החלון נסגר לפני השלמת הכניסה',
-    'auth/network-request-failed':'בעיית חיבור לאינטרנט',
+    'auth/network-request-failed':  'בעיית חיבור לאינטרנט',
+    'auth/unauthorized-domain':     'הדומיין לא מורשה — יש להוסיף אותו ב-Firebase Console → Authentication → Authorized domains',
   };
   return map[code] || 'שגיאה: ' + code;
 }
