@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "training-diary",
     "public": "public",
     "ignore": [
       "firebase.json",
