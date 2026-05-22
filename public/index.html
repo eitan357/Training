@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>יומן אימונים</title>
+  <style>
+    :root {
+      --primary:   #6366f1;
+      --primary-d: #4f46e5;
+      --green:     #22c55e;
+      --green-d:   #16a34a;
+      --red:       #ef4444;
+      --bg:        #f1f5f9;
+      --surface:   #ffffff;
+      --border:    #e2e8f0;
+      --text:      #1e293b;
+      --sub:       #64748b;
+      --radius:    14px;
+      --shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 72px;
+    }
+
+    /* ── AUTH SCREEN ── */
+    #auth-screen {
+      position: fixed; inset: 0; z-index: 10000;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #auth-screen.hidden { display: none; }
+    .auth-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: 0 4px 24px rgba(0,0,0,.12); border: 1px solid var(--border);
+      padding: 28px 24px; width: 100%; max-width: 380px;
+    }
+    .auth-title { font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    .auth-sub   { font-size: 13px; color: var(--sub); text-align: center; margin-bottom: 22px; }
+    .auth-tabs  {
+      display: flex; margin-bottom: 18px;
+      border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden;
+    }
+    .auth-tab {
+      flex: 1; padding: 10px; border: none; background: transparent;
+      font-size: 14px; font-weight: 700; color: var(--sub); cursor: pointer; transition: all .15s;
+    }
+    .auth-tab.active { background: var(--primary); color: white; }
+    .auth-input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: 15px; background: var(--bg);
+      color: var(--text); margin-bottom: 12px; transition: border-color .15s;
+      direction: ltr; text-align: left;
+    }
+    .auth-input:focus { outline: none; border-color: var(--primary); background: white; }
+    .auth-btn {
+      width: 100%; padding: 13px; border: none; border-radius: var(--radius);
+      background: var(--primary); color: white; font-size: 15px; font-weight: 700;
+      cursor: pointer; margin-bottom: 10px; transition: opacity .15s;
+    }
+    .auth-btn:active { opacity: .85; }
+    .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .auth-separator {
+      display: flex; align-items: center; gap: 12px; margin: 6px 0 10px;
+    }
+    .auth-sep-line { flex: 1; height: 1px; background: var(--border); }
+    .auth-sep-text { font-size: 12px; color: var(--sub); font-weight: 600; white-space: nowrap; }
+    .auth-google-btn {
+      width: 100%; padding: 12px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); background: white; color: var(--text);
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: border-color .15s; margin-bottom: 10px;
+    }
+    .auth-google-btn:hover { border-color: var(--primary); }
+    .auth-forgot {
+      display: block; text-align: center; font-size: 13px; color: var(--primary);
+      cursor: pointer; background: none; border: none; width: 100%; padding: 4px;
+    }
+    .auth-err { color: var(--red); font-size: 13px; text-align: center; min-height: 20px; margin-bottom: 8px; }
+    .auth-ok  { color: var(--green-d); font-size: 13px; text-align: center; min-height: 20px; margin-bottom: 8px; }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-title { font-size: 18px; font-weight: 700; color: var(--text); }
+    .topbar-sub   { font-size: 12px; color: var(--sub); margin-top: 1px; }
+    .user-row     { display: flex; align-items: center; gap: 8px; }
+    .user-email   { font-size: 11px; color: var(--sub); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .logout-btn   {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      padding: 5px 10px; font-size: 12px; color: var(--sub); cursor: pointer; transition: all .15s;
+    }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── BOTTOM NAV ── */
+    .bottomnav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 10px 0 8px;
+      cursor: pointer; border: none; background: none;
+      color: var(--sub); font-size: 11px; font-weight: 500;
+      transition: color .15s;
+      position: relative;
+    }
+    .nav-item::before {
+      content: ''; position: absolute; top: 0; left: 20%; right: 20%;
+      height: 3px; border-radius: 0 0 3px 3px;
+      background: var(--primary);
+      transform: scaleX(0); transition: transform .2s;
+    }
+    .nav-item.active { color: var(--primary); }
+    .nav-item.active::before { transform: scaleX(1); }
+    .nav-icon { font-size: 22px; margin-bottom: 2px; transition: transform .15s; }
+    .nav-item.active .nav-icon { transform: scale(1.15); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      z-index: 999; padding: 12px 20px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; color: white;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      opacity: 0; transition: opacity .25s, transform .25s;
+      pointer-events: none; white-space: nowrap; max-width: 90vw; text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.success { background: var(--green-d); }
+    #toast.error   { background: var(--red); }
+
+    /* ── SECTIONS ── */
+    .section { display: none; padding: 16px; }
+    .section.active { display: block; }
+
+    /* ── TYPE SELECTOR ── */
+    .type-row { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; scrollbar-width: none; }
+    .type-row::-webkit-scrollbar { display: none; }
+    .type-btn {
+      flex: 1 0 0; min-width: 120px; padding: 14px 10px;
+      border: 2px solid var(--border);
+      background: var(--surface); color: var(--sub);
+      border-radius: var(--radius); font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all .15s; text-align: center; white-space: nowrap;
+    }
+    .type-btn.active { border-color: var(--primary); background: var(--primary); color: white; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); margin-bottom: 10px;
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .card-body { padding: 14px; }
+    .ex-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .ex-name-text   { font-size: 15px; font-weight: 700; color: var(--text); }
+    .ex-target-text {
+      font-size: 12px; color: var(--primary); font-weight: 600;
+      background: #ede9fe; padding: 2px 8px; border-radius: 20px; direction: ltr;
+    }
+    .remove-btn { background: none; border: none; color: var(--sub); font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; }
+    .remove-btn:hover { color: var(--red); }
+    .field-group { display: flex; gap: 8px; margin-top: 10px; }
+    .field { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; color: var(--sub); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .field input {
+      width: 100%; padding: 9px 10px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 15px; color: var(--text);
+      background: var(--bg); transition: border-color .15s; text-align: center;
+    }
+    .field input:focus { outline: none; border-color: var(--primary); background: white; }
+    .field-notes input { text-align: right; }
+    .ex-name-input {
+      width: 100%; padding: 9px 10px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 15px; font-weight: 700; color: var(--text);
+      background: var(--bg); margin-bottom: 6px;
+    }
+    .ex-name-input:focus { outline: none; border-color: var(--primary); background: white; }
+    .ex-target-input {
+      width: 100%; padding: 7px 10px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 13px; color: var(--primary);
+      background: var(--bg); direction: ltr; text-align: left;
+    }
+    .ex-target-input:focus { outline: none; border-color: var(--primary); background: white; }
+
+    /* ── HISTORY ── */
+    .session-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); margin-bottom: 12px;
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .session-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; }
+    .session-left   { display: flex; align-items: center; gap: 12px; }
+    .session-dot    { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-a { background: var(--green); }
+    .dot-b { background: var(--primary); }
+    .session-date   { font-weight: 700; font-size: 15px; }
+    .session-count  { font-size: 12px; color: var(--sub); margin-top: 1px; }
+    .session-badge  { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; color: white; }
+    .badge-a { background: var(--green); }
+    .badge-b { background: var(--primary); }
+    .chevron { color: var(--sub); font-size: 12px; transition: transform .2s; }
+    .chevron.open { transform: rotate(180deg); }
+    .session-body { padding: 0 16px 14px; display: none; }
+    .session-body.open { display: block; }
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+    .hist-table th {
+      color: var(--sub); font-weight: 600; font-size: 11px;
+      letter-spacing: .3px; padding: 0 6px 8px 0;
+      text-align: right; border-bottom: 1px solid var(--border);
+    }
+    .hist-table th:first-child { width: auto; }
+    .hist-table th.col-num { width: 46px; text-align: center; }
+    .hist-table td { padding: 9px 6px 9px 0; border-bottom: 1px solid var(--bg); vertical-align: middle; }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .td-name { font-weight: 600; }
+    .td-note { color: var(--sub); font-size: 11px; margin-top: 2px; font-style: italic; }
+    .td-num  { text-align: center; color: var(--text); }
+    .divider { height: 1px; background: var(--border); margin: 0 -16px 14px; }
+
+    /* ── EDIT ── */
+    .edit-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); margin-bottom: 10px;
+      border: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 10px; padding: 12px;
+    }
+    .drag-handle { color: #cbd5e1; font-size: 20px; cursor: grab; padding-top: 6px; flex-shrink: 0; touch-action: none; user-select: none; }
+    .edit-fields { flex: 1; }
+    .edit-remove { background: none; border: none; color: #cbd5e1; font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; line-height: 1; padding-top: 6px; }
+    .edit-remove:hover { color: var(--red); }
+    .edit-tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+    .edit-tabs::-webkit-scrollbar { display: none; }
+    .tab-item {
+      flex: 0 0 auto; display: flex; align-items: stretch;
+      border: 2px solid var(--border); border-radius: var(--radius);
+      background: var(--surface); transition: border-color .15s; overflow: hidden;
+    }
+    .tab-item.active { border-color: var(--primary); }
+    .tab-btn {
+      padding: 10px 12px; border: none; background: transparent;
+      color: var(--sub); font-size: 14px; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tab-item.active .tab-btn { color: var(--primary); }
+    .tab-remove {
+      border: none; border-inline-start: 1px solid var(--border);
+      background: transparent; color: #94a3b8;
+      font-size: 13px; cursor: pointer; padding: 0 10px; transition: all .15s;
+    }
+    .tab-remove:hover { color: var(--red); background: #fef2f2; }
+    .tab-item.add-tab-item { border-style: dashed; flex: 0 0 auto; }
+    .add-tab-btn { padding: 10px 16px; font-size: 20px; font-weight: 400; color: var(--sub); }
+    .count-pill { background: var(--border); color: var(--sub); border-radius: 20px; font-size: 11px; padding: 1px 7px; font-weight: 700; }
+    .tab-item.active .count-pill { background: var(--primary); color: white; }
+    .add-type-form {
+      display: none; flex-direction: column; gap: 10px; margin-bottom: 14px;
+      background: var(--surface); border: 1.5px solid var(--primary);
+      border-radius: var(--radius); padding: 14px;
+    }
+    .add-type-form input {
+      width: 100%; padding: 11px 12px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text);
+    }
+    .add-type-form input:focus { outline: none; border-color: var(--primary); }
+    .add-type-form-btns { display: flex; gap: 8px; }
+    .btn-sm { flex: 1; padding: 11px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; }
+    .btn-sm-primary { background: var(--primary); color: white; }
+    .btn-sm-ghost   { background: var(--bg); color: var(--sub); border: 1.5px solid var(--border); }
+
+    /* ── SESSION EDIT ── */
+    .edit-session-wrap  { padding: 4px 0 8px; }
+    .edit-session-name-row { margin-bottom: 12px; }
+    .edit-session-name-row label { font-size: 12px; color: var(--sub); font-weight: 600; display: block; margin-bottom: 4px; }
+    .edit-ex-row { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .edit-ex-row:last-child { border-bottom: none; }
+    .edit-ex-title  { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .edit-ex-fields { display: flex; gap: 8px; margin-bottom: 6px; }
+    .edit-ex-fields .field { flex: 1; }
+    .edit-ex-fields label { font-size: 11px; color: var(--sub); display: block; margin-bottom: 3px; font-weight: 600; }
+    .edit-num-input, .edit-notes-input, .edit-session-name-input {
+      width: 100%; padding: 8px 10px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text); transition: border-color .15s;
+    }
+    .edit-num-input:focus, .edit-notes-input:focus, .edit-session-name-input:focus { outline: none; border-color: var(--primary); }
+    .edit-save-row { display: flex; gap: 8px; margin-top: 14px; }
+    .edit-save-row .btn-primary { flex: 1; padding: 13px; margin-top: 0; font-size: 14px; }
+    .edit-save-row .btn-ghost   { flex: 1; padding: 13px; margin-top: 0; font-size: 14px; border: 1.5px solid var(--border); }
+    .edit-ex-delete {
+      background: none; border: none; color: #cbd5e1;
+      font-size: 16px; cursor: pointer; padding: 4px 6px;
+      border-radius: 6px; float: left; transition: all .15s;
+    }
+    .edit-ex-delete:hover { color: var(--red); background: #fef2f2; }
+
+    /* ── DELETE BUTTONS ── */
+    .delete-btn {
+      background: none; border: none; color: #cbd5e1;
+      cursor: pointer; padding: 4px 6px; border-radius: 6px;
+      font-size: 15px; line-height: 1; transition: all .15s; flex-shrink: 0;
+    }
+    .delete-btn:hover { color: var(--red); background: #fef2f2; }
+    .delete-btn.armed { color: var(--red) !important; background: #fef2f2; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
+    .col-del { width: 32px; text-align: center; padding: 0 !important; }
+
+    /* ── SESSION NAME ── */
+    .session-name-label-title { display: block; font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 6px; }
+    .session-name-input {
+      width: 100%; padding: 12px 14px; font-size: 15px;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--surface); color: var(--text); transition: border-color .15s;
+    }
+    .session-name-input:focus { outline: none; border-color: var(--primary); }
+    .hist-preview-session-name { font-size: 13px; font-weight: 700; color: var(--primary); margin-right: 6px; }
+    .session-name-label { font-size: 13px; font-weight: 700; color: var(--primary); margin-top: 1px; }
+
+    /* ── FILTERS ── */
+    .filter-row { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; }
+    .filter-btn {
+      flex: 0 0 auto; padding: 10px 16px; font-size: 13px; font-weight: 700;
+      border: 1.5px solid var(--border); border-radius: 20px;
+      background: var(--surface); color: var(--sub); cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .filter-btn.active { border-color: var(--primary); background: var(--primary); color: white; }
+
+    /* ── BUTTONS ── */
+    .btn-primary {
+      width: 100%; padding: 15px; border: none; border-radius: var(--radius);
+      background: var(--primary); color: white;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      margin-top: 16px; transition: opacity .15s;
+    }
+    .btn-primary:active  { opacity: .85; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary.green { background: var(--green); }
+    .btn-ghost {
+      width: 100%; padding: 13px; border: 1.5px dashed var(--border);
+      border-radius: var(--radius); background: transparent; color: var(--sub);
+      font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: all .15s;
+    }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── HISTORY PREVIEW ── */
+    .history-preview { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden; }
+    .history-preview-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; background: #f8fafc; }
+    .history-preview-title { font-size: 13px; font-weight: 700; color: var(--sub); }
+    .history-preview-date  { font-size: 12px; color: var(--primary); font-weight: 600; }
+    .history-preview-body  { display: none; padding: 0 14px 12px; }
+    .history-preview-body.open { display: block; }
+
+    /* ── TOPBAR ICON BUTTON ── */
+    .topbar-icon-btn {
+      background: none; border: none; font-size: 20px;
+      cursor: pointer; padding: 6px 8px; border-radius: 8px;
+      color: var(--sub); transition: background .15s, color .15s;
+    }
+    .topbar-icon-btn:active { background: var(--bg); }
+    .topbar-icon-btn.active { color: var(--primary); }
+
+    /* ── MEASUREMENTS ── */
+    .type-unit-input { width: 72px; padding: 9px 6px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: var(--bg); text-align: center; }
+    .type-unit-input:focus { outline: none; border-color: var(--primary); background: white; }
+    .m-row  { display: flex; gap: 10px; margin-bottom: 10px; width: 100%; }
+    .m-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .m-field label { font-size: 11px; color: var(--sub); font-weight: 600; letter-spacing: .3px; }
+    .m-field input {
+      width: 100%; padding: 10px 6px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 15px; color: var(--text);
+      background: var(--bg); text-align: center; transition: border-color .15s; min-width: 0;
+    }
+    .m-field input:focus { outline: none; border-color: var(--primary); background: white; }
+    .m-field.weight-field input { background: #ede9fe; border-color: #c4b5fd; font-weight: 700; font-size: 18px; padding: 13px 6px; }
+    .measure-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; border: 1px solid var(--border); overflow: hidden; }
+    .measure-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; background: #faf5ff; border-bottom: 1px solid #ede9fe; }
+    .measure-date  { font-weight: 700; font-size: 15px; }
+    .measure-weight { font-size: 20px; font-weight: 800; color: var(--primary); }
+    .measure-weight-unit { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .measure-body { padding: 12px 16px; display: none; }
+    .measure-body.open { display: block; }
+    .measure-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .measure-chip  { display: flex; flex-direction: column; align-items: center; background: var(--bg); border-radius: 10px; padding: 8px 12px; min-width: 72px; }
+    .chip-label { font-size: 10px; color: var(--sub); font-weight: 600; margin-bottom: 2px; }
+    .chip-val   { font-size: 15px; font-weight: 700; color: var(--text); }
+    .chip-delta { font-size: 11px; font-weight: 600; margin-top: 1px; color: #64748b; }
+    .add-form-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); padding: 16px; margin-bottom: 20px; }
+    .add-form-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .add-form-sub   { font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .section-label  { font-size: 11px; font-weight: 700; color: var(--sub); letter-spacing: .5px; text-transform: uppercase; margin: 16px 0 8px; }
+
+    /* ── MONTH GROUPS ── */
+    .month-label { font-size: 12px; font-weight: 700; color: var(--sub); letter-spacing: .4px; padding: 6px 2px 10px; text-transform: uppercase; }
+    .month-group-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; background: var(--surface); border-radius: var(--radius); margin-bottom: 10px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+    .month-group-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .month-group-body { display: none; }
+    .month-group-body.open { display: block; }
+
+    /* ── STATUS ── */
+    .empty { text-align: center; padding: 40px 20px; color: var(--sub); }
+    .empty-icon { font-size: 40px; margin-bottom: 10px; }
+    .empty-text { font-size: 15px; }
+    .loading { text-align: center; padding: 30px; color: var(--sub); font-size: 14px; }
+
+    /* ── LOADING OVERLAY ── */
+    #loading-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      transition: opacity .35s ease;
+    }
+    #loading-overlay.fade-out { opacity: 0; pointer-events: none; }
+    .lo-title   { font-size: 24px; font-weight: 800; color: var(--text); }
+    .lo-spinner { width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--border); border-top-color: var(--primary); animation: lo-spin .75s linear infinite; }
+    @keyframes lo-spin { to { transform: rotate(360deg); } }
+    .lo-sub { font-size: 14px; color: var(--sub); }
+  </style>
+</head>
+<body>
+
+<!-- ══ AUTH SCREEN ══ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-title">יומן האימון 💪</div>
+    <div class="auth-sub">התחבר כדי לגשת לנתונים שלך</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login"    onclick="switchAuthTab('login')">התחברות</button>
+      <button class="auth-tab"        id="tab-register" onclick="switchAuthTab('register')">הרשמה</button>
+    </div>
+    <div id="auth-msg" class="auth-err"></div>
+    <input type="email"    id="auth-email"    class="auth-input" placeholder="כתובת מייל" autocomplete="email">
+    <input type="password" id="auth-password" class="auth-input" placeholder="סיסמה (לפחות 6 תווים)" autocomplete="current-password">
+    <button id="auth-submit-btn" class="auth-btn" onclick="handleAuthSubmit()">כניסה</button>
+    <button class="auth-forgot" onclick="handleForgotPassword()">שכחתי סיסמה</button>
+    <div class="auth-separator">
+      <div class="auth-sep-line"></div>
+      <span class="auth-sep-text">או</span>
+      <div class="auth-sep-line"></div>
+    </div>
+    <button class="auth-google-btn" onclick="handleGoogleLogin()">
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      כניסה עם Google
+    </button>
+  </div>
+</div>
+
+<!-- ══ LOADING OVERLAY ══ -->
+<div id="loading-overlay" style="display:none;">
+  <div class="lo-title">יומן האימון 💪</div>
+  <div class="lo-spinner"></div>
+  <div class="lo-sub">טוען נתונים...</div>
+</div>
+
+<!-- ══════════ MAIN ══════════ -->
+<div id="sec-main" class="section active">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">יומן האימון 💪</div>
+    </div>
+    <div class="user-row">
+      <span id="user-email" class="user-email"></span>
+      <button class="logout-btn" onclick="handleLogout()">יציאה</button>
+    </div>
+  </div>
+
+  <div style="padding:16px;">
+    <div id="typeRow" class="type-row"></div>
+
+    <div id="historyPreview" style="display:none;" class="history-preview">
+      <div class="history-preview-header" onclick="toggleHistPreview()">
+        <div>
+          <span class="history-preview-title">📋 אימון אחרון</span>
+          <span id="histPreviewName" class="hist-preview-session-name"></span>
+        </div>
+        <span id="histPreviewDate" class="history-preview-date"></span>
+      </div>
+      <div id="histPreviewBody" class="history-preview-body">
+        <table class="hist-table" style="margin-top:8px;">
+          <thead><tr>
+            <th>תרגיל</th>
+            <th class="col-num">משקל</th>
+            <th class="col-num">סטים</th>
+            <th class="col-num">חזרות</th>
+          </tr></thead>
+          <tbody id="histPreviewRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="sessionNameWrap" style="display:none; margin-bottom:16px;">
+      <label class="session-name-label-title">שם האימון</label>
+      <input type="text" id="sessionNameInput" class="session-name-input" placeholder="שם האימון" autocomplete="off">
+    </div>
+
+    <div id="exerciseList"></div>
+    <button id="addBtn"  class="btn-ghost"        style="display:none;" onclick="addCustomExercise()">+ הוסף תרגיל</button>
+    <button id="saveBtn" class="btn-primary green" style="display:none;" onclick="submitData()">שמור אימון</button>
+  </div>
+</div>
+
+<!-- ══════════ HISTORY ══════════ -->
+<div id="sec-history" class="section">
+  <div class="topbar">
+    <div class="topbar-title">היסטוריה 📊</div>
+  </div>
+  <div style="padding:16px;">
+    <div id="filterRow" class="filter-row"></div>
+    <div id="historyList"><div class="loading">טוען...</div></div>
+  </div>
+</div>
+
+<!-- ══════════ EDIT ══════════ -->
+<div id="sec-edit" class="section">
+  <div class="topbar">
+    <div class="topbar-title">עריכת אימונים ✏️</div>
+  </div>
+  <div style="padding:16px;">
+    <div id="editTabs" class="edit-tabs"></div>
+    <div id="addTypeForm" class="add-type-form">
+      <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off">
+      <div class="add-type-form-btns">
+        <button class="btn-sm btn-sm-primary" onclick="confirmAddType()">הוסף</button>
+        <button class="btn-sm btn-sm-ghost"   onclick="cancelAddType()">ביטול</button>
+      </div>
+    </div>
+    <div id="editListContainer"></div>
+    <button class="btn-ghost"   onclick="addEditExercise()">+ הוסף תרגיל</button>
+    <button class="btn-primary" onclick="saveTemplates()">💾 שמור שינויים</button>
+  </div>
+</div>
+
+<!-- ══════════ MEASUREMENTS ══════════ -->
+<div id="sec-measurements" class="section">
+  <div class="topbar">
+    <div class="topbar-title">מדידות 📏</div>
+    <button class="topbar-icon-btn" id="typesEditorToggle" onclick="toggleTypesEditor()" title="ערוך סוגי מדידות">⚙️</button>
+  </div>
+
+  <div id="typesEditorPanel" style="display:none; padding:16px;">
+    <div class="section-label">סוגי מדידות</div>
+    <div id="typesList"></div>
+    <button class="btn-ghost"   onclick="addMeasureType()">+ הוסף סוג מדידה</button>
+    <button class="btn-primary" onclick="saveTypesEditor()">💾 שמור סוגי מדידות</button>
+  </div>
+
+  <div id="measurementsContent" style="padding:16px;">
+    <div class="add-form-card">
+      <div class="add-form-title">הוסף מדידה חדשה</div>
+      <div class="add-form-sub">מלא רק את השדות שרצית למדוד</div>
+      <div class="section-label">תאריך</div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>תאריך המדידה</label>
+          <input type="text" id="m-date" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off">
+        </div>
+      </div>
+      <div id="measureFormFields"><div class="loading" style="padding:12px 0;">טוען שדות...</div></div>
+      <button class="btn-primary" onclick="saveMeasurement()">שמור מדידה</button>
+    </div>
+    <div class="section-label">היסטוריית מדידות</div>
+    <div id="measureList"><div class="loading">טוען...</div></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<nav class="bottomnav">
+  <button class="nav-item active" id="nav-main"         onclick="showSection('main')">
+    <span class="nav-icon">🏋️</span>אימון
+  </button>
+  <button class="nav-item"        id="nav-measurements" onclick="showSection('measurements')">
+    <span class="nav-icon">📏</span>מדידות
+  </button>
+  <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
+    <span class="nav-icon">📊</span>היסטוריה
+  </button>
+  <button class="nav-item"        id="nav-edit"         onclick="showSection('edit')">
+    <span class="nav-icon">✏️</span>עריכה
+  </button>
+</nav>
+
+<script type="module">
+import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+         createUserWithEmailAndPassword, GoogleAuthProvider,
+         signInWithPopup, signOut, sendPasswordResetEmail }       from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc,
+         deleteDoc, collection, query, orderBy,
+         getDocs, serverTimestamp }                               from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
+
+// ─── FIREBASE CONFIG ─────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyDAshMz9XYN2vRcYSoUEKUD_Hxgudlfr1g",
+  authDomain:        "training-3f519.firebaseapp.com",
+  projectId:         "training-3f519",
+  storageBucket:     "training-3f519.firebasestorage.app",
+  messagingSenderId: "340367528174",
+  appId:             "1:340367528174:web:9056ae0fb779d2cb1323ff"
+};
+// ─────────────────────────────────────────────────────────────
+
+const fbApp  = initializeApp(firebaseConfig);
+const auth   = getAuth(fbApp);
+const db     = getFirestore(fbApp);
+let currentUser = null;
+
+// ─── APP STATE ───────────────────────────────────────────────
+let exerciseCount    = 0;
+let selectedType     = null;
+let workoutTypes     = ['A', 'B'];
+let editTab          = 'A';
+let editTemplates    = {};
+let allSessions      = [];
+let activeFilter     = 'all';
+let allMeasurements  = [];
+let measureTypes     = [];
+let typesEditorOpen  = false;
+let editMeasureTypes = [];
+let lastWorkouts     = {};
+
+// ─── AUTH STATE LISTENER ─────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('user-email').textContent = user.email || user.displayName || '';
+    document.getElementById('loading-overlay').style.display = 'flex';
+    await initApp();
+  } else {
+    currentUser = null;
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('loading-overlay').style.display = 'none';
+  }
+});
+
+// ─── AUTH FUNCTIONS ───────────────────────────────────────────
+let authMode = 'login';
+
+function switchAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-login').classList.toggle('active',    mode === 'login');
+  document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+  document.getElementById('auth-submit-btn').textContent = mode === 'login' ? 'כניסה' : 'הרשמה';
+  setAuthMsg('');
+}
+
+async function handleAuthSubmit() {
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const btn      = document.getElementById('auth-submit-btn');
+  if (!email || !password) { setAuthMsg('נא למלא מייל וסיסמה'); return; }
+  btn.disabled = true;
+  try {
+    if (authMode === 'login') {
+      await signInWithEmailAndPassword(auth, email, password);
+    } else {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await initNewUser(cred.user.uid);
+    }
+  } catch (e) {
+    setAuthMsg(firebaseErrMsg(e.code));
+    btn.disabled = false;
+  }
+}
+
+async function handleGoogleLogin() {
+  try {
+    const provider = new GoogleAuthProvider();
+    const result   = await signInWithPopup(auth, provider);
+    const snap     = await getDoc(doc(db, 'users', result.user.uid, 'config', 'templates'));
+    if (!snap.exists()) await initNewUser(result.user.uid);
+  } catch (e) {
+    setAuthMsg(firebaseErrMsg(e.code));
+  }
+}
+
+async function handleForgotPassword() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { setAuthMsg('הזן מייל לאיפוס הסיסמה'); return; }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    setAuthMsg('✓ קישור איפוס נשלח למייל!', true);
+  } catch (e) {
+    setAuthMsg(firebaseErrMsg(e.code));
+  }
+}
+
+async function handleLogout() {
+  await signOut(auth);
+}
+
+function setAuthMsg(msg, ok = false) {
+  const el = document.getElementById('auth-msg');
+  el.className = ok ? 'auth-ok' : 'auth-err';
+  el.textContent = msg;
+}
+
+function firebaseErrMsg(code) {
+  const map = {
+    'auth/user-not-found':        'לא נמצא משתמש עם מייל זה',
+    'auth/wrong-password':        'סיסמה שגויה',
+    'auth/invalid-credential':    'מייל או סיסמה שגויים',
+    'auth/email-already-in-use':  'מייל זה כבר רשום',
+    'auth/weak-password':         'סיסמה חלשה מדי (לפחות 6 תווים)',
+    'auth/invalid-email':         'כתובת מייל לא תקינה',
+    'auth/too-many-requests':     'יותר מדי ניסיונות — נסה שוב מאוחר יותר',
+    'auth/popup-closed-by-user':  'החלון נסגר לפני השלמת הכניסה',
+    'auth/network-request-failed':'בעיית חיבור לאינטרנט',
+  };
+  return map[code] || 'שגיאה: ' + code;
+}
+
+// ─── NEW USER DEFAULTS ────────────────────────────────────────
+async function initNewUser(uid) {
+  const g = () => crypto.randomUUID().replace(/-/g,'').substring(0,12).toUpperCase();
+  const DEFAULT_TEMPLATES = {
+    types: ['A', 'B'],
+    A: [
+      { id: g(), name: 'בכן סקוואט',           target: '3 X 4-6 + 1 X 15-20' },
+      { id: g(), name: 'ספליט סקוואט / לאנג G', target: '3 X 10-12 / 3 X הלך-חזור' },
+      { id: g(), name: 'לחיצת כפיים',           target: '3 X 4-6 + 1 X 15-20' },
+      { id: g(), name: 'הרמקת כתף',             target: '3 X 15' },
+      { id: g(), name: 'יד אחורית',             target: '3 X 12-15' },
+      { id: g(), name: 'Toes to Bar',           target: '3 X 8-10' },
+      { id: g(), name: 'תליה על מתח',           target: '3 X 50s' },
+    ],
+    B: [
+      { id: g(), name: 'מתח כבד',              target: '2 X 3-5' },
+      { id: g(), name: 'מתח טבעות',            target: '3 X 6-10' },
+      { id: g(), name: 'חתירה אוסטרלית',       target: '2 X 12-15' },
+      { id: g(), name: "בצ'",                  target: '3 X 3-5' },
+      { id: g(), name: 'מקבילים משקל/טבעות',  target: '2 X RIR2' },
+      { id: g(), name: 'שיפוע עליון',          target: '2 X 20' },
+      { id: g(), name: 'יד קדמית סופינציה',    target: '2 X 12-15' },
+      { id: g(), name: 'יד קדמית פטיש',        target: '1 X 12-15' },
+    ]
+  };
+  const DEFAULT_MEASURE_TYPES = [
+    { id: g(), name: 'משקל',    unit: 'ק"ג' },
+    { id: g(), name: 'חזה',     unit: 'ס"מ' },
+    { id: g(), name: 'כתפיים',  unit: 'ס"מ' },
+    { id: g(), name: 'זרוע',    unit: 'ס"מ' },
+    { id: g(), name: 'ירך',     unit: 'ס"מ' },
+    { id: g(), name: 'שוק',     unit: 'ס"מ' },
+    { id: g(), name: 'מותניים', unit: 'ס"מ' },
+    { id: g(), name: 'ישבן',    unit: 'ס"מ' },
+  ];
+  await setDoc(doc(db, 'users', uid, 'config', 'templates'),       DEFAULT_TEMPLATES);
+  await setDoc(doc(db, 'users', uid, 'config', 'measurementTypes'), { types: DEFAULT_MEASURE_TYPES });
+}
+
+// ─── UTILS ────────────────────────────────────────────────────
+function genId() {
+  return crypto.randomUUID().replace(/-/g,'').substring(0,12).toUpperCase();
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+const MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function getMonthKey(dateStr) {
+  const [, m, y] = dateStr.split('/');
+  return y + '-' + m.padStart(2,'0');
+}
+function getMonthLabel(key) {
+  const [y, m] = key.split('-');
+  return MONTHS_HE[parseInt(m) - 1] + ' ' + y;
+}
+
+// ─── LOAD ALL DATA ────────────────────────────────────────────
+async function loadAllData() {
+  const uid = currentUser.uid;
+  const [tmplSnap, mtSnap, workoutsSnap, measurementsSnap] = await Promise.all([
+    getDoc(doc(db, 'users', uid, 'config', 'templates')),
+    getDoc(doc(db, 'users', uid, 'config', 'measurementTypes')),
+    getDocs(query(collection(db, 'users', uid, 'workouts'),     orderBy('dateISO', 'desc'))),
+    getDocs(query(collection(db, 'users', uid, 'measurements'), orderBy('dateISO', 'desc'))),
+  ]);
+
+  const templates  = tmplSnap.exists() ? tmplSnap.data() : { types: ['A','B'], A: [], B: [] };
+  const mtData     = mtSnap.exists()   ? mtSnap.data()   : { types: [] };
+  const workouts   = [];
+  workoutsSnap.forEach(d   => workouts.push({ ...d.data(), id: d.id }));
+  const measurements = [];
+  measurementsSnap.forEach(d => measurements.push({ ...d.data(), id: d.id }));
+
+  const lw = {};
+  workouts.forEach(s => { if (!lw[s.type]) lw[s.type] = s; });
+
+  return { templates, measureTypes: mtData.types || [], allWorkouts: workouts, measurements, lastWorkouts: lw };
+}
+
+async function initApp() {
+  try {
+    const data = await loadAllData();
+    applyAppData(data);
+    selectType('A');
+  } catch (err) {
+    toast('שגיאה בטעינת הנתונים: ' + err.message, 'error');
+    selectType('A');
+  }
+  hideOverlay();
+}
+
+async function reloadAppData() {
+  try {
+    const data = await loadAllData();
+    applyAppData(data);
+    if (selectedType) selectType(selectedType);
+  } catch (err) {
+    toast('שגיאה בעדכון הנתונים: ' + err.message, 'error');
+  }
+}
+
+function hideOverlay() {
+  const el = document.getElementById('loading-overlay');
+  el.classList.add('fade-out');
+  setTimeout(() => el.style.display = 'none', 380);
+}
+
+function applyAppData(data) {
+  const safeArr = v => Array.isArray(v) ? v : [];
+  const tmpl = (data.templates && !data.templates.error) ? data.templates : { types: ['A','B'], A: [], B: [] };
+
+  workoutTypes    = (tmpl.types && tmpl.types.length) ? tmpl.types : ['A','B'];
+  editTemplates   = {};
+  workoutTypes.forEach(t => { editTemplates[t] = tmpl[t] || []; });
+  allSessions     = safeArr(data.allWorkouts);
+  measureTypes    = safeArr(data.measureTypes);
+  allMeasurements = safeArr(data.measurements);
+  lastWorkouts    = (data.lastWorkouts && typeof data.lastWorkouts === 'object') ? data.lastWorkouts : {};
+
+  try { renderMeasureForm();  } catch(e) { console.error(e); }
+  try { renderEditAll();      } catch(e) { console.error(e); }
+  try { renderHistory();      } catch(e) { console.error(e); }
+  try { renderMeasurements(); } catch(e) { console.error(e); }
+  setDefaultDate();
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s  => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-'  + name).classList.add('active');
+  document.getElementById('nav-'  + name).classList.add('active');
+  if (name === 'measurements') setDefaultDate();
+}
+
+// ─── MAIN — WORKOUT FORM ──────────────────────────────────────
+function selectType(type) {
+  selectedType = type;
+  document.querySelectorAll('#typeRow .type-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.type === type)
+  );
+
+  const h   = lastWorkouts[type];
+  const box = document.getElementById('historyPreview');
+  if (h) {
+    document.getElementById('histPreviewDate').innerText = h.date;
+    const nameEl = document.getElementById('histPreviewName');
+    if (nameEl) nameEl.innerText = h.sessionName ? '— ' + h.sessionName : '';
+    document.getElementById('histPreviewRows').innerHTML =
+      (h.exercises || []).map(e => `<tr>
+        <td><div class="td-name">${escHtml(String(e.name))}</div></td>
+        <td class="td-num">${e.weight||'—'}</td>
+        <td class="td-num">${e.sets||'—'}</td>
+        <td class="td-num">${e.reps||'—'}</td>
+      </tr>`).join('');
+    box.style.display = 'block';
+  } else { box.style.display = 'none'; }
+
+  const nameWrap  = document.getElementById('sessionNameWrap');
+  const nameInput = document.getElementById('sessionNameInput');
+  nameWrap.style.display = 'block';
+  nameInput.value = '';
+  nameInput.placeholder = (lastWorkouts[type]?.sessionName)
+    ? 'אחרון: ' + lastWorkouts[type].sessionName
+    : 'שם האימון (ראשון, שני, דלואד...)';
+
+  exerciseCount = 0;
+  document.getElementById('exerciseList').innerHTML =
+    (editTemplates[type] || []).map(ex => makeExCard(ex.name, ex.target)).join('');
+  document.getElementById('saveBtn').style.display = 'block';
+  document.getElementById('addBtn').style.display  = 'block';
+}
+
+function toggleHistPreview() {
+  document.getElementById('histPreviewBody').classList.toggle('open');
+}
+
+function makeExCard(name, target) {
+  const id = exerciseCount++;
+  return `
+  <div class="card" id="card_${id}">
+    <div class="card-body">
+      <div class="ex-name-row">
+        <div>
+          <div class="ex-name-text">${escHtml(name)}</div>
+          <div class="ex-target-text" style="margin-top:4px;">${escHtml(target)}</div>
+        </div>
+        <button class="remove-btn" onclick="document.getElementById('card_${id}').remove()">✕</button>
+      </div>
+      <div class="field-group">
+        <div class="field"><label>משקל</label><input type="number" class="ex-weight" placeholder="—" autocomplete="off"></div>
+        <div class="field"><label>סטים</label><input type="number" class="ex-sets"   placeholder="—" autocomplete="off"></div>
+        <div class="field"><label>חזרות</label><input type="number" class="ex-reps"  placeholder="—" autocomplete="off"></div>
+      </div>
+      <div class="field-group field-notes" style="margin-top:8px;">
+        <div class="field" style="flex:1;"><label>הערות</label><input type="text" class="ex-notes" placeholder="הוסף הערה..."></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function addCustomExercise() {
+  document.getElementById('exerciseList').insertAdjacentHTML('beforeend', makeExCard('', ''));
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+async function submitData() {
+  const btn = document.getElementById('saveBtn');
+  const exercises = [];
+  document.querySelectorAll('#exerciseList .card').forEach(card => {
+    const w = card.querySelector('.ex-weight').value;
+    const s = card.querySelector('.ex-sets').value;
+    const r = card.querySelector('.ex-reps').value;
+    if (w || s || r) exercises.push({
+      id:     genId(),
+      name:   card.querySelector('.ex-name-text')?.innerText  || '',
+      target: card.querySelector('.ex-target-text')?.innerText || '',
+      weight: w, sets: s, reps: r,
+      notes:  card.querySelector('.ex-notes').value
+    });
+  });
+  if (!exercises.length) { toast('מלא נתונים לפני השמירה.', 'error'); return; }
+
+  const sessionName = document.getElementById('sessionNameInput')?.value.trim() || '';
+  const now  = new Date();
+  const dd   = String(now.getDate()).padStart(2,'0');
+  const mm   = String(now.getMonth()+1).padStart(2,'0');
+  const yyyy = now.getFullYear();
+
+  btn.disabled = true; btn.innerText = 'שומר...';
+  try {
+    await addDoc(collection(db, 'users', currentUser.uid, 'workouts'), {
+      date:        `${dd}/${mm}/${yyyy}`,
+      dateISO:     `${yyyy}-${mm}-${dd}`,
+      type:        selectedType,
+      sessionName,
+      exercises,
+      createdAt:   serverTimestamp()
+    });
+    toast(`האימון נשמר בהצלחה! (${exercises.length} תרגילים)`, 'success');
+    await reloadAppData();
+  } catch (err) {
+    toast('שגיאה בשמירה: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.innerText = 'שמור אימון';
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────
+function filterHistory(f) {
+  activeFilter = f;
+  document.querySelectorAll('#filterRow .filter-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.filter === f)
+  );
+  renderHistory();
+}
+
+function buildSessionCard(s, i) {
+  const dotClass   = 'dot-'   + s.type.toLowerCase();
+  const badgeClass = 'badge-' + s.type.toLowerCase();
+  return `<div class="session-card">
+    <div class="session-header" onclick="toggleSess(${i}, this)">
+      <div class="session-left">
+        <div class="session-dot ${dotClass}"></div>
+        <div>
+          <div class="session-date">${s.date}</div>
+          ${s.sessionName ? `<div class="session-name-label">${escHtml(s.sessionName)}</div>` : ''}
+          <div class="session-count">${(s.exercises||[]).length} תרגילים</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span class="session-badge ${badgeClass}">אימון ${escHtml(s.type)}</span>
+        <button class="delete-btn" onclick="event.stopPropagation();editSession(this,'${escHtml(s.id)}')"    title="ערוך">✏️</button>
+        <button class="delete-btn" onclick="event.stopPropagation();deleteSession(this,'${escHtml(s.id)}')"  title="מחק סשן">🗑</button>
+        <span class="chevron">▼</span>
+      </div>
+    </div>
+    <div class="session-body" id="sess_${i}">
+      <div class="divider"></div>
+      <table class="hist-table">
+        <thead><tr>
+          <th>תרגיל</th><th class="col-num">משקל</th>
+          <th class="col-num">סטים</th><th class="col-num">חזרות</th>
+        </tr></thead>
+        <tbody>
+          ${(s.exercises||[]).map(e => `<tr>
+            <td><div class="td-name">${escHtml(String(e.name))}</div>
+              ${e.notes ? `<div class="td-note">${escHtml(String(e.notes))}</div>` : ''}</td>
+            <td class="td-num">${e.weight||'—'}</td>
+            <td class="td-num">${e.sets||'—'}</td>
+            <td class="td-num">${e.reps||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const data = activeFilter === 'all' ? allSessions : allSessions.filter(s => s.type === activeFilter);
+  if (!data.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🏃</div><div class="empty-text">אין אימונים להצגה</div></div>';
+    return;
+  }
+
+  const groups = {}, order = [];
+  data.forEach(s => {
+    const k = getMonthKey(s.date);
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(s);
+  });
+
+  let si = 0, html = '';
+  order.forEach((key, gi) => {
+    const isLatest = gi === 0;
+    const sessions = groups[key];
+    const label = getMonthLabel(key);
+    const gid   = 'hgrp_' + key.replace('-','_');
+
+    if (isLatest) {
+      html += `<div class="month-label">${label}</div>`;
+      sessions.forEach(s => { html += buildSessionCard(s, si++); });
+    } else {
+      html += `<div class="month-group-header" onclick="toggleMonthGroup('${gid}',this)">
+        <span class="month-group-title">${label}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;color:var(--sub)">${sessions.length} אימונים</span>
+          <span class="chevron">▼</span>
+        </span>
+      </div>
+      <div class="month-group-body" id="${gid}">`;
+      sessions.forEach(s => { html += buildSessionCard(s, si++); });
+      html += `</div>`;
+    }
+  });
+
+  list.innerHTML = html;
+  const first = document.getElementById('sess_0');
+  if (first) { first.classList.add('open'); document.querySelector('.session-header .chevron')?.classList.add('open'); }
+}
+
+function toggleSess(i, header) {
+  const body = document.getElementById('sess_' + i);
+  if (!body) return;
+  body.classList.toggle('open');
+  header?.querySelector('.chevron')?.classList.toggle('open', body.classList.contains('open'));
+}
+
+function toggleMonthGroup(id, header) {
+  const body = document.getElementById(id);
+  if (!body) return;
+  body.classList.toggle('open');
+  header?.querySelector('.chevron')?.classList.toggle('open', body.classList.contains('open'));
+}
+
+// ─── SESSION EDIT ─────────────────────────────────────────────
+function editSession(btn, sessionId) {
+  const session = allSessions.find(s => s.id === sessionId);
+  if (!session) return;
+
+  const card = btn.closest('.session-card');
+  const body = card.querySelector('.session-body');
+  body.classList.add('open');
+
+  body.innerHTML = `
+    <div class="edit-session-wrap">
+      <div class="divider"></div>
+      <div class="edit-session-name-row">
+        <label>שם האימון</label>
+        <input type="text" class="edit-session-name-input" value="${escHtml(session.sessionName||'')}" placeholder="שם האימון">
+      </div>
+      ${(session.exercises||[]).map(e => `
+        <div class="edit-ex-row"
+             data-id="${escHtml(String(e.id))}"
+             data-name="${escHtml(String(e.name))}"
+             data-target="${escHtml(String(e.target||''))}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="edit-ex-title" style="margin-bottom:0;">${escHtml(String(e.name))}</div>
+            <button class="edit-ex-delete" onclick="removeEditRow(this)" title="מחק תרגיל">✕</button>
+          </div>
+          <div class="edit-ex-fields">
+            <div class="field"><label>משקל</label><input type="text" class="edit-num-input edit-weight" value="${escHtml(String(e.weight||''))}" placeholder="—"></div>
+            <div class="field"><label>סטים</label><input type="text" class="edit-num-input edit-sets"   value="${escHtml(String(e.sets||''))}"   placeholder="—"></div>
+            <div class="field"><label>חזרות</label><input type="text" class="edit-num-input edit-reps"  value="${escHtml(String(e.reps||''))}"   placeholder="—"></div>
+          </div>
+          <input type="text" class="edit-notes-input" value="${escHtml(String(e.notes||''))}" placeholder="הערות...">
+        </div>
+      `).join('')}
+      <div class="edit-save-row">
+        <button class="btn-primary" onclick="saveSessionEdit(this,'${escHtml(sessionId)}')">שמור שינויים</button>
+        <button class="btn-ghost"   onclick="cancelSessionEdit(this)">ביטול</button>
+      </div>
+    </div>`;
+}
+
+async function saveSessionEdit(saveBtn, sessionId) {
+  const body = saveBtn.closest('.session-body');
+  const sessionName = body.querySelector('.edit-session-name-input')?.value.trim() || '';
+  const exercises = [...body.querySelectorAll('.edit-ex-row:not([data-deleted])')].map(row => ({
+    id:     row.dataset.id,
+    name:   row.dataset.name   || '',
+    target: row.dataset.target || '',
+    weight: row.querySelector('.edit-weight')?.value      || '',
+    sets:   row.querySelector('.edit-sets')?.value        || '',
+    reps:   row.querySelector('.edit-reps')?.value        || '',
+    notes:  row.querySelector('.edit-notes-input')?.value || '',
+  }));
+
+  saveBtn.disabled = true; saveBtn.innerText = 'שומר...';
+  try {
+    await updateDoc(doc(db, 'users', currentUser.uid, 'workouts', sessionId), { sessionName, exercises });
+    toast('האימון עודכן בהצלחה', 'success');
+    await reloadAppData();
+  } catch (err) {
+    toast('שגיאה: ' + err.message, 'error');
+    saveBtn.disabled = false; saveBtn.innerText = 'שמור שינויים';
+  }
+}
+
+function removeEditRow(btn) {
+  const row = btn.closest('.edit-ex-row');
+  row.dataset.deleted = 'true';
+  row.style.opacity = '0.35';
+  row.style.textDecoration = 'line-through';
+  btn.innerText = '↩';
+  btn.onclick = () => {
+    delete row.dataset.deleted;
+    row.style.opacity = '';
+    row.style.textDecoration = '';
+    btn.innerText = '✕';
+    btn.onclick = () => removeEditRow(btn);
+  };
+}
+
+function cancelSessionEdit() { renderHistory(); }
+
+async function deleteSession(btn, sessionId) {
+  armDelete(btn, async () => {
+    try {
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'workouts', sessionId));
+      toast('האימון נמחק', 'success');
+      await reloadAppData();
+    } catch (err) {
+      toast('שגיאה: ' + err.message, 'error');
+    }
+  });
+}
+
+// ─── DELETE ARM ───────────────────────────────────────────────
+let _armTimer = null;
+function armDelete(btn, callback) {
+  if (btn.classList.contains('armed')) {
+    clearTimeout(_armTimer);
+    btn.classList.remove('armed');
+    btn.innerHTML = '🗑';
+    callback();
+  } else {
+    btn.classList.add('armed');
+    btn.innerHTML = 'מחק?';
+    _armTimer = setTimeout(() => {
+      btn.classList.remove('armed');
+      btn.innerHTML = '🗑';
+    }, 3000);
+  }
+}
+
+// ─── EDIT TEMPLATES ───────────────────────────────────────────
+function renderTypeButtons() {
+  document.getElementById('typeRow').innerHTML = workoutTypes.map(t =>
+    `<button class="type-btn${t === selectedType ? ' active' : ''}" data-type="${escHtml(t)}" onclick="selectType('${escHtml(t)}')">${escHtml('אימון ' + t)}</button>`
+  ).join('');
+}
+
+function renderFilterButtons() {
+  document.getElementById('filterRow').innerHTML =
+    `<button class="filter-btn${activeFilter==='all'?' active':''}" data-filter="all" onclick="filterHistory('all')">הכל</button>` +
+    workoutTypes.map(t =>
+      `<button class="filter-btn${activeFilter===t?' active':''}" data-filter="${escHtml(t)}" onclick="filterHistory('${escHtml(t)}')">${escHtml('אימון ' + t)}</button>`
+    ).join('');
+}
+
+function renderEditTabs() {
+  const canRemove = workoutTypes.length > 1;
+  document.getElementById('editTabs').innerHTML =
+    workoutTypes.map(t =>
+      `<div class="tab-item${t===editTab?' active':''}">
+        <button class="tab-btn" onclick="switchEditTab('${escHtml(t)}')">
+          <span class="count-pill">${(editTemplates[t]||[]).length}</span>
+          ${escHtml(t)}
+        </button>
+        ${canRemove ? `<button class="tab-remove" onclick="removeWorkoutType('${escHtml(t)}')" title="הסר">✕</button>` : ''}
+      </div>`
+    ).join('') +
+    `<div class="tab-item add-tab-item">
+      <button class="tab-btn add-tab-btn" onclick="showAddTypeForm()">+</button>
+    </div>`;
+}
+
+function renderEditAll() {
+  if (!workoutTypes.includes(editTab)) editTab = workoutTypes[0];
+  renderEditTabs();
+  renderEditList(editTab);
+  renderTypeButtons();
+  renderFilterButtons();
+}
+
+function renderEditList(type) {
+  const el    = document.getElementById('editListContainer');
+  const items = editTemplates[type] || [];
+  if (!items.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-text">אין תרגילים. לחץ "+ הוסף תרגיל".</div></div>';
+    return;
+  }
+  el.innerHTML = '';
+  items.forEach((ex, idx) => {
+    const card = document.createElement('div');
+    card.className  = 'edit-card';
+    card.dataset.id = ex.id || '';
+    card.innerHTML  = `
+      <span class="drag-handle">⠿</span>
+      <div class="edit-fields">
+        <input class="ex-name-input"   value="${escHtml(ex.name)}"   placeholder="שם תרגיל">
+        <input class="ex-target-input" value="${escHtml(ex.target)}" placeholder="יעד (3 X 8-10)">
+      </div>
+      <button class="edit-remove" onclick="removeEditEx(${idx})">✕</button>`;
+    el.appendChild(card);
+  });
+  initDragSort(el, type);
+}
+
+function switchEditTab(type) { collectEdits(); editTab = type; renderEditTabs(); renderEditList(type); }
+
+function addEditExercise() {
+  collectEdits();
+  if (!editTemplates[editTab]) editTemplates[editTab] = [];
+  editTemplates[editTab].push({ name: '', target: '', id: '' });
+  renderEditTabs();
+  renderEditList(editTab);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function removeEditEx(idx) {
+  collectEdits();
+  editTemplates[editTab].splice(idx, 1);
+  renderEditTabs();
+  renderEditList(editTab);
+}
+
+function collectEdits() {
+  const cards = document.getElementById('editListContainer').querySelectorAll('.edit-card');
+  if (!cards.length) return;
+  editTemplates[editTab] = [...cards].map(c => ({
+    name:   c.querySelector('.ex-name-input').value,
+    target: c.querySelector('.ex-target-input').value,
+    id:     c.dataset.id || ''
+  }));
+}
+
+function showAddTypeForm() {
+  const form = document.getElementById('addTypeForm');
+  form.style.display = 'flex';
+  document.getElementById('newTypeName').value = '';
+  document.getElementById('newTypeName').focus();
+}
+function cancelAddType() { document.getElementById('addTypeForm').style.display = 'none'; }
+
+function confirmAddType() {
+  const val = document.getElementById('newTypeName').value.trim();
+  if (!val) return;
+  if (workoutTypes.map(t => t.toLowerCase()).includes(val.toLowerCase())) { toast('סוג אימון זה כבר קיים', 'error'); return; }
+  collectEdits();
+  workoutTypes.push(val);
+  editTemplates[val] = [];
+  editTab = val;
+  document.getElementById('addTypeForm').style.display = 'none';
+  renderEditAll();
+  toast('סוג אימון "' + val + '" נוסף', 'success');
+}
+
+function removeWorkoutType(type) {
+  if (workoutTypes.length <= 1) { toast('חייב להישאר לפחות סוג אימון אחד', 'error'); return; }
+  collectEdits();
+  workoutTypes = workoutTypes.filter(t => t !== type);
+  delete editTemplates[type];
+  if (editTab === type) editTab = workoutTypes[0];
+  renderEditAll();
+  toast('סוג "' + type + '" הוסר — שמור כדי לשמר את השינוי', 'success');
+}
+
+async function saveTemplates() {
+  collectEdits();
+  const templateData = { types: workoutTypes };
+  workoutTypes.forEach(t => {
+    templateData[t] = (editTemplates[t]||[])
+      .filter(ex => ex.name.trim())
+      .map(ex => ({ id: ex.id || genId(), name: ex.name.trim(), target: ex.target.trim() }));
+  });
+  const total = workoutTypes.reduce((n, t) => n + (templateData[t]||[]).length, 0);
+  if (!total) { toast('אין תרגילים לשמור.', 'error'); return; }
+
+  const btn = document.querySelector('#sec-edit .btn-primary');
+  btn.disabled = true; btn.innerText = 'שומר...';
+  try {
+    await setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData);
+    toast('תבניות האימון נשמרו בהצלחה', 'success');
+    await reloadAppData();
+  } catch (err) {
+    toast('שגיאה: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.innerText = '💾 שמור שינויים';
+}
+
+// ─── DRAG & DROP ──────────────────────────────────────────────
+function initDragSort(container, type) {
+  container.querySelectorAll('.drag-handle').forEach(h => {
+    h.addEventListener('mousedown', e => startDrag(e, h.closest('.edit-card'), container, type));
+    h.addEventListener('touchstart', e => startDrag(e, h.closest('.edit-card'), container, type), { passive: true });
+  });
+}
+function startDrag(e, card, container) {
+  collectEdits(); card.style.opacity = '.5';
+  let last = null;
+  const move = ev => {
+    const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    [...container.querySelectorAll('.edit-card')].forEach(c => {
+      if (c === card) return;
+      const r = c.getBoundingClientRect();
+      if (y > r.top && y < r.bottom && last !== c) {
+        last = c;
+        [...container.querySelectorAll('.edit-card')].indexOf(card) <
+        [...container.querySelectorAll('.edit-card')].indexOf(c) ? c.after(card) : c.before(card);
+      }
+    });
+  };
+  const up = () => {
+    card.style.opacity = '';
+    document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+    document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
+    editTemplates[editTab] = [...container.querySelectorAll('.edit-card')].map(c => ({
+      name:   c.querySelector('.ex-name-input').value,
+      target: c.querySelector('.ex-target-input').value,
+      id:     c.dataset.id || ''
+    }));
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup',   up);
+  document.addEventListener('touchmove', move, { passive: true });
+  document.addEventListener('touchend',  up);
+}
+
+// ─── MEASUREMENTS ─────────────────────────────────────────────
+function renderMeasureForm() {
+  const container = document.getElementById('measureFormFields');
+  if (!measureTypes.length) { container.innerHTML = ''; return; }
+  const [primary, ...rest] = measureTypes;
+  let html = `<div class="section-label">${escHtml(primary.name)}</div>
+  <div class="m-row">
+    <div class="m-field weight-field">
+      <label>${escHtml(primary.name)} (${escHtml(primary.unit)})</label>
+      <input type="number" data-type-name="${escHtml(primary.name)}" placeholder="—" step="0.1">
+    </div>
+  </div>`;
+  if (rest.length) {
+    html += `<div class="section-label">היקפים</div>`;
+    for (let i = 0; i < rest.length; i += 3) {
+      html += '<div class="m-row">';
+      const chunk = rest.slice(i, i + 3);
+      chunk.forEach(f => {
+        html += `<div class="m-field"><label>${escHtml(f.name)}</label>
+          <input type="number" data-type-name="${escHtml(f.name)}" placeholder="—" step="0.1"></div>`;
+      });
+      for (let p = chunk.length; p < 3; p++) html += '<div class="m-field"></div>';
+      html += '</div>';
+    }
+  }
+  container.innerHTML = html;
+}
+
+function buildMeasureCard(m, i, prev) {
+  const [primary, ...rest] = measureTypes;
+  const primaryVal  = primary ? m[primary.name] : null;
+  const prevPrimary = primary && prev ? Number(prev[primary.name]) : null;
+  let primaryDelta  = '';
+  if (prevPrimary && !isNaN(prevPrimary) && primaryVal && !isNaN(Number(primaryVal))) {
+    const d = (Number(primaryVal) - prevPrimary).toFixed(1);
+    if (d !== '0.0') primaryDelta = `<span class="chip-delta" style="font-size:13px;">${d > 0 ? '+' : ''}${d}</span>`;
+  }
+  const chips = rest
+    .filter(f => m[f.name] !== '' && m[f.name] !== null && m[f.name] !== undefined)
+    .map(f => {
+      const val  = Number(m[f.name]);
+      const pval = prev ? Number(prev[f.name]) : null;
+      let deltaHtml = '';
+      if (pval && !isNaN(pval) && !isNaN(val)) {
+        const d = (val - pval).toFixed(1);
+        deltaHtml = `<span class="chip-delta">${d > 0 ? '+' : ''}${d}</span>`;
+      }
+      return `<div class="measure-chip">
+        <span class="chip-label">${escHtml(f.name)}</span>
+        <span class="chip-val">${val}</span>
+        ${deltaHtml}
+      </div>`;
+    }).join('');
+
+  return `<div class="measure-card">
+    <div class="measure-header" onclick="toggleMeasure(${i}, this)">
+      <div><div class="measure-date">${m.date}</div></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${primaryVal ? `<div><span class="measure-weight">${primaryVal}</span> <span class="measure-weight-unit">${escHtml(primary?.unit||'')}</span></div>` : ''}
+        ${primaryDelta}
+        <button class="delete-btn" onclick="event.stopPropagation();deleteMeasurementEntry(this,'${escHtml(String(m.id))}')" title="מחק מדידה">🗑</button>
+        <span class="chevron">▼</span>
+      </div>
+    </div>
+    <div class="measure-body" id="measure_${i}">
+      ${chips ? `<div class="measure-chips">${chips}</div>` : '<div class="empty-text" style="padding:8px 0;font-size:13px;">אין היקפים נרשמו</div>'}
+    </div>
+  </div>`;
+}
+
+function renderMeasurements() {
+  const el = document.getElementById('measureList');
+  if (!allMeasurements.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📏</div><div class="empty-text">עדיין אין מדידות</div></div>';
+    return;
+  }
+  const groups = {}, order = [];
+  allMeasurements.forEach(m => {
+    const k = getMonthKey(m.date);
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(m);
+  });
+
+  let mi = 0, html = '';
+  order.forEach((key, gi) => {
+    const isLatest     = gi === 0;
+    const measurements = groups[key];
+    const label        = getMonthLabel(key);
+    const gid          = 'mgrp_' + key.replace('-','_');
+
+    if (isLatest) {
+      html += `<div class="month-label">${label}</div>`;
+      measurements.forEach(m => { html += buildMeasureCard(m, mi, allMeasurements[mi + 1]); mi++; });
+    } else {
+      html += `<div class="month-group-header" onclick="toggleMonthGroup('${gid}',this)">
+        <span class="month-group-title">${label}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;color:var(--sub)">${measurements.length} מדידות</span>
+          <span class="chevron">▼</span>
+        </span>
+      </div>
+      <div class="month-group-body" id="${gid}">`;
+      measurements.forEach(m => { html += buildMeasureCard(m, mi, allMeasurements[mi + 1]); mi++; });
+      html += `</div>`;
+    }
+  });
+
+  el.innerHTML = html;
+  const first = document.getElementById('measure_0');
+  if (first) { first.classList.add('open'); document.querySelector('.measure-header .chevron')?.classList.add('open'); }
+}
+
+function toggleMeasure(i, header) {
+  const body = document.getElementById('measure_' + i);
+  if (!body) return;
+  body.classList.toggle('open');
+  header?.querySelector('.chevron')?.classList.toggle('open', body.classList.contains('open'));
+}
+
+function setDefaultDate() {
+  const el = document.getElementById('m-date');
+  if (!el.value) {
+    const t = new Date();
+    el.value = String(t.getDate()).padStart(2,'0') + '/' + String(t.getMonth()+1).padStart(2,'0') + '/' + t.getFullYear();
+  }
+}
+
+async function saveMeasurement() {
+  const dateVal = document.getElementById('m-date').value;
+  if (!dateVal || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateVal)) { toast('הזן תאריך בפורמט DD/MM/YYYY.', 'error'); return; }
+  const [dd, mm, yyyy] = dateVal.split('/');
+  const dateISO = `${yyyy}-${mm}-${dd}`;
+
+  const fields = {};
+  document.querySelectorAll('#measureFormFields [data-type-name]').forEach(input => {
+    if (input.value !== '') fields[input.dataset.typeName] = input.value;
+  });
+  if (!Object.keys(fields).length) { toast('מלא לפחות שדה אחד.', 'error'); return; }
+
+  const btn = document.querySelector('#measurementsContent .btn-primary');
+  btn.disabled = true; btn.innerText = 'שומר...';
+  try {
+    await addDoc(collection(db, 'users', currentUser.uid, 'measurements'), {
+      date: dateVal, dateISO, ...fields, createdAt: serverTimestamp()
+    });
+    toast('המדידה נשמרה בהצלחה', 'success');
+    document.querySelectorAll('#measureFormFields [data-type-name]').forEach(i => i.value = '');
+    setDefaultDate();
+    await reloadAppData();
+  } catch (err) {
+    toast('שגיאה: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.innerText = 'שמור מדידה';
+}
+
+async function deleteMeasurementEntry(btn, id) {
+  armDelete(btn, async () => {
+    try {
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'measurements', id));
+      toast('המדידה נמחקה', 'success');
+      await reloadAppData();
+    } catch (err) {
+      toast('שגיאה: ' + err.message, 'error');
+    }
+  });
+}
+
+// ─── MEASUREMENT TYPES EDITOR ─────────────────────────────────
+function toggleTypesEditor() {
+  typesEditorOpen = !typesEditorOpen;
+  document.getElementById('typesEditorPanel').style.display    = typesEditorOpen ? 'block' : 'none';
+  document.getElementById('measurementsContent').style.display = typesEditorOpen ? 'none'  : 'block';
+  document.getElementById('typesEditorToggle').classList.toggle('active', typesEditorOpen);
+  if (typesEditorOpen) { editMeasureTypes = measureTypes.map(t => ({ ...t })); renderTypesList(); }
+}
+
+function renderTypesList() {
+  const el = document.getElementById('typesList');
+  el.innerHTML = '';
+  editMeasureTypes.forEach((t, idx) => {
+    const card = document.createElement('div');
+    card.className  = 'edit-card';
+    card.dataset.id = t.id || '';
+    card.innerHTML  = `
+      <span class="drag-handle">⠿</span>
+      <div class="edit-fields" style="display:flex;gap:8px;align-items:center;flex:1;">
+        <input class="ex-name-input type-name-input" value="${escHtml(t.name)}" placeholder="שם המדידה" style="flex:1;">
+        <input class="type-unit-input"               value="${escHtml(t.unit)}" placeholder="יחידה">
+      </div>
+      <button class="edit-remove" onclick="removeMeasureType(${idx})">✕</button>`;
+    el.appendChild(card);
+  });
+  initMeasureTypeDrag(el);
+}
+
+function collectTypeEdits() {
+  editMeasureTypes = [...document.getElementById('typesList').querySelectorAll('.edit-card')].map(c => ({
+    name: c.querySelector('.type-name-input').value,
+    unit: c.querySelector('.type-unit-input').value,
+    id:   c.dataset.id || ''
+  }));
+}
+
+function addMeasureType() {
+  collectTypeEdits();
+  editMeasureTypes.push({ name: '', unit: 'ס"מ', id: '' });
+  renderTypesList();
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function removeMeasureType(idx) {
+  collectTypeEdits();
+  editMeasureTypes.splice(idx, 1);
+  renderTypesList();
+}
+
+async function saveTypesEditor() {
+  collectTypeEdits();
+  const valid = editMeasureTypes.filter(t => t.name.trim());
+  if (!valid.length) { toast('הוסף לפחות סוג מדידה אחד.', 'error'); return; }
+  const names = valid.map(t => t.name);
+  if (new Set(names).size !== names.length) { toast('שמות חייבים להיות ייחודיים.', 'error'); return; }
+
+  const btn = document.querySelector('#typesEditorPanel .btn-primary');
+  btn.disabled = true; btn.innerText = 'שומר...';
+  const types = valid.map(t => ({ id: t.id || genId(), name: t.name.trim(), unit: t.unit.trim() }));
+  try {
+    await setDoc(doc(db, 'users', currentUser.uid, 'config', 'measurementTypes'), { types });
+    toast('סוגי המדידות נשמרו בהצלחה', 'success');
+    toggleTypesEditor();
+    await reloadAppData();
+  } catch (err) {
+    toast('שגיאה: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.innerText = '💾 שמור סוגי מדידות';
+}
+
+function initMeasureTypeDrag(container) {
+  container.querySelectorAll('.drag-handle').forEach(h => {
+    h.addEventListener('mousedown', e => startMeasureTypeDrag(e, h.closest('.edit-card'), container));
+    h.addEventListener('touchstart', e => startMeasureTypeDrag(e, h.closest('.edit-card'), container), { passive: true });
+  });
+}
+function startMeasureTypeDrag(e, card, container) {
+  collectTypeEdits(); card.style.opacity = '.5';
+  let last = null;
+  const move = ev => {
+    const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    [...container.querySelectorAll('.edit-card')].forEach(c => {
+      if (c === card) return;
+      const r = c.getBoundingClientRect();
+      if (y > r.top && y < r.bottom && last !== c) {
+        last = c;
+        [...container.querySelectorAll('.edit-card')].indexOf(card) <
+        [...container.querySelectorAll('.edit-card')].indexOf(c) ? c.after(card) : c.before(card);
+      }
+    });
+  };
+  const up = () => {
+    card.style.opacity = '';
+    document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+    document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
+    editMeasureTypes = [...container.querySelectorAll('.edit-card')].map(c => ({
+      name: c.querySelector('.type-name-input').value,
+      unit: c.querySelector('.type-unit-input').value,
+      id:   c.dataset.id || ''
+    }));
+  };
+  document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  document.addEventListener('touchmove', move, { passive: true }); document.addEventListener('touchend', up);
+}
+
+// ─── TOAST ────────────────────────────────────────────────────
+let _toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.className = type;
+  el.innerText = msg;
+  clearTimeout(_toastTimer);
+  requestAnimationFrame(() => {
+    el.classList.add('show');
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  });
+}
+
+// ─── DATE INPUT AUTO-FORMAT ───────────────────────────────────
+document.getElementById('m-date').addEventListener('input', function () {
+  let v = this.value.replace(/\D/g,'');
+  if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
+  if (v.length > 5) v = v.slice(0,5) + '/' + v.slice(5,9);
+  this.value = v;
+});
+
+// ─── EXPOSE TO WINDOW (for inline onclick handlers) ───────────
+Object.assign(window, {
+  switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
+  showSection, toggleHistPreview,
+  selectType, addCustomExercise, submitData,
+  filterHistory, toggleSess, toggleMonthGroup,
+  editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
+  switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, removeWorkoutType, saveTemplates,
+  saveMeasurement, toggleMeasure, toggleTypesEditor, addMeasureType, removeMeasureType, saveTypesEditor, deleteMeasurementEntry,
+});
+</script>
+</body>
+</html>
