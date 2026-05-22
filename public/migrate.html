@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>ייבוא נתונים — Training Diary</title>
+  <style>
+    :root {
+      --primary: #6366f1; --primary-d: #4f46e5;
+      --green: #22c55e; --green-d: #16a34a;
+      --red: #ef4444; --bg: #f1f5f9; --surface: #ffffff;
+      --border: #e2e8f0; --text: #1e293b; --sub: #64748b;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px 48px; }
+    .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 24px; max-width: 480px; margin: 0 auto 20px; }
+    h1 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: var(--sub); text-align: center; margin-bottom: 24px; }
+    h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .step-badge { background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+    .step-badge.done { background: var(--green); }
+    input, textarea {
+      width: 100%; padding: 11px 13px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: 14px; background: var(--bg);
+      color: var(--text); margin-bottom: 10px; font-family: inherit;
+    }
+    input { direction: ltr; text-align: left; }
+    input:focus, textarea:focus { outline: none; border-color: var(--primary); background: white; }
+    textarea { resize: vertical; min-height: 130px; font-size: 12px; direction: ltr; text-align: left; font-family: monospace; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-d); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .msg { font-size: 13px; text-align: center; min-height: 20px; margin-bottom: 8px; padding: 8px; border-radius: 8px; }
+    .msg.err  { color: var(--red);     background: #fef2f2; }
+    .msg.ok   { color: var(--green-d); background: #f0fdf4; }
+    .msg.info { color: var(--primary); background: #eef2ff; }
+    .hidden { display: none !important; }
+    .code-block { background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 14px; font-family: monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin-bottom: 12px; position: relative; }
+    .copy-btn { position: absolute; top: 8px; left: 8px; background: #334155; color: #cbd5e1; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
+    .copy-btn:hover { background: #475569; }
+    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 10px 0; }
+    .progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width .3s; }
+    .log-list { font-size: 12px; color: var(--sub); max-height: 160px; overflow-y: auto; margin-top: 8px; }
+    .log-list li { padding: 2px 0; list-style: none; }
+    .log-list li::before { content: "✓ "; color: var(--green); }
+    .log-list li.err::before { content: "✗ "; color: var(--red); }
+    .instructions { font-size: 13px; color: var(--sub); line-height: 1.7; margin-bottom: 12px; }
+    .instructions ol { padding-right: 18px; }
+    .instructions li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>⬆️ ייבוא נתונים</h1>
+  <p class="subtitle">העברת נתונים מ-Google Sheets ל-Firebase</p>
+
+  <!-- STEP 1: Export from Apps Script -->
+  <h2><span class="step-badge" id="badge1">1</span> ייצוא מGoogle Sheets</h2>
+  <div class="instructions">
+    <ol>
+      <li>פתח את פרויקט Apps Script של האפליקציה הישנה</li>
+      <li>צור קובץ חדש → Script</li>
+      <li>הדבק את הקוד הבא ולחץ הרץ (<code>exportData</code>)</li>
+      <li>פתח את ה-Logs (Ctrl+Enter), העתק את כל הJSON</li>
+      <li>חזור לכאן והדבק בשלב 3</li>
+    </ol>
+  </div>
+  <div class="code-block" id="exportCode">function exportData() {
+  var data = getAppData();
+  Logger.log(JSON.stringify(data));
+}</div>
+  <button class="copy-btn" style="position:static;margin-bottom:12px;width:auto;" onclick="copyExportCode()">העתק קוד</button>
+
+  <!-- STEP 2: Login -->
+  <h2 style="margin-top:20px;"><span class="step-badge" id="badge2">2</span> כניסה לחשבון Firebase</h2>
+  <div id="auth-form">
+    <input type="email"    id="email"    placeholder="כתובת מייל">
+    <input type="password" id="password" placeholder="סיסמה">
+    <div id="auth-msg" class="msg" style="display:none"></div>
+    <button class="btn btn-primary" onclick="doLogin()">כניסה / הרשמה</button>
+  </div>
+  <div id="auth-done" class="msg ok hidden"></div>
+
+  <!-- STEP 3: Paste JSON & Import -->
+  <h2 style="margin-top:20px;"><span class="step-badge" id="badge3">3</span> הדבק JSON וייבא</h2>
+  <div id="import-section">
+    <textarea id="jsonInput" placeholder="הדבק כאן את ה-JSON מה-Apps Script Logs..."></textarea>
+    <div id="import-msg" class="msg" style="display:none"></div>
+    <div id="progress-wrap" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div style="font-size:12px;color:var(--sub);text-align:center" id="progress-label">מתחיל...</div>
+      <ul class="log-list" id="log-list"></ul>
+    </div>
+    <button class="btn btn-primary" id="import-btn" onclick="runImport()" disabled>ייבא נתונים</button>
+  </div>
+
+  <div id="done-msg" class="msg ok hidden" style="margin-top:16px;font-size:15px;">
+    הייבוא הושלם! <a href="/" style="color:var(--primary);font-weight:700;">חזור לאפליקציה</a>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp }    from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword }
+  from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
+import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDAshMz9XYN2vRcYSoUEKUD_Hxgudlfr1g",
+  authDomain:        "training-3f519.firebaseapp.com",
+  projectId:         "training-3f519",
+  storageBucket:     "training-3f519.firebasestorage.app",
+  messagingSenderId: "340367528174",
+  appId:             "1:340367528174:web:9056ae0fb779d2cb1323ff"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+let currentUser = null;
+
+onAuthStateChanged(auth, user => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('auth-form').classList.add('hidden');
+    document.getElementById('auth-done').textContent = `מחובר: ${user.email}`;
+    document.getElementById('auth-done').classList.remove('hidden');
+    document.getElementById('badge2').classList.add('done');
+    document.getElementById('import-btn').disabled = false;
+  } else {
+    document.getElementById('auth-form').classList.remove('hidden');
+    document.getElementById('auth-done').classList.add('hidden');
+    document.getElementById('import-btn').disabled = true;
+  }
+});
+
+function isoDate(ddmmyyyy) {
+  if (!ddmmyyyy) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ddmmyyyy)) return ddmmyyyy;
+  const parts = String(ddmmyyyy).split('/');
+  if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  return ddmmyyyy;
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = `msg ${type}`;
+  el.style.display = 'block';
+}
+
+function addLog(text, isErr) {
+  const li = document.createElement('li');
+  if (isErr) li.classList.add('err');
+  li.textContent = text;
+  document.getElementById('log-list').prepend(li);
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = label;
+}
+
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const pw    = document.getElementById('password').value;
+  if (!email || !pw) { showMsg('auth-msg', 'יש למלא מייל וסיסמה', 'err'); return; }
+  showMsg('auth-msg', 'מתחבר...', 'info');
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch (e) {
+    if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+      try {
+        await createUserWithEmailAndPassword(auth, email, pw);
+      } catch (e2) { showMsg('auth-msg', 'שגיאה: ' + e2.message, 'err'); }
+    } else { showMsg('auth-msg', 'שגיאה: ' + e.message, 'err'); }
+  }
+}
+
+async function runImport() {
+  if (!currentUser) { showMsg('import-msg', 'יש להתחבר תחילה', 'err'); return; }
+  const raw = document.getElementById('jsonInput').value.trim();
+  if (!raw) { showMsg('import-msg', 'יש להדביק את ה-JSON', 'err'); return; }
+
+  let data;
+  try { data = JSON.parse(raw); }
+  catch { showMsg('import-msg', 'JSON לא תקין — בדוק שהעתקת את כל הטקסט מה-Logs', 'err'); return; }
+
+  document.getElementById('import-btn').disabled = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('import-msg').style.display = 'none';
+  const uid = currentUser.uid;
+  let errors = 0;
+
+  try {
+    // 1. Templates
+    setProgress(5, 'מייבא תבניות אימון...');
+    if (data.templates && !data.templates.error) {
+      await setDoc(doc(db, 'users', uid, 'config', 'templates'), data.templates);
+      addLog('תבניות אימון');
+    }
+
+    // 2. Measurement types
+    setProgress(15, 'מייבא סוגי מדידות...');
+    if (Array.isArray(data.measureTypes) && data.measureTypes.length) {
+      const types = data.measureTypes.map(({ name, unit }) => ({ name: String(name), unit: String(unit || '') }));
+      await setDoc(doc(db, 'users', uid, 'config', 'measurementTypes'), { types });
+      addLog(`סוגי מדידות (${types.length})`);
+    }
+
+    // 3. Workouts
+    const workouts = Array.isArray(data.allWorkouts) ? data.allWorkouts : [];
+    const wTotal = workouts.length;
+    for (let i = 0; i < workouts.length; i++) {
+      setProgress(15 + Math.round(60 * (i / Math.max(wTotal, 1))), `מייבא אימונים (${i + 1}/${wTotal})...`);
+      const s = workouts[i];
+      try {
+        const dateISO = isoDate(s.date);
+        const exercises = (s.exercises || []).map(e => ({
+          name:   String(e.name   || ''),
+          target: String(e.target || ''),
+          weight: e.weight !== undefined && e.weight !== '' ? e.weight : '',
+          sets:   e.sets   !== undefined && e.sets   !== '' ? e.sets   : '',
+          reps:   e.reps   !== undefined && e.reps   !== '' ? e.reps   : '',
+          notes:  String(e.notes  || '')
+        }));
+        await addDoc(collection(db, 'users', uid, 'workouts'), {
+          type: String(s.type || ''),
+          dateISO,
+          sessionName: String(s.sessionName || ''),
+          exercises,
+          createdAt: serverTimestamp()
+        });
+      } catch (e) { addLog(`אימון ${s.date} — שגיאה: ${e.message}`, true); errors++; }
+    }
+    if (wTotal > 0) addLog(`אימונים (${wTotal - errors}/${wTotal})`);
+
+    // 4. Measurements
+    const meas = Array.isArray(data.measurements) ? data.measurements : [];
+    const mTotal = meas.length;
+    for (let i = 0; i < meas.length; i++) {
+      setProgress(75 + Math.round(20 * (i / Math.max(mTotal, 1))), `מייבא מדידות (${i + 1}/${mTotal})...`);
+      const m = meas[i];
+      try {
+        const { id, date, dateTs, ...fields } = m;
+        const dateISO = isoDate(date);
+        await addDoc(collection(db, 'users', uid, 'measurements'), {
+          date: String(date || ''), dateISO, ...fields, createdAt: serverTimestamp()
+        });
+      } catch (e) { addLog(`מדידה ${m.date} — שגיאה: ${e.message}`, true); errors++; }
+    }
+    if (mTotal > 0) addLog(`מדידות (${mTotal})`);
+
+    setProgress(100, 'הושלם!');
+    document.getElementById('badge1').classList.add('done');
+    document.getElementById('badge3').classList.add('done');
+    document.getElementById('done-msg').classList.remove('hidden');
+    if (errors > 0) showMsg('import-msg', `הייבוא הושלם עם ${errors} שגיאות`, 'info');
+
+  } catch (err) {
+    showMsg('import-msg', 'שגיאה כללית: ' + err.message, 'err');
+    document.getElementById('import-btn').disabled = false;
+  }
+}
+
+function copyExportCode() {
+  navigator.clipboard.writeText(document.getElementById('exportCode').textContent);
+}
+
+Object.assign(window, { doLogin, runImport, copyExportCode });
+</script>
+</body>
+</html>
