@@ -62,15 +62,18 @@
   <div class="instructions">
     <ol>
       <li>פתח את פרויקט Apps Script של האפליקציה הישנה</li>
-      <li>צור קובץ חדש → Script</li>
-      <li>הדבק את הקוד הבא ולחץ הרץ (<code>exportData</code>)</li>
-      <li>פתח את ה-Logs (Ctrl+Enter), העתק את כל הJSON</li>
-      <li>חזור לכאן והדבק בשלב 3</li>
+      <li>צור קובץ חדש → Script, הדבק את הקוד למטה</li>
+      <li>לחץ הרץ (<code>exportData</code>) — תצטרך לאשר הרשאות Google Drive</li>
+      <li>בלוג יופיע קישור — פתח אותו, הקובץ יורד אוטומטית</li>
+      <li>חזור לכאן ובשלב 3 לחץ "בחר קובץ" ובחר את <code>training-export.json</code></li>
     </ol>
   </div>
   <div class="code-block" id="exportCode">function exportData() {
   var data = getAppData();
-  Logger.log(JSON.stringify(data));
+  var json = JSON.stringify(data);
+  var file = DriveApp.createFile('training-export.json', json, MimeType.PLAIN_TEXT);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  Logger.log('הורד את הקובץ: ' + file.getDownloadUrl());
 }</div>
   <button class="copy-btn" style="position:static;margin-bottom:12px;width:auto;" onclick="copyExportCode()">העתק קוד</button>
 
@@ -85,9 +88,17 @@
   <div id="auth-done" class="msg ok hidden"></div>
 
   <!-- STEP 3: Paste JSON & Import -->
-  <h2 style="margin-top:20px;"><span class="step-badge" id="badge3">3</span> הדבק JSON וייבא</h2>
+  <h2 style="margin-top:20px;"><span class="step-badge" id="badge3">3</span> טען קובץ JSON וייבא</h2>
   <div id="import-section">
-    <textarea id="jsonInput" placeholder="הדבק כאן את ה-JSON מה-Apps Script Logs..."></textarea>
+    <label style="display:block;margin-bottom:10px;">
+      <div style="border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;background:var(--bg);transition:border-color .15s;" id="drop-zone" onclick="document.getElementById('fileInput').click()">
+        <div style="font-size:28px;margin-bottom:6px;">📂</div>
+        <div style="font-weight:700;font-size:14px;">לחץ לבחירת קובץ</div>
+        <div style="font-size:12px;color:var(--sub);margin-top:4px;" id="file-label">training-export.json</div>
+      </div>
+      <input type="file" id="fileInput" accept=".json,application/json" style="display:none" onchange="handleFile(event)">
+    </label>
+    <textarea id="jsonInput" placeholder="או הדבק JSON ישירות כאן..." style="min-height:80px;"></textarea>
     <div id="import-msg" class="msg" style="display:none"></div>
     <div id="progress-wrap" style="display:none">
       <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
@@ -271,7 +282,20 @@ function copyExportCode() {
   navigator.clipboard.writeText(document.getElementById('exportCode').textContent);
 }
 
-Object.assign(window, { doLogin, runImport, copyExportCode });
+function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  document.getElementById('file-label').textContent = file.name;
+  document.getElementById('drop-zone').style.borderColor = 'var(--primary)';
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('jsonInput').value = e.target.result;
+    showMsg('import-msg', 'הקובץ נטען בהצלחה ✓', 'ok');
+  };
+  reader.readAsText(file);
+}
+
+Object.assign(window, { doLogin, runImport, copyExportCode, handleFile });
 </script>
 </body>
 </html>
