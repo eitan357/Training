@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>יומן אימונים</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="יומן אימון">
+  <link rel="apple-touch-icon" href="icon.svg">
   <style>
     :root {
       --primary:   #6366f1;
@@ -98,13 +104,12 @@
     }
     .topbar-title { font-size: 18px; font-weight: 700; color: var(--text); }
     .topbar-sub   { font-size: 12px; color: var(--sub); margin-top: 1px; }
-    .user-row     { display: flex; align-items: center; gap: 8px; }
-    .user-email   { font-size: 11px; color: var(--sub); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .logout-btn   {
+    .topbar-logout {
       background: none; border: 1px solid var(--border); border-radius: 8px;
-      padding: 5px 10px; font-size: 12px; color: var(--sub); cursor: pointer; transition: all .15s;
+      padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--sub);
+      cursor: pointer; transition: all .15s; white-space: nowrap;
     }
-    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+    .topbar-logout:hover { border-color: var(--red); color: var(--red); }
 
     /* ── BOTTOM NAV ── */
     .bottomnav {
@@ -148,7 +153,7 @@
     #toast.error   { background: var(--red); }
 
     /* ── SECTIONS ── */
-    .section { display: none; padding: 16px; }
+    .section { display: none; padding: 0; }
     .section.active { display: block; }
 
     /* ── TYPE SELECTOR ── */
@@ -480,13 +485,8 @@
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
-    <div>
-      <div class="topbar-title">יומן האימון 💪</div>
-    </div>
-    <div class="user-row">
-      <span id="user-email" class="user-email"></span>
-      <button class="logout-btn" onclick="handleLogout()">יציאה</button>
-    </div>
+    <div class="topbar-title">יומן האימון 💪</div>
+    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
 
   <div style="padding:16px;">
@@ -528,6 +528,7 @@
 <div id="sec-history" class="section">
   <div class="topbar">
     <div class="topbar-title">היסטוריה 📊</div>
+    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
   <div style="padding:16px;">
     <div id="filterRow" class="filter-row"></div>
@@ -539,6 +540,7 @@
 <div id="sec-edit" class="section">
   <div class="topbar">
     <div class="topbar-title">עריכת אימונים ✏️</div>
+    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
   <div style="padding:16px;">
     <div id="editTabs" class="edit-tabs"></div>
@@ -559,7 +561,10 @@
 <div id="sec-measurements" class="section">
   <div class="topbar">
     <div class="topbar-title">מדידות 📏</div>
-    <button class="topbar-icon-btn" id="typesEditorToggle" onclick="toggleTypesEditor()" title="ערוך סוגי מדידות">⚙️</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="topbar-icon-btn" id="typesEditorToggle" onclick="toggleTypesEditor()" title="ערוך סוגי מדידות">⚙️</button>
+      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    </div>
   </div>
 
   <div id="typesEditorPanel" style="display:none; padding:16px;">
@@ -649,7 +654,6 @@ onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
     document.getElementById('auth-screen').classList.add('hidden');
-    document.getElementById('user-email').textContent = user.email || user.displayName || '';
     document.getElementById('loading-overlay').style.display = 'flex';
     await initApp();
   } else {
