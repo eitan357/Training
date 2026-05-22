@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>יומן אימונים</title>
+  <title>Training Diary</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#6366f1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -892,7 +892,8 @@ function selectType(type) {
     if (nameEl) nameEl.innerText = h.sessionName ? '— ' + h.sessionName : '';
     document.getElementById('histPreviewRows').innerHTML =
       (h.exercises || []).map(e => `<tr>
-        <td><div class="td-name">${escHtml(String(e.name))}</div></td>
+        <td><div class="td-name">${escHtml(String(e.name))}</div>
+          ${e.notes ? `<div class="td-note">${escHtml(String(e.notes))}</div>` : ''}</td>
         <td class="td-num">${e.weight||'—'}</td>
         <td class="td-num">${e.sets||'—'}</td>
         <td class="td-num">${e.reps||'—'}</td>

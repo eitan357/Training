@@ -1,6 +1,6 @@
 {
-  "name": "יומן האימון",
-  "short_name": "אימון",
+  "name": "Training Diary",
+  "short_name": "Training",
   "description": "יומן אימונים אישי",
   "start_url": "/",
   "display": "standalone",
