@@ -485,7 +485,7 @@
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
-    <div class="topbar-title">יומן האימון 💪</div>
+    <div><div class="topbar-title">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
     <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
 
@@ -527,7 +527,7 @@
 <!-- ══════════ HISTORY ══════════ -->
 <div id="sec-history" class="section">
   <div class="topbar">
-    <div class="topbar-title">היסטוריה 📊</div>
+    <div><div class="topbar-title">היסטוריה 📊</div><div class="topbar-sub topbar-email"></div></div>
     <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
   <div style="padding:16px;">
@@ -539,7 +539,7 @@
 <!-- ══════════ EDIT ══════════ -->
 <div id="sec-edit" class="section">
   <div class="topbar">
-    <div class="topbar-title">עריכת אימונים ✏️</div>
+    <div><div class="topbar-title">עריכת אימונים ✏️</div><div class="topbar-sub topbar-email"></div></div>
     <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
   <div style="padding:16px;">
@@ -560,7 +560,7 @@
 <!-- ══════════ MEASUREMENTS ══════════ -->
 <div id="sec-measurements" class="section">
   <div class="topbar">
-    <div class="topbar-title">מדידות 📏</div>
+    <div><div class="topbar-title">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:8px;">
       <button class="topbar-icon-btn" id="typesEditorToggle" onclick="toggleTypesEditor()" title="ערוך סוגי מדידות">⚙️</button>
       <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
@@ -653,6 +653,7 @@ let lastWorkouts     = {};
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
+    document.querySelectorAll('.topbar-email').forEach(el => el.textContent = user.email);
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('loading-overlay').style.display = 'flex';
     await initApp();
