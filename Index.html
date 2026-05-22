@@ -606,23 +606,22 @@
 </nav>
 
 <script type="module">
-import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
-         signInWithPopup, signOut, sendPasswordResetEmail }       from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+         signInWithPopup, signOut, sendPasswordResetEmail }       from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc,
          deleteDoc, collection, query, orderBy,
-         getDocs, serverTimestamp }                               from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+         getDocs, serverTimestamp }                               from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
 
 // ─── FIREBASE CONFIG ─────────────────────────────────────────
-// העתק את הערכים מ-Firebase Console ושים אותם כאן:
 const firebaseConfig = {
-  apiKey:            "PASTE_YOUR_API_KEY_HERE",
-  authDomain:        "PASTE_YOUR_PROJECT_ID.firebaseapp.com",
-  projectId:         "PASTE_YOUR_PROJECT_ID",
-  storageBucket:     "PASTE_YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "PASTE_YOUR_SENDER_ID",
-  appId:             "PASTE_YOUR_APP_ID"
+  apiKey:            "AIzaSyDAshMz9XYN2vRcYSoUEKUD_Hxgudlfr1g",
+  authDomain:        "training-3f519.firebaseapp.com",
+  projectId:         "training-3f519",
+  storageBucket:     "training-3f519.firebasestorage.app",
+  messagingSenderId: "340367528174",
+  appId:             "1:340367528174:web:9056ae0fb779d2cb1323ff"
 };
 // ─────────────────────────────────────────────────────────────
 
