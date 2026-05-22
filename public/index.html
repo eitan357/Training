@@ -791,8 +791,17 @@ function escHtml(s) {
 
 const MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 function getMonthKey(dateStr) {
-  const [, m, y] = dateStr.split('/');
-  return y + '-' + m.padStart(2,'0');
+  if (!dateStr) return '0000-00';
+  const s = String(dateStr);
+  if (/^\d{4}-\d{2}/.test(s)) { const [y, m] = s.split('-'); return y + '-' + m.padStart(2,'0'); }
+  const parts = s.split('/');
+  if (parts.length === 3) return parts[2] + '-' + parts[1].padStart(2,'0');
+  return '0000-00';
+}
+function sessionDisplayDate(s) {
+  if (s.date) return s.date;
+  if (s.dateISO) { const [y,m,d] = s.dateISO.split('-'); return `${d}/${m}/${y}`; }
+  return '';
 }
 function getMonthLabel(key) {
   const [y, m] = key.split('-');
@@ -888,7 +897,7 @@ function selectType(type) {
   const h   = lastWorkouts[type];
   const box = document.getElementById('historyPreview');
   if (h) {
-    document.getElementById('histPreviewDate').innerText = h.date;
+    document.getElementById('histPreviewDate').innerText = sessionDisplayDate(h);
     const nameEl = document.getElementById('histPreviewName');
     if (nameEl) nameEl.innerText = h.sessionName ? '— ' + h.sessionName : '';
     document.getElementById('histPreviewRows').innerHTML =
@@ -1008,7 +1017,7 @@ function buildSessionCard(s, i) {
       <div class="session-left">
         <div class="session-dot ${dotClass}"></div>
         <div>
-          <div class="session-date">${s.date}</div>
+          <div class="session-date">${sessionDisplayDate(s)}</div>
           ${s.sessionName ? `<div class="session-name-label">${escHtml(s.sessionName)}</div>` : ''}
           <div class="session-count">${(s.exercises||[]).length} תרגילים</div>
         </div>
@@ -1051,7 +1060,7 @@ function renderHistory() {
 
   const groups = {}, order = [];
   data.forEach(s => {
-    const k = getMonthKey(s.date);
+    const k = getMonthKey(s.date || s.dateISO);
     if (!groups[k]) { groups[k] = []; order.push(k); }
     groups[k].push(s);
   });

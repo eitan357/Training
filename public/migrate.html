@@ -241,6 +241,7 @@ async function runImport() {
         }));
         await addDoc(collection(db, 'users', uid, 'workouts'), {
           type: String(s.type || ''),
+          date: String(s.date || ''),
           dateISO,
           sessionName: String(s.sessionName || ''),
           exercises,
