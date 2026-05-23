@@ -155,6 +155,31 @@
     /* ── SECTIONS ── */
     .section { display: none; padding: 0; }
     .section.active { display: block; }
+    /* ── TIMER ── */
+    .timer-wrap    { padding: 32px 16px 24px; text-align: center; }
+    .timer-ring    { width: 192px; height: 192px; border-radius: 50%; border: 8px solid var(--border);
+                     display: flex; align-items: center; justify-content: center;
+                     margin: 0 auto 20px; background: var(--surface); box-shadow: var(--shadow); transition: border-color .4s; }
+    .timer-ring.running { border-color: var(--primary); }
+    .timer-ring.done    { border-color: var(--green); }
+    .timer-num     { font-size: 52px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -2px; }
+    .timer-presets { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .timer-pre-btn { padding: 9px 16px; border: 1.5px solid var(--border); border-radius: var(--radius);
+                     background: var(--surface); font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
+    .timer-pre-btn.active { border-color: var(--primary); background: var(--primary); color: white; }
+    .timer-progress { height: 5px; background: var(--border); border-radius: 3px; margin: 0 0 20px; overflow: hidden; }
+    .timer-bar     { height: 100%; background: var(--primary); border-radius: 3px; transition: width .9s linear; }
+    .timer-controls{ display: flex; gap: 10px; }
+    .timer-start   { flex: 2; padding: 14px; background: var(--primary); color: white; border: none;
+                     border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; }
+    .timer-reset-b { flex: 1; padding: 14px; background: var(--bg); border: 1.5px solid var(--border);
+                     border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; }
+    .timer-note    { font-size: 12px; color: var(--sub); margin-top: 14px; }
+    .copy-last-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px;
+                     background: #eef2ff; border: 1.5px solid var(--primary); border-radius: var(--radius);
+                     color: var(--primary); font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 14px; }
+    .copy-last-btn:active { opacity: .8; }
+
     @keyframes slideFromRight { from { opacity:0; transform:translateX(28px); } to { opacity:1; transform:none; } }
     @keyframes slideFromLeft  { from { opacity:0; transform:translateX(-28px); } to { opacity:1; transform:none; } }
     .anim-right { animation: slideFromRight .22s cubic-bezier(.4,0,.2,1); }
@@ -490,10 +515,14 @@
 <div id="sec-main" class="section active">
   <div class="topbar">
     <div><div class="topbar-title">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="topbar-icon-btn" id="editToggleBtn" onclick="toggleEditPanel()" title="עריכת אימונים">⚙️</button>
+      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    </div>
   </div>
 
-  <div style="padding:16px;">
+  <!-- workout form -->
+  <div id="mainWorkoutContent" style="padding:16px;">
     <div id="typeRow" class="type-row"></div>
 
     <div id="historyPreview" style="display:none;" class="history-preview">
@@ -517,6 +546,10 @@
       </div>
     </div>
 
+    <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()">
+      📋 העתק משקלים מאימון אחרון
+    </button>
+
     <div id="sessionNameWrap" style="display:none; margin-bottom:16px;">
       <label class="session-name-label-title">שם האימון</label>
       <input type="text" id="sessionNameInput" class="session-name-input" placeholder="שם האימון" autocomplete="off">
@@ -525,6 +558,21 @@
     <div id="exerciseList"></div>
     <button id="addBtn"  class="btn-ghost"        style="display:none;" onclick="addCustomExercise()">+ הוסף תרגיל</button>
     <button id="saveBtn" class="btn-primary green" style="display:none;" onclick="submitData()">שמור אימון</button>
+  </div>
+
+  <!-- edit panel (hidden by default) -->
+  <div id="mainEditPanel" style="display:none; padding:16px;">
+    <div id="editTabs" class="edit-tabs"></div>
+    <div id="addTypeForm" class="add-type-form">
+      <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off">
+      <div class="add-type-form-btns">
+        <button class="btn-sm btn-sm-primary" onclick="confirmAddType()">הוסף</button>
+        <button class="btn-sm btn-sm-ghost"   onclick="cancelAddType()">ביטול</button>
+      </div>
+    </div>
+    <div id="editListContainer"></div>
+    <button class="btn-ghost"   onclick="addEditExercise()">+ הוסף תרגיל</button>
+    <button class="btn-primary" onclick="saveTemplates()">💾 שמור שינויים</button>
   </div>
 </div>
 
@@ -540,24 +588,28 @@
   </div>
 </div>
 
-<!-- ══════════ EDIT ══════════ -->
-<div id="sec-edit" class="section">
+<!-- ══════════ TIMER ══════════ -->
+<div id="sec-timer" class="section">
   <div class="topbar">
-    <div><div class="topbar-title">עריכת אימונים ✏️</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title">טיימר ⏱️</div><div class="topbar-sub topbar-email"></div></div>
     <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
-  <div style="padding:16px;">
-    <div id="editTabs" class="edit-tabs"></div>
-    <div id="addTypeForm" class="add-type-form">
-      <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off">
-      <div class="add-type-form-btns">
-        <button class="btn-sm btn-sm-primary" onclick="confirmAddType()">הוסף</button>
-        <button class="btn-sm btn-sm-ghost"   onclick="cancelAddType()">ביטול</button>
-      </div>
+  <div class="timer-wrap">
+    <div class="timer-ring" id="timerRing">
+      <span class="timer-num" id="timerNum">01:30</span>
     </div>
-    <div id="editListContainer"></div>
-    <button class="btn-ghost"   onclick="addEditExercise()">+ הוסף תרגיל</button>
-    <button class="btn-primary" onclick="saveTemplates()">💾 שמור שינויים</button>
+    <div class="timer-presets">
+      <button class="timer-pre-btn"        onclick="setTimerPreset(60,  this)">1:00</button>
+      <button class="timer-pre-btn active" onclick="setTimerPreset(90,  this)">1:30</button>
+      <button class="timer-pre-btn"        onclick="setTimerPreset(120, this)">2:00</button>
+      <button class="timer-pre-btn"        onclick="setTimerPreset(180, this)">3:00</button>
+    </div>
+    <div class="timer-progress"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
+    <div class="timer-controls">
+      <button class="timer-reset-b" onclick="resetTimer()">↺ איפוס</button>
+      <button class="timer-start"   id="timerStartBtn" onclick="toggleTimer()">▶ התחל</button>
+    </div>
+    <div class="timer-note" id="timerNote"></div>
   </div>
 </div>
 
@@ -603,14 +655,14 @@
   <button class="nav-item active" id="nav-main"         onclick="showSection('main')">
     <span class="nav-icon">🏋️</span>אימון
   </button>
+  <button class="nav-item"        id="nav-timer"        onclick="showSection('timer')">
+    <span class="nav-icon" id="timerNavIcon">⏱️</span><span id="timerNavLabel">טיימר</span>
+  </button>
   <button class="nav-item"        id="nav-measurements" onclick="showSection('measurements')">
     <span class="nav-icon">📏</span>מדידות
   </button>
   <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
     <span class="nav-icon">📊</span>היסטוריה
-  </button>
-  <button class="nav-item"        id="nav-edit"         onclick="showSection('edit')">
-    <span class="nav-icon">✏️</span>עריכה
   </button>
 </nav>
 
@@ -894,7 +946,7 @@ function applyAppData(data) {
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────
-const SECTION_ORDER = { main: 0, measurements: 1, history: 2, edit: 3 };
+const SECTION_ORDER = { main: 0, timer: 1, measurements: 2, history: 3 };
 let currentSection = 'main';
 
 function showSection(name) {
@@ -926,6 +978,7 @@ function selectType(type) {
 
   const h   = lastWorkouts[type];
   const box = document.getElementById('historyPreview');
+  const copyBtn = document.getElementById('copyLastBtn');
   if (h) {
     document.getElementById('histPreviewDate').innerText = sessionDisplayDate(h);
     const nameEl = document.getElementById('histPreviewName');
@@ -939,7 +992,11 @@ function selectType(type) {
         <td class="td-num">${e.reps||'—'}</td>
       </tr>`).join('');
     box.style.display = 'block';
-  } else { box.style.display = 'none'; }
+    if (copyBtn) copyBtn.style.display = 'flex';
+  } else {
+    box.style.display = 'none';
+    if (copyBtn) copyBtn.style.display = 'none';
+  }
 
   const nameWrap  = document.getElementById('sessionNameWrap');
   const nameInput = document.getElementById('sessionNameInput');
@@ -1705,6 +1762,112 @@ function startMeasureTypeDrag(e, card, container) {
   document.addEventListener('touchmove', move, { passive: true }); document.addEventListener('touchend', up);
 }
 
+// ─── EDIT PANEL TOGGLE ────────────────────────────────────────
+let editPanelOpen = false;
+function toggleEditPanel() {
+  editPanelOpen = !editPanelOpen;
+  document.getElementById('mainWorkoutContent').style.display = editPanelOpen ? 'none' : 'block';
+  document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
+  document.getElementById('editToggleBtn').textContent        = editPanelOpen ? '✕' : '⚙️';
+  if (editPanelOpen) renderEditAll();
+}
+
+// ─── COPY LAST WORKOUT ────────────────────────────────────────
+function copyLastWorkout() {
+  const last = lastWorkouts[selectedType];
+  if (!last) return;
+  let copied = 0;
+  document.querySelectorAll('#exerciseList .card').forEach(card => {
+    const name   = card.querySelector('.ex-name-text')?.innerText?.trim();
+    const lastEx = last.exercises?.find(e => String(e.name).trim() === name);
+    if (lastEx && lastEx.weight !== '' && lastEx.weight !== undefined) {
+      card.querySelector('.ex-weight').value = lastEx.weight;
+      copied++;
+    }
+  });
+  toast(`✓ הועתקו ${copied} משקלים מ-${sessionDisplayDate(last)}`, 'success');
+}
+
+// ─── TIMER ────────────────────────────────────────────────────
+let _timerInterval = null;
+let _timerSecs     = 90;
+let _timerTotal    = 90;
+let _timerRunning  = false;
+
+function setTimerPreset(secs, btn) {
+  resetTimer();
+  _timerSecs = secs; _timerTotal = secs;
+  document.querySelectorAll('.timer-pre-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  _updateTimerDisplay();
+}
+
+function toggleTimer() {
+  _timerRunning ? _pauseTimer() : _startTimer();
+}
+
+function _startTimer() {
+  if (_timerSecs <= 0) { resetTimer(); return; }
+  _timerRunning = true;
+  document.getElementById('timerStartBtn').textContent = '⏸ השהה';
+  document.getElementById('timerRing').classList.add('running');
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(p => {
+      document.getElementById('timerNote').textContent =
+        p === 'granted' ? '' : 'אפשר התראות לקבל הודעה כשהזמן מסתיים';
+    });
+  }
+  _timerInterval = setInterval(_timerTick, 1000);
+}
+
+function _pauseTimer() {
+  _timerRunning = false;
+  clearInterval(_timerInterval);
+  document.getElementById('timerStartBtn').textContent = '▶ המשך';
+}
+
+function resetTimer() {
+  clearInterval(_timerInterval);
+  _timerRunning = false; _timerSecs = _timerTotal;
+  const btn = document.getElementById('timerStartBtn');
+  const ring = document.getElementById('timerRing');
+  if (btn)  btn.textContent = '▶ התחל';
+  if (ring) ring.classList.remove('running', 'done');
+  document.getElementById('timerNavIcon').textContent  = '⏱️';
+  document.getElementById('timerNavLabel').textContent = 'טיימר';
+  _updateTimerDisplay();
+}
+
+function _timerTick() {
+  _timerSecs--;
+  _updateTimerDisplay();
+  const m = Math.floor(_timerSecs / 60);
+  const s = String(_timerSecs % 60).padStart(2, '0');
+  document.getElementById('timerNavLabel').textContent = _timerSecs > 0 ? `${m}:${s}` : 'טיימר';
+
+  if (_timerSecs <= 0) {
+    clearInterval(_timerInterval);
+    _timerRunning = false;
+    document.getElementById('timerRing').classList.replace('running', 'done');
+    document.getElementById('timerStartBtn').textContent = '▶ התחל';
+    document.getElementById('timerNavIcon').textContent  = '✅';
+    if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400]);
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification('Training Diary ⚡', { body: 'זמן המנוחה הסתיים! חזור לאימון 💪', icon: '/icon-bolt.svg' });
+    }
+    toast('⏰ זמן המנוחה הסתיים!', 'success');
+  }
+}
+
+function _updateTimerDisplay() {
+  const m   = Math.floor(_timerSecs / 60);
+  const s   = String(_timerSecs % 60).padStart(2, '0');
+  const num = document.getElementById('timerNum');
+  const bar = document.getElementById('timerBar');
+  if (num) num.textContent = `${String(m).padStart(2,'0')}:${s}`;
+  if (bar) bar.style.width = (_timerTotal > 0 ? (_timerSecs / _timerTotal) * 100 : 100) + '%';
+}
+
 // ─── TOAST ────────────────────────────────────────────────────
 let _toastTimer;
 function toast(msg, type = 'success') {
@@ -1730,7 +1893,9 @@ document.getElementById('m-date').addEventListener('input', function () {
 Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
-  selectType, addCustomExercise, submitData,
+  selectType, addCustomExercise, submitData, copyLastWorkout,
+  toggleEditPanel,
+  toggleTimer, resetTimer, setTimerPreset,
   filterHistory, toggleSess, toggleMonthGroup,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, removeWorkoutType, saveTemplates,
