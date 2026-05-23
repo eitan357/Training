@@ -736,7 +736,7 @@
 <div id="sec-settings" class="section">
   <div class="topbar">
     <div><div class="topbar-title">הגדרות ⚙️</div></div>
-    <button class="topbar-back-btn" onclick="showSection(prevSection)">← חזרה</button>
+    <button class="topbar-back-btn" onclick="goBack()">← חזרה</button>
   </div>
   <div style="padding:16px; display:flex; flex-direction:column; gap:12px; margin-top:8px;">
     <button class="settings-item" onclick="openWorkoutEdit()">
@@ -1888,6 +1888,8 @@ function toggleEditPanel() {
   if (editPanelOpen) renderEditAll();
 }
 
+function goBack() { showSection(prevSection); }
+
 function openWorkoutEdit() {
   showSection('main');
   if (!editPanelOpen) toggleEditPanel();
@@ -2071,7 +2073,7 @@ Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout,
-  toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
+  goBack, toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, resetTimer, setTimerPreset, applyCustomTimer,
   filterHistory, toggleSess, toggleMonthGroup,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
