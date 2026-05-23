@@ -148,7 +148,6 @@
     .nav-item.active::before { transform: scaleX(1); }
     .nav-icon { font-size: 22px; margin-bottom: 2px; transition: transform .15s; }
     .nav-item.active .nav-icon { transform: scale(1.15); }
-    .nav-item.nav-disabled { opacity: .35; pointer-events: none; }
 
     /* ── TOAST ── */
     #toast {
@@ -1780,7 +1779,8 @@ function toggleTypesEditor() {
   document.getElementById('measBackBtn').style.display         = typesEditorOpen ? '' : 'none';
   document.getElementById('measGearBtn').style.display         = typesEditorOpen ? 'none' : '';
   document.getElementById('measLogoutBtn').style.display       = typesEditorOpen ? 'none' : '';
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('nav-disabled', typesEditorOpen));
+  if (typesEditorOpen) document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  else document.getElementById('nav-measurements')?.classList.add('active');
   if (typesEditorOpen) { editMeasureTypes = measureTypes.map(t => ({ ...t })); renderTypesList(); }
 }
 
@@ -1889,7 +1889,8 @@ function toggleEditPanel() {
   document.getElementById('mainBackBtn').style.display        = editPanelOpen ? '' : 'none';
   document.getElementById('mainGearBtn').style.display        = editPanelOpen ? 'none' : '';
   document.getElementById('mainLogoutBtn').style.display      = editPanelOpen ? 'none' : '';
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('nav-disabled', editPanelOpen));
+  if (editPanelOpen) document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  else document.getElementById('nav-main')?.classList.add('active');
   if (editPanelOpen) renderEditAll();
 }
 
