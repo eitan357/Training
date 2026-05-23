@@ -116,6 +116,10 @@
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
     .topbar-logout:hover { border-color: var(--red); color: var(--red); }
+    .topbar-back-btn {
+      background: none; border: none; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; padding: 6px 4px; white-space: nowrap;
+    }
 
     /* ── BOTTOM NAV ── */
     .bottomnav {
@@ -564,7 +568,8 @@
   <div class="topbar">
     <div><div class="topbar-title">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()">← חזרה</button>
+      <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
       <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
@@ -610,7 +615,6 @@
 
   <!-- edit panel (hidden by default) -->
   <div id="mainEditPanel" style="display:none; padding:16px;">
-    <button class="btn-ghost" style="margin-bottom:16px;width:100%;" onclick="closeWorkoutEdit()">← חזרה להגדרות</button>
     <div id="editTabs" class="edit-tabs"></div>
     <div id="addTypeForm" class="add-type-form">
       <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off">
@@ -696,13 +700,13 @@
   <div class="topbar">
     <div><div class="topbar-title">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()">← חזרה</button>
+      <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
       <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
 
   <div id="typesEditorPanel" style="display:none; padding:16px;">
-    <button class="btn-ghost" style="margin-bottom:16px;width:100%;" onclick="closeMeasurementsEdit()">← חזרה להגדרות</button>
     <div class="section-label">סוגי מדידות</div>
     <div id="typesList"></div>
     <button class="btn-ghost"   onclick="addMeasureType()">+ הוסף סוג מדידה</button>
@@ -732,7 +736,7 @@
 <div id="sec-settings" class="section">
   <div class="topbar">
     <div><div class="topbar-title">הגדרות ⚙️</div></div>
-    <button class="topbar-logout" onclick="showSection(prevSection)">← חזרה</button>
+    <button class="topbar-back-btn" onclick="showSection(prevSection)">← חזרה</button>
   </div>
   <div style="padding:16px; display:flex; flex-direction:column; gap:12px; margin-top:8px;">
     <button class="settings-item" onclick="openWorkoutEdit()">
@@ -1772,6 +1776,8 @@ function toggleTypesEditor() {
   typesEditorOpen = !typesEditorOpen;
   document.getElementById('typesEditorPanel').style.display    = typesEditorOpen ? 'block' : 'none';
   document.getElementById('measurementsContent').style.display = typesEditorOpen ? 'none'  : 'block';
+  document.getElementById('measBackBtn').style.display         = typesEditorOpen ? '' : 'none';
+  document.getElementById('measGearBtn').style.display         = typesEditorOpen ? 'none' : '';
   if (typesEditorOpen) { editMeasureTypes = measureTypes.map(t => ({ ...t })); renderTypesList(); }
 }
 
@@ -1877,6 +1883,8 @@ function toggleEditPanel() {
   editPanelOpen = !editPanelOpen;
   document.getElementById('mainWorkoutContent').style.display = editPanelOpen ? 'none' : 'block';
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
+  document.getElementById('mainBackBtn').style.display        = editPanelOpen ? '' : 'none';
+  document.getElementById('mainGearBtn').style.display        = editPanelOpen ? 'none' : '';
   if (editPanelOpen) renderEditAll();
 }
 
