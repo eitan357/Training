@@ -1061,6 +1061,8 @@ let currentSection = 'main';
 let prevSection    = 'main';
 
 function showSection(name) {
+  if (editPanelOpen) toggleEditPanel();
+  if (typesEditorOpen) toggleTypesEditor();
   if (name === currentSection) return;
   prevSection = currentSection;
   const fromIdx = SECTION_ORDER[currentSection] ?? 0;
