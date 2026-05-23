@@ -117,7 +117,6 @@
     }
     .topbar-logout:hover { border-color: var(--red); color: var(--red); }
     .edit-toggle-link { background: none; border: none; color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; padding: 0 0 14px; display: block; }
-    .edit-toggle-link.open::before { content: '✕ '; }
 
     /* ── BOTTOM NAV ── */
     .bottomnav {
@@ -167,29 +166,53 @@
     .timer-wrap    { display: flex; flex-direction: column; height: calc(100dvh - 130px); }
     .timer-center  { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 16px; gap: 16px; }
     .timer-bottom  { padding: 0 16px 24px; }
-    .timer-ring    { width: 192px; height: 192px; border-radius: 50%; border: 8px solid var(--border);
-                     display: flex; align-items: center; justify-content: center;
-                     margin: 0 auto 20px; background: var(--surface); box-shadow: var(--shadow); transition: border-color .4s; }
-    .timer-ring.running { border-color: var(--primary); }
-    .timer-ring.done    { border-color: var(--green); }
+    .timer-ring-wrap { position: relative; width: 200px; height: 200px; margin: 0 auto 8px; }
+    .timer-svg       { width: 200px; height: 200px; transform: rotate(-90deg); }
+    .timer-track     { fill: none; stroke: var(--border); stroke-width: 12; }
+    .timer-arc       { fill: none; stroke: var(--border); stroke-width: 12; stroke-linecap: round;
+                       stroke-dasharray: 553; stroke-dashoffset: 0; transition: stroke-dashoffset .9s linear, stroke .4s; }
+    .timer-ring-wrap.running .timer-arc { stroke: var(--primary); }
+    .timer-ring-wrap.done    .timer-arc { stroke: var(--green); }
+    .timer-num-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
     .timer-num     { font-size: 52px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -2px; }
-    .timer-presets { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .timer-presets { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
     .timer-pre-btn { padding: 9px 16px; border: 1.5px solid var(--border); border-radius: var(--radius);
                      background: var(--surface); font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
     .timer-pre-btn.active { border-color: var(--primary); background: var(--primary); color: white; }
-    .timer-progress { height: 5px; background: var(--border); border-radius: 3px; margin: 0 0 20px; overflow: hidden; }
-    .timer-bar     { height: 100%; background: var(--primary); border-radius: 3px; transition: width .9s linear; }
     .timer-controls{ display: flex; gap: 10px; }
     .timer-start   { flex: 2; padding: 14px; background: var(--primary); color: white; border: none;
                      border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; }
     .timer-reset-b { flex: 1; padding: 14px; background: var(--bg); border: 1.5px solid var(--border);
                      border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; }
     .timer-note    { font-size: 12px; color: var(--sub); margin-top: 14px; }
+    /* scroll-wheel picker */
+    .picker-wrap   { display: flex; align-items: center; gap: 4px; }
+    .picker-col    { position: relative; width: 76px; height: 144px; overflow: hidden;
+                     background: var(--surface); border-radius: 12px; border: 1.5px solid var(--border); }
+    .picker-scroll { height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory;
+                     scrollbar-width: none; -ms-overflow-style: none; }
+    .picker-scroll::-webkit-scrollbar { display: none; }
+    .picker-item   { height: 48px; display: flex; align-items: center; justify-content: center;
+                     font-size: 26px; font-weight: 700; color: var(--sub); scroll-snap-align: center; }
+    .picker-sep    { font-size: 28px; font-weight: 800; color: var(--sub); padding: 0 2px; line-height: 1; }
+    .picker-col::before, .picker-col::after {
+      content: ''; position: absolute; left: 0; right: 0; height: 44px; z-index: 2; pointer-events: none;
+    }
+    .picker-col::before { top: 0;    background: linear-gradient(to bottom, var(--bg) 20%, transparent); }
+    .picker-col::after  { bottom: 0; background: linear-gradient(to top,   var(--bg) 20%, transparent); }
+    .picker-highlight   { position: absolute; top: 48px; left: 0; right: 0; height: 48px;
+                          border-top: 2px solid var(--primary); border-bottom: 2px solid var(--primary);
+                          pointer-events: none; z-index: 1; }
+    .picker-apply  { padding: 10px 20px; background: var(--primary); color: white; border: none;
+                     border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; }
     .copy-last-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
                      padding: 12px 16px; background: var(--primary); border: none; border-radius: var(--radius);
                      color: white; font-size: 14px; font-weight: 700; cursor: pointer;
                      box-shadow: 0 2px 8px rgba(99,102,241,.35); margin-bottom: 14px; }
     .copy-last-btn:active { opacity: .85; }
+    .topbar-edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--sub); cursor: pointer; transition: all .15s; }
+    .topbar-edit-btn:hover { border-color: var(--primary); color: var(--primary); }
 
     @keyframes slideFromRight { from { opacity:0; transform:translateX(28px); } to { opacity:1; transform:none; } }
     @keyframes slideFromLeft  { from { opacity:0; transform:translateX(-28px); } to { opacity:1; transform:none; } }
@@ -606,8 +629,14 @@
   </div>
   <div class="timer-wrap">
     <div class="timer-center">
-      <div class="timer-ring" id="timerRing">
-        <span class="timer-num" id="timerNum">01:30</span>
+      <div class="timer-ring-wrap" id="timerRing">
+        <svg viewBox="0 0 200 200" class="timer-svg">
+          <circle cx="100" cy="100" r="88" class="timer-track"/>
+          <circle cx="100" cy="100" r="88" class="timer-arc" id="timerProgressRing"/>
+        </svg>
+        <div class="timer-num-overlay">
+          <span class="timer-num" id="timerNum">01:30</span>
+        </div>
       </div>
       <div class="timer-presets">
         <button class="timer-pre-btn"        onclick="setTimerPreset(60,  this)">1:00</button>
@@ -615,15 +644,22 @@
         <button class="timer-pre-btn"        onclick="setTimerPreset(120, this)">2:00</button>
         <button class="timer-pre-btn"        onclick="setTimerPreset(180, this)">3:00</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-        <input type="number" id="timerCustomMin" min="0" max="59" placeholder="0" style="width:56px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;text-align:center;background:var(--surface);color:var(--text);">
-        <span style="font-size:20px;font-weight:800;color:var(--sub)">:</span>
-        <input type="number" id="timerCustomSec" min="0" max="59" placeholder="0" style="width:56px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;text-align:center;background:var(--surface);color:var(--text);">
-        <button onclick="applyCustomTimer()" style="padding:8px 14px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">הגדר</button>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div class="picker-wrap">
+          <div class="picker-col">
+            <div class="picker-highlight"></div>
+            <div class="picker-scroll" id="pickerMin"></div>
+          </div>
+          <span class="picker-sep">:</span>
+          <div class="picker-col">
+            <div class="picker-highlight"></div>
+            <div class="picker-scroll" id="pickerSec"></div>
+          </div>
+        </div>
+        <button class="picker-apply" onclick="applyCustomTimer()">הגדר</button>
       </div>
     </div>
     <div class="timer-bottom">
-      <div class="timer-progress"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
       <div class="timer-controls">
         <button class="timer-reset-b" onclick="resetTimer()">↺ איפוס</button>
         <button class="timer-start"   id="timerStartBtn" onclick="toggleTimer()">▶ התחל</button>
@@ -638,7 +674,7 @@
   <div class="topbar">
     <div><div class="topbar-title">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <button class="topbar-logout" id="typesEditorToggle" onclick="toggleTypesEditor()">✏️ ערוך סוגים</button>
+      <button class="topbar-edit-btn" id="typesEditorToggle" onclick="toggleTypesEditor()">✏️ ערוך סוגים</button>
       <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
@@ -988,6 +1024,7 @@ function showSection(name) {
   document.getElementById('nav-' + name).classList.add('active');
   currentSection = name;
   if (name === 'measurements') setDefaultDate();
+  if (name === 'timer') _initPickers();
 }
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
@@ -1789,7 +1826,7 @@ function toggleEditPanel() {
   editPanelOpen = !editPanelOpen;
   document.getElementById('mainWorkoutContent').style.display = editPanelOpen ? 'none' : 'block';
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
-  document.getElementById('editToggleBtn').classList.toggle('open', editPanelOpen);
+  document.getElementById('editToggleBtn').textContent = editPanelOpen ? '✕ סגור עריכה' : '✏️ עריכת תרגילים';
   if (editPanelOpen) renderEditAll();
 }
 
@@ -1880,9 +1917,36 @@ function _timerTick() {
   }
 }
 
+function _buildPicker(id, max, initVal) {
+  const el = document.getElementById(id);
+  if (el.dataset.built) return;
+  el.dataset.built = '1';
+  const top = document.createElement('div'); top.style.height = '48px'; el.appendChild(top);
+  for (let i = 0; i <= max; i++) {
+    const item = document.createElement('div');
+    item.className = 'picker-item';
+    item.textContent = String(i).padStart(2, '0');
+    el.appendChild(item);
+  }
+  const bot = document.createElement('div'); bot.style.height = '48px'; el.appendChild(bot);
+  requestAnimationFrame(() => { el.scrollTop = initVal * 48; });
+}
+
+function _getPickerVal(id) {
+  const el = document.getElementById(id);
+  return Math.min(Math.round(el.scrollTop / 48), 59);
+}
+
+function _initPickers() {
+  const initM = Math.floor(_timerTotal / 60);
+  const initS = _timerTotal % 60;
+  _buildPicker('pickerMin', 59, initM);
+  _buildPicker('pickerSec', 59, initS);
+}
+
 function applyCustomTimer() {
-  const m = parseInt(document.getElementById('timerCustomMin').value) || 0;
-  const s = parseInt(document.getElementById('timerCustomSec').value) || 0;
+  const m = _getPickerVal('pickerMin');
+  const s = _getPickerVal('pickerSec');
   const total = m * 60 + s;
   if (total <= 0) return;
   resetTimer();
@@ -1895,9 +1959,12 @@ function _updateTimerDisplay() {
   const m   = Math.floor(_timerSecs / 60);
   const s   = String(_timerSecs % 60).padStart(2, '0');
   const num = document.getElementById('timerNum');
-  const bar = document.getElementById('timerBar');
+  const arc = document.getElementById('timerProgressRing');
   if (num) num.textContent = `${String(m).padStart(2,'0')}:${s}`;
-  if (bar) bar.style.width = (_timerTotal > 0 ? (_timerSecs / _timerTotal) * 100 : 100) + '%';
+  if (arc) {
+    const pct = _timerTotal > 0 ? _timerSecs / _timerTotal : 1;
+    arc.style.strokeDashoffset = (553 * (1 - pct)).toFixed(1);
+  }
 }
 
 // ─── TOAST ────────────────────────────────────────────────────
