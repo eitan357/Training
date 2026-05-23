@@ -33,7 +33,13 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding-bottom: 72px;
+      padding-bottom: 0; overflow: hidden;
+    }
+    #main-content {
+      position: fixed; top: 0; left: 0; right: 0;
+      bottom: calc(56px + env(safe-area-inset-bottom));
+      overflow-y: auto; overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* ── AUTH SCREEN ── */
@@ -110,6 +116,8 @@
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
     .topbar-logout:hover { border-color: var(--red); color: var(--red); }
+    .edit-toggle-link { background: none; border: none; color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; padding: 0 0 14px; display: block; }
+    .edit-toggle-link.open::before { content: '✕ '; }
 
     /* ── BOTTOM NAV ── */
     .bottomnav {
@@ -156,7 +164,9 @@
     .section { display: none; padding: 0; }
     .section.active { display: block; }
     /* ── TIMER ── */
-    .timer-wrap    { padding: 32px 16px 24px; text-align: center; }
+    .timer-wrap    { display: flex; flex-direction: column; height: calc(100dvh - 130px); }
+    .timer-center  { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 16px; gap: 16px; }
+    .timer-bottom  { padding: 0 16px 24px; }
     .timer-ring    { width: 192px; height: 192px; border-radius: 50%; border: 8px solid var(--border);
                      display: flex; align-items: center; justify-content: center;
                      margin: 0 auto 20px; background: var(--surface); box-shadow: var(--shadow); transition: border-color .4s; }
@@ -175,10 +185,11 @@
     .timer-reset-b { flex: 1; padding: 14px; background: var(--bg); border: 1.5px solid var(--border);
                      border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; }
     .timer-note    { font-size: 12px; color: var(--sub); margin-top: 14px; }
-    .copy-last-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px;
-                     background: #eef2ff; border: 1.5px solid var(--primary); border-radius: var(--radius);
-                     color: var(--primary); font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 14px; }
-    .copy-last-btn:active { opacity: .8; }
+    .copy-last-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+                     padding: 12px 16px; background: var(--primary); border: none; border-radius: var(--radius);
+                     color: white; font-size: 14px; font-weight: 700; cursor: pointer;
+                     box-shadow: 0 2px 8px rgba(99,102,241,.35); margin-bottom: 14px; }
+    .copy-last-btn:active { opacity: .85; }
 
     @keyframes slideFromRight { from { opacity:0; transform:translateX(28px); } to { opacity:1; transform:none; } }
     @keyframes slideFromLeft  { from { opacity:0; transform:translateX(-28px); } to { opacity:1; transform:none; } }
@@ -511,19 +522,18 @@
   <div class="lo-sub">טוען נתונים...</div>
 </div>
 
+<div id="main-content">
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
     <div><div class="topbar-title">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <button class="topbar-icon-btn" id="editToggleBtn" onclick="toggleEditPanel()" title="עריכת אימונים">⚙️</button>
-      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
-    </div>
+    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
 
   <!-- workout form -->
   <div id="mainWorkoutContent" style="padding:16px;">
     <div id="typeRow" class="type-row"></div>
+    <button id="editToggleBtn" class="edit-toggle-link" onclick="toggleEditPanel()">✏️ עריכת תרגילים</button>
 
     <div id="historyPreview" style="display:none;" class="history-preview">
       <div class="history-preview-header" onclick="toggleHistPreview()">
@@ -547,7 +557,7 @@
     </div>
 
     <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()">
-      📋 העתק משקלים מאימון אחרון
+      📋 העתק משקלים מאימון אחרון ←
     </button>
 
     <div id="sessionNameWrap" style="display:none; margin-bottom:16px;">
@@ -595,21 +605,31 @@
     <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
   </div>
   <div class="timer-wrap">
-    <div class="timer-ring" id="timerRing">
-      <span class="timer-num" id="timerNum">01:30</span>
+    <div class="timer-center">
+      <div class="timer-ring" id="timerRing">
+        <span class="timer-num" id="timerNum">01:30</span>
+      </div>
+      <div class="timer-presets">
+        <button class="timer-pre-btn"        onclick="setTimerPreset(60,  this)">1:00</button>
+        <button class="timer-pre-btn active" onclick="setTimerPreset(90,  this)">1:30</button>
+        <button class="timer-pre-btn"        onclick="setTimerPreset(120, this)">2:00</button>
+        <button class="timer-pre-btn"        onclick="setTimerPreset(180, this)">3:00</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <input type="number" id="timerCustomMin" min="0" max="59" placeholder="0" style="width:56px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;text-align:center;background:var(--surface);color:var(--text);">
+        <span style="font-size:20px;font-weight:800;color:var(--sub)">:</span>
+        <input type="number" id="timerCustomSec" min="0" max="59" placeholder="0" style="width:56px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;text-align:center;background:var(--surface);color:var(--text);">
+        <button onclick="applyCustomTimer()" style="padding:8px 14px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">הגדר</button>
+      </div>
     </div>
-    <div class="timer-presets">
-      <button class="timer-pre-btn"        onclick="setTimerPreset(60,  this)">1:00</button>
-      <button class="timer-pre-btn active" onclick="setTimerPreset(90,  this)">1:30</button>
-      <button class="timer-pre-btn"        onclick="setTimerPreset(120, this)">2:00</button>
-      <button class="timer-pre-btn"        onclick="setTimerPreset(180, this)">3:00</button>
+    <div class="timer-bottom">
+      <div class="timer-progress"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
+      <div class="timer-controls">
+        <button class="timer-reset-b" onclick="resetTimer()">↺ איפוס</button>
+        <button class="timer-start"   id="timerStartBtn" onclick="toggleTimer()">▶ התחל</button>
+      </div>
+      <div class="timer-note" id="timerNote"></div>
     </div>
-    <div class="timer-progress"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
-    <div class="timer-controls">
-      <button class="timer-reset-b" onclick="resetTimer()">↺ איפוס</button>
-      <button class="timer-start"   id="timerStartBtn" onclick="toggleTimer()">▶ התחל</button>
-    </div>
-    <div class="timer-note" id="timerNote"></div>
   </div>
 </div>
 
@@ -618,7 +638,7 @@
   <div class="topbar">
     <div><div class="topbar-title">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <button class="topbar-icon-btn" id="typesEditorToggle" onclick="toggleTypesEditor()" title="ערוך סוגי מדידות">⚙️</button>
+      <button class="topbar-logout" id="typesEditorToggle" onclick="toggleTypesEditor()">✏️ ערוך סוגים</button>
       <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
@@ -650,6 +670,7 @@
 </div>
 
 <div id="toast"></div>
+</div>
 
 <nav class="bottomnav">
   <button class="nav-item active" id="nav-main"         onclick="showSection('main')">
@@ -1768,7 +1789,7 @@ function toggleEditPanel() {
   editPanelOpen = !editPanelOpen;
   document.getElementById('mainWorkoutContent').style.display = editPanelOpen ? 'none' : 'block';
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
-  document.getElementById('editToggleBtn').textContent        = editPanelOpen ? '✕' : '⚙️';
+  document.getElementById('editToggleBtn').classList.toggle('open', editPanelOpen);
   if (editPanelOpen) renderEditAll();
 }
 
@@ -1859,6 +1880,17 @@ function _timerTick() {
   }
 }
 
+function applyCustomTimer() {
+  const m = parseInt(document.getElementById('timerCustomMin').value) || 0;
+  const s = parseInt(document.getElementById('timerCustomSec').value) || 0;
+  const total = m * 60 + s;
+  if (total <= 0) return;
+  resetTimer();
+  _timerSecs = total; _timerTotal = total;
+  document.querySelectorAll('.timer-pre-btn').forEach(b => b.classList.remove('active'));
+  _updateTimerDisplay();
+}
+
 function _updateTimerDisplay() {
   const m   = Math.floor(_timerSecs / 60);
   const s   = String(_timerSecs % 60).padStart(2, '0');
@@ -1895,7 +1927,7 @@ Object.assign(window, {
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout,
   toggleEditPanel,
-  toggleTimer, resetTimer, setTimerPreset,
+  toggleTimer, resetTimer, setTimerPreset, applyCustomTimer,
   filterHistory, toggleSess, toggleMonthGroup,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, removeWorkoutType, saveTemplates,
