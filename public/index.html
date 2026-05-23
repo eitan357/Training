@@ -148,6 +148,7 @@
     .nav-item.active::before { transform: scaleX(1); }
     .nav-icon { font-size: 22px; margin-bottom: 2px; transition: transform .15s; }
     .nav-item.active .nav-icon { transform: scale(1.15); }
+    .nav-item.nav-disabled { opacity: .35; pointer-events: none; }
 
     /* ── TOAST ── */
     #toast {
@@ -570,7 +571,7 @@
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()">← חזרה</button>
       <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+      <button class="topbar-logout" id="mainLogoutBtn" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
 
@@ -702,7 +703,7 @@
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()">← חזרה</button>
       <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+      <button class="topbar-logout" id="measLogoutBtn" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
 
@@ -1778,6 +1779,8 @@ function toggleTypesEditor() {
   document.getElementById('measurementsContent').style.display = typesEditorOpen ? 'none'  : 'block';
   document.getElementById('measBackBtn').style.display         = typesEditorOpen ? '' : 'none';
   document.getElementById('measGearBtn').style.display         = typesEditorOpen ? 'none' : '';
+  document.getElementById('measLogoutBtn').style.display       = typesEditorOpen ? 'none' : '';
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('nav-disabled', typesEditorOpen));
   if (typesEditorOpen) { editMeasureTypes = measureTypes.map(t => ({ ...t })); renderTypesList(); }
 }
 
@@ -1885,6 +1888,8 @@ function toggleEditPanel() {
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
   document.getElementById('mainBackBtn').style.display        = editPanelOpen ? '' : 'none';
   document.getElementById('mainGearBtn').style.display        = editPanelOpen ? 'none' : '';
+  document.getElementById('mainLogoutBtn').style.display      = editPanelOpen ? 'none' : '';
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('nav-disabled', editPanelOpen));
   if (editPanelOpen) renderEditAll();
 }
 
