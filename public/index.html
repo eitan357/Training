@@ -116,7 +116,6 @@
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
     .topbar-logout:hover { border-color: var(--red); color: var(--red); }
-    .edit-toggle-link { background: none; border: none; color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; padding: 0 0 14px; display: block; }
 
     /* ── BOTTOM NAV ── */
     .bottomnav {
@@ -550,13 +549,15 @@
 <div id="sec-main" class="section active">
   <div class="topbar">
     <div><div class="topbar-title">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="topbar-edit-btn" id="editToggleBtn" onclick="toggleEditPanel()">✏️ עריכת תרגילים</button>
+      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    </div>
   </div>
 
   <!-- workout form -->
   <div id="mainWorkoutContent" style="padding:16px;">
     <div id="typeRow" class="type-row"></div>
-    <button id="editToggleBtn" class="edit-toggle-link" onclick="toggleEditPanel()">✏️ עריכת תרגילים</button>
 
     <div id="historyPreview" style="display:none;" class="history-preview">
       <div class="history-preview-header" onclick="toggleHistPreview()">
