@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="יומן אימון">
   <link rel="apple-touch-icon" href="icon-bolt.svg">
+  <script>(function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'),l=localStorage.getItem('lang')||(navigator.language.startsWith('he')?'he':'en');document.documentElement.dataset.theme=t;document.documentElement.dir=l==='en'?'ltr':'rtl';document.documentElement.lang=l;})();</script>
   <style>
     :root {
       --primary:   #6366f1;
@@ -26,6 +27,13 @@
       --shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
     }
 
+    [data-theme="dark"] {
+      --bg:      #0f172a;
+      --surface: #1e293b;
+      --border:  #334155;
+      --text:    #f1f5f9;
+      --sub:     #94a3b8;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
     body {
@@ -230,6 +238,30 @@
     .settings-item-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
     .settings-item-sub   { font-size: 12px; color: var(--sub); }
     .settings-item-arrow { font-size: 22px; color: var(--sub); flex-shrink: 0; font-weight: 300; }
+    .settings-group-label { font-size: 11px; font-weight: 700; color: var(--sub);
+      text-transform: uppercase; letter-spacing: .06em; padding: 0 2px; }
+    .settings-card { background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+    .settings-row  { display: flex; align-items: center; justify-content: space-between; }
+    .settings-row-label { font-size: 15px; font-weight: 600; color: var(--text); }
+    .settings-input { flex: 1; padding: 9px 12px; border: 1.5px solid var(--border);
+      border-radius: 10px; font-size: 14px; background: var(--bg); color: var(--text); outline: none; }
+    .settings-input:focus { border-color: var(--primary); }
+    .settings-save-btn { padding: 9px 16px; background: var(--primary); color: white;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .toggle-switch { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border);
+      border-radius: 14px; cursor: pointer; transition: background .25s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 22px; height: 22px;
+      left: 3px; top: 3px; background: white; border-radius: 50%;
+      transition: transform .25s; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+    .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .lang-btns { display: flex; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .lang-btn  { padding: 6px 14px; border: none; background: none; font-size: 13px;
+      font-weight: 600; color: var(--sub); cursor: pointer; transition: all .15s; }
+    .lang-btn.active { background: var(--primary); color: white; }
 
     @keyframes slideFromRight { from { opacity:0; transform:translateX(28px); } to { opacity:1; transform:none; } }
     @keyframes slideFromLeft  { from { opacity:0; transform:translateX(-28px); } to { opacity:1; transform:none; } }
@@ -566,11 +598,11 @@
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
-    <div><div class="topbar-title">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.workout">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()">← חזרה</button>
+      <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()" data-i18n="btn.back">← חזרה</button>
       <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" id="mainLogoutBtn" onclick="handleLogout()">יציאה</button>
+      <button class="topbar-logout" id="mainLogoutBtn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
 
@@ -599,18 +631,18 @@
       </div>
     </div>
 
-    <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()">
+    <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()" data-i18n="btn.copy_last">
       📋 העתק משקלים מאימון אחרון ←
     </button>
 
     <div id="sessionNameWrap" style="display:none; margin-bottom:16px;">
-      <label class="session-name-label-title">שם האימון</label>
-      <input type="text" id="sessionNameInput" class="session-name-input" placeholder="שם האימון" autocomplete="off">
+      <label class="session-name-label-title" data-i18n="workout.name_label">שם האימון</label>
+      <input type="text" id="sessionNameInput" class="session-name-input" placeholder="שם האימון" data-i18n-ph="workout.name_ph" autocomplete="off">
     </div>
 
     <div id="exerciseList"></div>
-    <button id="addBtn"  class="btn-ghost"        style="display:none;" onclick="addCustomExercise()">+ הוסף תרגיל</button>
-    <button id="saveBtn" class="btn-primary green" style="display:none;" onclick="submitData()">שמור אימון</button>
+    <button id="addBtn"  class="btn-ghost"        style="display:none;" onclick="addCustomExercise()" data-i18n="btn.add_exercise">+ הוסף תרגיל</button>
+    <button id="saveBtn" class="btn-primary green" style="display:none;" onclick="submitData()" data-i18n="btn.save_workout">שמור אימון</button>
   </div>
 
   <!-- edit panel (hidden by default) -->
@@ -624,18 +656,18 @@
       </div>
     </div>
     <div id="editListContainer"></div>
-    <button class="btn-ghost"   onclick="addEditExercise()">+ הוסף תרגיל</button>
-    <button class="btn-primary" onclick="saveTemplates()">💾 שמור שינויים</button>
+    <button class="btn-ghost"   onclick="addEditExercise()" data-i18n="edit.add_exercise">+ הוסף תרגיל</button>
+    <button class="btn-primary" onclick="saveTemplates()" data-i18n="edit.save">💾 שמור שינויים</button>
   </div>
 </div>
 
 <!-- ══════════ HISTORY ══════════ -->
 <div id="sec-history" class="section">
   <div class="topbar">
-    <div><div class="topbar-title">היסטוריה 📊</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.history">היסטוריה 📊</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+      <button class="topbar-logout" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
   <div style="padding:16px;">
@@ -647,10 +679,10 @@
 <!-- ══════════ TIMER ══════════ -->
 <div id="sec-timer" class="section">
   <div class="topbar">
-    <div><div class="topbar-title">טיימר ⏱️</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.timer">טיימר ⏱️</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+      <button class="topbar-logout" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
   <div class="timer-wrap">
@@ -682,13 +714,13 @@
             <div class="picker-scroll" id="pickerSec"></div>
           </div>
         </div>
-        <button class="picker-apply" onclick="applyCustomTimer()">הגדר</button>
+        <button class="picker-apply" onclick="applyCustomTimer()" data-i18n="btn.timer_set">הגדר</button>
       </div>
     </div>
     <div class="timer-bottom">
       <div class="timer-controls">
-        <button class="timer-reset-b" onclick="resetTimer()">↺ איפוס</button>
-        <button class="timer-start"   id="timerStartBtn" onclick="toggleTimer()">▶ התחל</button>
+        <button class="timer-reset-b" onclick="resetTimer()" data-i18n="btn.timer_reset">↺ איפוס</button>
+        <button class="timer-start"   id="timerStartBtn" onclick="toggleTimer()" data-i18n="btn.timer_start">▶ התחל</button>
       </div>
       <div class="timer-note" id="timerNote"></div>
     </div>
@@ -698,36 +730,36 @@
 <!-- ══════════ MEASUREMENTS ══════════ -->
 <div id="sec-measurements" class="section">
   <div class="topbar">
-    <div><div class="topbar-title">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.measurements">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()">← חזרה</button>
+      <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()" data-i18n="btn.back">← חזרה</button>
       <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" id="measLogoutBtn" onclick="handleLogout()">יציאה</button>
+      <button class="topbar-logout" id="measLogoutBtn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
 
   <div id="typesEditorPanel" style="display:none; padding:16px;">
     <div class="section-label">סוגי מדידות</div>
     <div id="typesList"></div>
-    <button class="btn-ghost"   onclick="addMeasureType()">+ הוסף סוג מדידה</button>
-    <button class="btn-primary" onclick="saveTypesEditor()">💾 שמור סוגי מדידות</button>
+    <button class="btn-ghost"   onclick="addMeasureType()" data-i18n="types.add">+ הוסף סוג מדידה</button>
+    <button class="btn-primary" onclick="saveTypesEditor()" data-i18n="types.save">💾 שמור סוגי מדידות</button>
   </div>
 
   <div id="measurementsContent" style="padding:16px;">
     <div class="add-form-card">
-      <div class="add-form-title">הוסף מדידה חדשה</div>
-      <div class="add-form-sub">מלא רק את השדות שרצית למדוד</div>
-      <div class="section-label">תאריך</div>
+      <div class="add-form-title" data-i18n="meas.add_title">הוסף מדידה חדשה</div>
+      <div class="add-form-sub" data-i18n="meas.add_sub">מלא רק את השדות שרצית למדוד</div>
+      <div class="section-label" data-i18n="meas.date_label">תאריך</div>
       <div class="m-row">
         <div class="m-field">
-          <label>תאריך המדידה</label>
+          <label data-i18n="meas.date_field">תאריך המדידה</label>
           <input type="text" id="m-date" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off">
         </div>
       </div>
-      <div id="measureFormFields"><div class="loading" style="padding:12px 0;">טוען שדות...</div></div>
-      <button class="btn-primary" onclick="saveMeasurement()">שמור מדידה</button>
+      <div id="measureFormFields"><div class="loading" style="padding:12px 0;" data-i18n="loading">טוען שדות...</div></div>
+      <button class="btn-primary" onclick="saveMeasurement()" data-i18n="meas.save">שמור מדידה</button>
     </div>
-    <div class="section-label">היסטוריית מדידות</div>
+    <div class="section-label" data-i18n="meas.history">היסטוריית מדידות</div>
     <div id="measureList"><div class="loading">טוען...</div></div>
   </div>
 </div>
@@ -735,26 +767,59 @@
 <!-- ══════════ SETTINGS ══════════ -->
 <div id="sec-settings" class="section">
   <div class="topbar">
-    <div><div class="topbar-title">הגדרות ⚙️</div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-back-btn" onclick="goBack()">← חזרה</button>
+    <div><div class="topbar-title" data-i18n="title.settings">הגדרות ⚙️</div><div class="topbar-sub topbar-email"></div></div>
+    <button class="topbar-back-btn" onclick="goBack()" data-i18n="btn.back">← חזרה</button>
   </div>
-  <div style="padding:16px; display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+  <div style="padding:16px; display:flex; flex-direction:column; gap:8px;">
+
+    <div class="settings-group-label" data-i18n="settings.section.edit">עריכה</div>
     <button class="settings-item" onclick="openWorkoutEdit()">
       <span class="settings-item-icon">🏋️</span>
       <div class="settings-item-text">
-        <div class="settings-item-title">עריכת תוכנית אימונים</div>
-        <div class="settings-item-sub">הוסף, הסר וערוך סוגי אימון ותרגילים</div>
+        <div class="settings-item-title" data-i18n="settings.workout_edit">עריכת תוכנית אימונים</div>
+        <div class="settings-item-sub" data-i18n="settings.workout_edit_sub">הוסף, הסר וערוך סוגי אימון ותרגילים</div>
       </div>
       <span class="settings-item-arrow">›</span>
     </button>
     <button class="settings-item" onclick="openMeasurementsEdit()">
       <span class="settings-item-icon">📏</span>
       <div class="settings-item-text">
-        <div class="settings-item-title">עריכת סוגי מדידות</div>
-        <div class="settings-item-sub">הוסף והסר סוגי מדידה</div>
+        <div class="settings-item-title" data-i18n="settings.meas_edit">עריכת סוגי מדידות</div>
+        <div class="settings-item-sub" data-i18n="settings.meas_edit_sub">הוסף והסר סוגי מדידה</div>
       </div>
       <span class="settings-item-arrow">›</span>
     </button>
+
+    <div class="settings-group-label" style="margin-top:8px;" data-i18n="settings.section.profile">פרופיל</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <span class="settings-row-label" data-i18n="settings.display_name">שם תצוגה</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="displayNameInput" class="settings-input"
+               placeholder="יופיע בכותרת..." data-i18n-ph="settings.display_name_ph" autocomplete="off">
+        <button class="settings-save-btn" onclick="saveDisplayName()" data-i18n="btn.save">שמור</button>
+      </div>
+    </div>
+
+    <div class="settings-group-label" style="margin-top:8px;" data-i18n="settings.section.appearance">מראה</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <span class="settings-row-label" data-i18n="settings.dark_mode">מצב לילה</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="darkModeToggle" onchange="setDarkMode(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+        <span class="settings-row-label" data-i18n="settings.language">שפה</span>
+        <div class="lang-btns">
+          <button class="lang-btn" id="langHe" onclick="setLang('he')">עברית</button>
+          <button class="lang-btn" id="langEn" onclick="setLang('en')">English</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -763,16 +828,16 @@
 
 <nav class="bottomnav">
   <button class="nav-item active" id="nav-main"         onclick="showSection('main')">
-    <span class="nav-icon">🏋️</span>אימון
+    <span class="nav-icon">🏋️</span><span data-i18n="nav.workout">אימון</span>
   </button>
   <button class="nav-item"        id="nav-timer"        onclick="showSection('timer')">
-    <span class="nav-icon" id="timerNavIcon">⏱️</span><span id="timerNavLabel">טיימר</span>
+    <span class="nav-icon" id="timerNavIcon">⏱️</span><span id="timerNavLabel" data-i18n="nav.timer">טיימר</span>
   </button>
   <button class="nav-item"        id="nav-measurements" onclick="showSection('measurements')">
-    <span class="nav-icon">📏</span>מדידות
+    <span class="nav-icon">📏</span><span data-i18n="nav.measurements">מדידות</span>
   </button>
   <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
-    <span class="nav-icon">📊</span>היסטוריה
+    <span class="nav-icon">📊</span><span data-i18n="nav.history">היסטוריה</span>
   </button>
 </nav>
 
@@ -796,6 +861,112 @@ const firebaseConfig = {
   appId:             "1:340367528174:web:9056ae0fb779d2cb1323ff"
 };
 // ─────────────────────────────────────────────────────────────
+
+// ─── i18n + THEME ────────────────────────────────────────────
+const TRANSLATIONS = {
+  he: {
+    dir:'rtl', lang:'he',
+    'nav.workout':'אימון','nav.timer':'טיימר','nav.measurements':'מדידות','nav.history':'היסטוריה',
+    'title.workout':'יומן האימון 💪','title.timer':'טיימר ⏱️','title.measurements':'מדידות 📏',
+    'title.history':'היסטוריה 📊','title.settings':'הגדרות ⚙️',
+    'btn.logout':'יציאה','btn.back':'← חזרה','btn.save':'שמור',
+    'btn.timer_start':'▶ התחל','btn.timer_pause':'⏸ השהה','btn.timer_resume':'▶ המשך',
+    'btn.timer_reset':'↺ איפוס','btn.timer_set':'הגדר',
+    'btn.save_workout':'שמור אימון','btn.add_exercise':'+ הוסף תרגיל',
+    'btn.copy_last':'📋 העתק משקלים מאימון אחרון ←',
+    'settings.section.edit':'עריכה','settings.section.profile':'פרופיל','settings.section.appearance':'מראה',
+    'settings.workout_edit':'עריכת תוכנית אימונים','settings.workout_edit_sub':'הוסף, הסר וערוך סוגי אימון ותרגילים',
+    'settings.meas_edit':'עריכת סוגי מדידות','settings.meas_edit_sub':'הוסף והסר סוגי מדידה',
+    'settings.display_name':'שם תצוגה','settings.display_name_ph':'יופיע בכותרת...',
+    'settings.dark_mode':'מצב לילה','settings.language':'שפה',
+    'workout.name_label':'שם האימון','workout.name_ph':'שם האימון',
+    'meas.add_title':'הוסף מדידה חדשה','meas.add_sub':'מלא רק את השדות שרצית למדוד',
+    'meas.date_label':'תאריך','meas.date_field':'תאריך המדידה',
+    'meas.save':'שמור מדידה','meas.history':'היסטוריית מדידות',
+    'edit.save':'💾 שמור שינויים','edit.add_exercise':'+ הוסף תרגיל',
+    'types.save':'💾 שמור סוגי מדידות','types.add':'+ הוסף סוג מדידה',
+    'loading':'טוען...',
+    'timer.done_toast':'⏰ זמן המנוחה הסתיים!','timer.done_notif':'זמן המנוחה הסתיים! חזור לאימון 💪',
+    'display_name_saved':'שם תצוגה עודכן',
+  },
+  en: {
+    dir:'ltr', lang:'en',
+    'nav.workout':'Workout','nav.timer':'Timer','nav.measurements':'Measures','nav.history':'History',
+    'title.workout':'Training Diary 💪','title.timer':'Timer ⏱️','title.measurements':'Measurements 📏',
+    'title.history':'History 📊','title.settings':'Settings ⚙️',
+    'btn.logout':'Sign out','btn.back':'← Back','btn.save':'Save',
+    'btn.timer_start':'▶ Start','btn.timer_pause':'⏸ Pause','btn.timer_resume':'▶ Resume',
+    'btn.timer_reset':'↺ Reset','btn.timer_set':'Set',
+    'btn.save_workout':'Save Workout','btn.add_exercise':'+ Add Exercise',
+    'btn.copy_last':'📋 Copy weights from last workout →',
+    'settings.section.edit':'Edit','settings.section.profile':'Profile','settings.section.appearance':'Appearance',
+    'settings.workout_edit':'Edit Workout Plan','settings.workout_edit_sub':'Add, remove and edit workout types and exercises',
+    'settings.meas_edit':'Edit Measurement Types','settings.meas_edit_sub':'Add and remove measurement types',
+    'settings.display_name':'Display Name','settings.display_name_ph':'Shown in header...',
+    'settings.dark_mode':'Dark Mode','settings.language':'Language',
+    'workout.name_label':'Workout Name','workout.name_ph':'Workout Name',
+    'meas.add_title':'Add New Measurement','meas.add_sub':'Fill only the fields you want to measure',
+    'meas.date_label':'Date','meas.date_field':'Measurement Date',
+    'meas.save':'Save Measurement','meas.history':'Measurement History',
+    'edit.save':'💾 Save Changes','edit.add_exercise':'+ Add Exercise',
+    'types.save':'💾 Save Types','types.add':'+ Add Measurement Type',
+    'loading':'Loading...',
+    'timer.done_toast':'⏰ Rest time is over!','timer.done_notif':'Rest time is over! Back to training 💪',
+    'display_name_saved':'Display name updated',
+  }
+};
+
+let currentLang  = localStorage.getItem('lang')  || (navigator.language.startsWith('he') ? 'he' : 'en');
+let currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+
+function t(key) { return TRANSLATIONS[currentLang][key] ?? TRANSLATIONS.he[key] ?? key; }
+
+function applyLang() {
+  const tr = TRANSLATIONS[currentLang];
+  document.documentElement.lang = tr.lang;
+  document.documentElement.dir  = tr.dir;
+  document.querySelectorAll('[data-i18n]').forEach(el => { const v = tr[el.dataset.i18n]; if (v != null) el.textContent = v; });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { const v = tr[el.dataset.i18nPh]; if (v != null) el.placeholder = v; });
+}
+
+function setDarkMode(on) {
+  currentTheme = on ? 'dark' : 'light';
+  document.documentElement.dataset.theme = currentTheme;
+  localStorage.setItem('theme', currentTheme);
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('lang', lang);
+  applyLang();
+  document.getElementById('langHe').classList.toggle('active', lang === 'he');
+  document.getElementById('langEn').classList.toggle('active', lang === 'en');
+  const startBtn = document.getElementById('timerStartBtn');
+  if (startBtn && !_timerRunning) startBtn.textContent = _timerSecs < _timerTotal ? t('btn.timer_resume') : t('btn.timer_start');
+}
+
+function saveDisplayName() {
+  const name = document.getElementById('displayNameInput').value.trim();
+  if (name) localStorage.setItem('displayName', name); else localStorage.removeItem('displayName');
+  _updateTopbarName();
+  if (currentUser) setDoc(doc(db, 'users', currentUser.uid, 'config', 'profile'), { displayName: name }, { merge: true }).catch(() => {});
+  toast(t('display_name_saved'), 'success');
+}
+
+function _updateTopbarName() {
+  const name = localStorage.getItem('displayName') || (currentUser?.email || '');
+  document.querySelectorAll('.topbar-email').forEach(el => el.textContent = name);
+}
+
+function initSettingsUI() {
+  document.getElementById('darkModeToggle').checked = currentTheme === 'dark';
+  document.getElementById('langHe').classList.toggle('active', currentLang === 'he');
+  document.getElementById('langEn').classList.toggle('active', currentLang === 'en');
+  document.getElementById('displayNameInput').value = localStorage.getItem('displayName') || '';
+}
+
+// Apply lang immediately on load
+applyLang();
 
 const fbApp  = initializeApp(firebaseConfig);
 const auth   = getAuth(fbApp);
@@ -829,7 +1000,7 @@ let lastWorkouts     = {};
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
-    document.querySelectorAll('.topbar-email').forEach(el => el.textContent = user.email);
+    _updateTopbarName();
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('loading-overlay').style.display = 'flex';
     await initApp();
@@ -1083,6 +1254,7 @@ function showSection(name) {
   currentSection = name;
   if (name === 'measurements') setDefaultDate();
   if (name === 'timer') _initPickers();
+  if (name === 'settings') initSettingsUI();
 }
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
@@ -1955,7 +2127,7 @@ function toggleTimer() {
 function _startTimer() {
   if (_timerSecs <= 0) { resetTimer(); return; }
   _timerRunning = true;
-  document.getElementById('timerStartBtn').textContent = '⏸ השהה';
+  document.getElementById('timerStartBtn').textContent = t('btn.timer_pause');
   document.getElementById('timerRing').classList.add('running');
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().then(p => {
@@ -1969,7 +2141,7 @@ function _startTimer() {
 function _pauseTimer() {
   _timerRunning = false;
   clearInterval(_timerInterval);
-  document.getElementById('timerStartBtn').textContent = '▶ המשך';
+  document.getElementById('timerStartBtn').textContent = t('btn.timer_resume');
 }
 
 function resetTimer() {
@@ -1977,10 +2149,10 @@ function resetTimer() {
   _timerRunning = false; _timerSecs = _timerTotal;
   const btn = document.getElementById('timerStartBtn');
   const ring = document.getElementById('timerRing');
-  if (btn)  btn.textContent = '▶ התחל';
+  if (btn)  btn.textContent = t('btn.timer_start');
   if (ring) ring.classList.remove('running', 'done');
   document.getElementById('timerNavIcon').textContent  = '⏱️';
-  document.getElementById('timerNavLabel').textContent = 'טיימר';
+  document.getElementById('timerNavLabel').textContent = t('nav.timer');
   _updateTimerDisplay();
 }
 
@@ -1989,19 +2161,19 @@ function _timerTick() {
   _updateTimerDisplay();
   const m = Math.floor(_timerSecs / 60);
   const s = String(_timerSecs % 60).padStart(2, '0');
-  document.getElementById('timerNavLabel').textContent = _timerSecs > 0 ? `${m}:${s}` : 'טיימר';
+  document.getElementById('timerNavLabel').textContent = _timerSecs > 0 ? `${m}:${s}` : t('nav.timer');
 
   if (_timerSecs <= 0) {
     clearInterval(_timerInterval);
     _timerRunning = false;
     document.getElementById('timerRing').classList.replace('running', 'done');
-    document.getElementById('timerStartBtn').textContent = '▶ התחל';
+    document.getElementById('timerStartBtn').textContent = t('btn.timer_start');
     document.getElementById('timerNavIcon').textContent  = '✅';
     if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400]);
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification('Training Diary ⚡', { body: 'זמן המנוחה הסתיים! חזור לאימון 💪', icon: '/icon-bolt.svg' });
+      new Notification('Training Diary ⚡', { body: t('timer.done_notif'), icon: '/icon-bolt.svg' });
     }
-    toast('⏰ זמן המנוחה הסתיים!', 'success');
+    toast(t('timer.done_toast'), 'success');
   }
 }
 
@@ -2081,7 +2253,8 @@ Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout,
-  goBack, toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
+  goBack, setDarkMode, setLang, saveDisplayName,
+  toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, resetTimer, setTimerPreset, applyCustomTimer,
   filterHistory, toggleSess, toggleMonthGroup,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
