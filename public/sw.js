@@ -1,4 +1,4 @@
-const CACHE = 'training-diary-v2';
+const CACHE = 'training-diary-v3';
 const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon-bolt.svg', '/icon-bolt-192.png', '/icon-bolt-512.png'];
 
 self.addEventListener('install', e => {
