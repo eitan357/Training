@@ -1440,8 +1440,8 @@ async function saveTemplates() {
   const total = workoutTypes.reduce((n, t) => n + (templateData[t]||[]).length, 0);
   if (!total) { toast('אין תרגילים לשמור.', 'error'); return; }
 
-  const btn = document.querySelector('#sec-edit .btn-primary');
-  btn.disabled = true; btn.innerText = 'שומר...';
+  const btn = document.querySelector('#mainEditPanel .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerText = 'שומר...'; }
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData);
     toast('תבניות האימון נשמרו בהצלחה', 'success');
@@ -1449,7 +1449,7 @@ async function saveTemplates() {
   } catch (err) {
     toast('שגיאה: ' + err.message, 'error');
   }
-  btn.disabled = false; btn.innerText = '💾 שמור שינויים';
+  if (btn) { btn.disabled = false; btn.innerText = '💾 שמור שינויים'; }
 }
 
 // ─── DRAG & DROP ──────────────────────────────────────────────

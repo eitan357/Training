@@ -1,8 +1,8 @@
-const CACHE = 'training-diary-v3';
-const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon-bolt.svg', '/icon-bolt-192.png', '/icon-bolt-512.png'];
+const CACHE = 'training-diary-v4';
+const STATIC = ['/manifest.json', '/icon-bolt.svg', '/icon-bolt-192.png', '/icon-bolt-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
   self.skipWaiting();
 });
 
@@ -17,9 +17,14 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Firebase / Google APIs — always network, never cache
+
+  // Firebase / Google APIs — always network
   if (url.hostname.includes('firebase') || url.hostname.includes('googleapis') || url.hostname.includes('gstatic')) return;
-  // Everything else — cache-first, fallback to network & cache
+
+  // HTML — always network (so updates show immediately)
+  if (e.request.headers.get('accept')?.includes('text/html')) return;
+
+  // Everything else — cache-first
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
