@@ -212,6 +212,20 @@
     .topbar-edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px;
       padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--sub); cursor: pointer; transition: all .15s; }
     .topbar-edit-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .topbar-icon-btn { background: none; border: none; font-size: 20px; cursor: pointer;
+      padding: 6px 4px; line-height: 1; color: var(--sub); transition: color .15s; }
+    .topbar-icon-btn:hover { color: var(--text); }
+    /* ── SETTINGS ── */
+    .settings-item { display: flex; align-items: center; gap: 14px; width: 100%;
+      padding: 16px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); text-align: right; cursor: pointer;
+      box-shadow: var(--shadow); transition: border-color .15s; }
+    .settings-item:hover { border-color: var(--primary); }
+    .settings-item-icon  { font-size: 28px; flex-shrink: 0; }
+    .settings-item-text  { flex: 1; }
+    .settings-item-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+    .settings-item-sub   { font-size: 12px; color: var(--sub); }
+    .settings-item-arrow { font-size: 22px; color: var(--sub); flex-shrink: 0; font-weight: 300; }
 
     @keyframes slideFromRight { from { opacity:0; transform:translateX(28px); } to { opacity:1; transform:none; } }
     @keyframes slideFromLeft  { from { opacity:0; transform:translateX(-28px); } to { opacity:1; transform:none; } }
@@ -549,8 +563,8 @@
 <div id="sec-main" class="section active">
   <div class="topbar">
     <div><div class="topbar-title">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <button class="topbar-edit-btn" id="editToggleBtn" onclick="toggleEditPanel()">✏️ עריכת תרגילים</button>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
       <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
@@ -596,6 +610,7 @@
 
   <!-- edit panel (hidden by default) -->
   <div id="mainEditPanel" style="display:none; padding:16px;">
+    <button class="btn-ghost" style="margin-bottom:16px;width:100%;" onclick="closeWorkoutEdit()">← חזרה להגדרות</button>
     <div id="editTabs" class="edit-tabs"></div>
     <div id="addTypeForm" class="add-type-form">
       <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off">
@@ -614,7 +629,10 @@
 <div id="sec-history" class="section">
   <div class="topbar">
     <div><div class="topbar-title">היסטוריה 📊</div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    </div>
   </div>
   <div style="padding:16px;">
     <div id="filterRow" class="filter-row"></div>
@@ -626,7 +644,10 @@
 <div id="sec-timer" class="section">
   <div class="topbar">
     <div><div class="topbar-title">טיימר ⏱️</div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
+    </div>
   </div>
   <div class="timer-wrap">
     <div class="timer-center">
@@ -674,13 +695,14 @@
 <div id="sec-measurements" class="section">
   <div class="topbar">
     <div><div class="topbar-title">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <button class="topbar-edit-btn" id="typesEditorToggle" onclick="toggleTypesEditor()">✏️ ערוך סוגים</button>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
       <button class="topbar-logout" onclick="handleLogout()">יציאה</button>
     </div>
   </div>
 
   <div id="typesEditorPanel" style="display:none; padding:16px;">
+    <button class="btn-ghost" style="margin-bottom:16px;width:100%;" onclick="closeMeasurementsEdit()">← חזרה להגדרות</button>
     <div class="section-label">סוגי מדידות</div>
     <div id="typesList"></div>
     <button class="btn-ghost"   onclick="addMeasureType()">+ הוסף סוג מדידה</button>
@@ -703,6 +725,32 @@
     </div>
     <div class="section-label">היסטוריית מדידות</div>
     <div id="measureList"><div class="loading">טוען...</div></div>
+  </div>
+</div>
+
+<!-- ══════════ SETTINGS ══════════ -->
+<div id="sec-settings" class="section">
+  <div class="topbar">
+    <div><div class="topbar-title">הגדרות ⚙️</div></div>
+    <button class="topbar-logout" onclick="showSection(prevSection)">← חזרה</button>
+  </div>
+  <div style="padding:16px; display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+    <button class="settings-item" onclick="openWorkoutEdit()">
+      <span class="settings-item-icon">🏋️</span>
+      <div class="settings-item-text">
+        <div class="settings-item-title">עריכת תוכנית אימונים</div>
+        <div class="settings-item-sub">הוסף, הסר וערוך סוגי אימון ותרגילים</div>
+      </div>
+      <span class="settings-item-arrow">›</span>
+    </button>
+    <button class="settings-item" onclick="openMeasurementsEdit()">
+      <span class="settings-item-icon">📏</span>
+      <div class="settings-item-text">
+        <div class="settings-item-title">עריכת סוגי מדידות</div>
+        <div class="settings-item-sub">הוסף והסר סוגי מדידה</div>
+      </div>
+      <span class="settings-item-arrow">›</span>
+    </button>
   </div>
 </div>
 
@@ -1004,11 +1052,13 @@ function applyAppData(data) {
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────
-const SECTION_ORDER = { main: 0, timer: 1, measurements: 2, history: 3 };
+const SECTION_ORDER = { main: 0, timer: 1, measurements: 2, history: 3, settings: 4 };
 let currentSection = 'main';
+let prevSection    = 'main';
 
 function showSection(name) {
   if (name === currentSection) return;
+  prevSection = currentSection;
   const fromIdx = SECTION_ORDER[currentSection] ?? 0;
   const toIdx   = SECTION_ORDER[name] ?? 0;
   const animCls = toIdx > fromIdx ? 'anim-left' : 'anim-right';
@@ -1022,7 +1072,8 @@ function showSection(name) {
   next.classList.add('active', animCls);
   next.addEventListener('animationend', () => next.classList.remove('anim-left', 'anim-right'), { once: true });
 
-  document.getElementById('nav-' + name).classList.add('active');
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
   currentSection = name;
   if (name === 'measurements') setDefaultDate();
   if (name === 'timer') _initPickers();
@@ -1721,7 +1772,6 @@ function toggleTypesEditor() {
   typesEditorOpen = !typesEditorOpen;
   document.getElementById('typesEditorPanel').style.display    = typesEditorOpen ? 'block' : 'none';
   document.getElementById('measurementsContent').style.display = typesEditorOpen ? 'none'  : 'block';
-  document.getElementById('typesEditorToggle').classList.toggle('active', typesEditorOpen);
   if (typesEditorOpen) { editMeasureTypes = measureTypes.map(t => ({ ...t })); renderTypesList(); }
 }
 
@@ -1827,8 +1877,27 @@ function toggleEditPanel() {
   editPanelOpen = !editPanelOpen;
   document.getElementById('mainWorkoutContent').style.display = editPanelOpen ? 'none' : 'block';
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
-  document.getElementById('editToggleBtn').textContent = editPanelOpen ? '✕ סגור עריכה' : '✏️ עריכת תרגילים';
   if (editPanelOpen) renderEditAll();
+}
+
+function openWorkoutEdit() {
+  showSection('main');
+  if (!editPanelOpen) toggleEditPanel();
+}
+
+function closeWorkoutEdit() {
+  if (editPanelOpen) toggleEditPanel();
+  showSection('settings');
+}
+
+function openMeasurementsEdit() {
+  showSection('measurements');
+  if (!typesEditorOpen) toggleTypesEditor();
+}
+
+function closeMeasurementsEdit() {
+  if (typesEditorOpen) toggleTypesEditor();
+  showSection('settings');
 }
 
 // ─── COPY LAST WORKOUT ────────────────────────────────────────
@@ -1994,7 +2063,7 @@ Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout,
-  toggleEditPanel,
+  toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, resetTimer, setTimerPreset, applyCustomTimer,
   filterHistory, toggleSess, toggleMonthGroup,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
