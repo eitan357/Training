@@ -118,12 +118,13 @@
     }
     .topbar-title { font-size: 18px; font-weight: 700; color: var(--text); }
     .topbar-sub   { font-size: 12px; color: var(--sub); margin-top: 1px; }
-    .topbar-logout {
-      background: none; border: 1px solid var(--border); border-radius: 8px;
-      padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--sub);
-      cursor: pointer; transition: all .15s; white-space: nowrap;
+    .settings-logout-btn {
+      margin-top: 8px; width: 100%; padding: 13px; border-radius: var(--radius);
+      border: 1.5px solid var(--border); background: none;
+      font-size: 15px; font-weight: 600; color: var(--sub);
+      cursor: pointer; transition: all .15s;
     }
-    .topbar-logout:hover { border-color: var(--red); color: var(--red); }
+    .settings-logout-btn:hover { border-color: var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); }
     .topbar-back-btn {
       background: none; border: none; font-size: 14px; font-weight: 600;
       color: var(--primary); cursor: pointer; padding: 6px 4px; white-space: nowrap;
@@ -624,7 +625,6 @@
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()" data-i18n="btn.back">← חזרה</button>
       <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" id="mainLogoutBtn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
 
@@ -689,7 +689,6 @@
     <div><div class="topbar-title" data-i18n="title.history">היסטוריה 📊</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
   <div style="padding:16px;">
@@ -704,7 +703,6 @@
     <div><div class="topbar-title" data-i18n="title.timer">טיימר ⏱️</div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
   <div class="timer-wrap">
@@ -756,7 +754,6 @@
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()" data-i18n="btn.back">← חזרה</button>
       <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
-      <button class="topbar-logout" id="measLogoutBtn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
     </div>
   </div>
 
@@ -840,6 +837,8 @@
         </div>
       </div>
     </div>
+
+    <button class="settings-logout-btn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
 
   </div>
 </div>
@@ -1965,7 +1964,6 @@ function toggleTypesEditor() {
   document.getElementById('measurementsContent').style.display = typesEditorOpen ? 'none'  : 'block';
   document.getElementById('measBackBtn').style.display         = typesEditorOpen ? '' : 'none';
   document.getElementById('measGearBtn').style.display         = typesEditorOpen ? 'none' : '';
-  document.getElementById('measLogoutBtn').style.display       = typesEditorOpen ? 'none' : '';
   if (typesEditorOpen) document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   else document.getElementById('nav-measurements')?.classList.add('active');
   if (typesEditorOpen) { editMeasureTypes = measureTypes.map(t => ({ ...t })); renderTypesList(); }
@@ -2075,7 +2073,6 @@ function toggleEditPanel() {
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
   document.getElementById('mainBackBtn').style.display        = editPanelOpen ? '' : 'none';
   document.getElementById('mainGearBtn').style.display        = editPanelOpen ? 'none' : '';
-  document.getElementById('mainLogoutBtn').style.display      = editPanelOpen ? 'none' : '';
   if (editPanelOpen) document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   else document.getElementById('nav-main')?.classList.add('active');
   if (editPanelOpen) renderEditAll();
