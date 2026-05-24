@@ -442,6 +442,28 @@
     .delete-btn.armed { color: var(--red) !important; background: #fef2f2; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
     .col-del { width: 32px; text-align: center; padding: 0 !important; }
 
+    /* ── MULTI-SELECT ── */
+    .sel-check {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .18s; color: white; font-size: 13px; font-weight: 700;
+    }
+    .sel-check.checked { background: var(--primary); border-color: var(--primary); }
+    .sel-check.checked::after { content: '✓'; }
+    .session-card.sel-active  { outline: 2px solid var(--primary); outline-offset: -2px; }
+    .measure-card.sel-active  { outline: 2px solid var(--primary); outline-offset: -2px; }
+    .bulk-bar {
+      position: fixed; bottom: 72px; left: 12px; right: 12px; z-index: 50;
+      background: var(--surface); border: 1.5px solid var(--primary); border-radius: var(--radius);
+      padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(99,102,241,.28);
+      animation: bulkSlide .18s ease;
+    }
+    @keyframes bulkSlide { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .bulk-bar-count { font-size: 14px; font-weight: 600; color: var(--text); }
+    .bulk-bar-del { background: var(--red); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
+
     /* ── SESSION NAME ── */
     .session-name-label-title { display: block; font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 6px; }
     .session-name-input {
@@ -887,6 +909,7 @@ const TRANSLATIONS = {
     'types.save':'💾 שמור סוגי מדידות','types.add':'+ הוסף סוג מדידה',
     'loading':'טוען...',
     'timer.done_toast':'⏰ זמן המנוחה הסתיים!','timer.done_notif':'זמן המנוחה הסתיים! חזור לאימון 💪',
+    'bulk.selected':'נבחרו','bulk.delete_btn':'מחק נבחרים','bulk.deleted':'נמחקו',
     'display_name_saved':'שם תצוגה עודכן',
     // Auth
     'auth.title':'יומן האימון 💪',
@@ -1000,6 +1023,7 @@ const TRANSLATIONS = {
     'types.save':'💾 Save Types','types.add':'+ Add Measurement Type',
     'loading':'Loading...',
     'timer.done_toast':'⏰ Rest time is over!','timer.done_notif':'Rest time is over! Back to training 💪',
+    'bulk.selected':'selected','bulk.delete_btn':'Delete selected','bulk.deleted':'deleted',
     'display_name_saved':'Display name updated',
     // Auth
     'auth.title':'Training Diary 💪',
@@ -1166,6 +1190,8 @@ let editTab          = 'A';
 let editTemplates    = {};
 let allSessions      = [];
 let activeFilter     = 'all';
+let selectedSessions = new Set();
+let selectedMeasures = new Set();
 let allMeasurements  = [];
 let measureTypes     = [];
 let typesEditorOpen  = false;
@@ -1435,6 +1461,8 @@ function showSection(name) {
   if (name === 'measurements') setDefaultDate();
   if (name === 'timer') _initPickers();
   if (name === 'settings') initSettingsUI();
+  updateHistBulkBar();
+  updateMeasBulkBar();
 }
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
@@ -1567,9 +1595,11 @@ function filterHistory(f) {
 function buildSessionCard(s, i) {
   const dotClass   = 'dot-'   + s.type.toLowerCase();
   const badgeClass = 'badge-' + s.type.toLowerCase();
-  return `<div class="session-card">
+  const sel = selectedSessions.has(s.id);
+  return `<div class="session-card${sel ? ' sel-active' : ''}" data-sid="${escHtml(s.id)}">
     <div class="session-header" onclick="toggleSess(${i}, this)">
       <div class="session-left">
+        <div class="sel-check${sel ? ' checked' : ''}" onclick="event.stopPropagation();toggleSessionSelect('${escHtml(s.id)}')"></div>
         <div class="session-dot ${dotClass}"></div>
         <div>
           <div class="session-date">${sessionDisplayDate(s)}</div>
@@ -1579,8 +1609,7 @@ function buildSessionCard(s, i) {
       </div>
       <div style="display:flex;align-items:center;gap:4px;">
         <span class="session-badge ${badgeClass}">${t('workout.badge')} ${escHtml(s.type)}</span>
-        <button class="delete-btn" onclick="event.stopPropagation();editSession(this,'${escHtml(s.id)}')"    title="ערוך">✏️</button>
-        <button class="delete-btn" onclick="event.stopPropagation();deleteSession(this,'${escHtml(s.id)}')"  title="מחק סשן">🗑</button>
+        <button class="delete-btn" onclick="event.stopPropagation();editSession(this,'${escHtml(s.id)}')" title="✏️">✏️</button>
         <span class="chevron">▼</span>
       </div>
     </div>
@@ -1606,6 +1635,8 @@ function buildSessionCard(s, i) {
 }
 
 function renderHistory() {
+  selectedSessions.clear();
+  updateHistBulkBar();
   const list = document.getElementById('historyList');
   const data = activeFilter === 'all' ? allSessions : allSessions.filter(s => s.type === activeFilter);
   if (!data.length) {
@@ -2012,13 +2043,16 @@ function buildMeasureCard(m, i, prev) {
       </div>`;
     }).join('');
 
-  return `<div class="measure-card">
+  const sel = selectedMeasures.has(String(m.id));
+  return `<div class="measure-card${sel ? ' sel-active' : ''}" data-mid="${escHtml(String(m.id))}">
     <div class="measure-header" onclick="toggleMeasure(${i}, this)">
-      <div><div class="measure-date">${m.date}</div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="sel-check${sel ? ' checked' : ''}" onclick="event.stopPropagation();toggleMeasureSelect('${escHtml(String(m.id))}')"></div>
+        <div class="measure-date">${m.date}</div>
+      </div>
       <div style="display:flex;align-items:center;gap:6px;">
         ${primaryVal ? `<div><span class="measure-weight">${primaryVal}</span> <span class="measure-weight-unit">${escHtml(primary?.unit||'')}</span></div>` : ''}
         ${primaryDelta}
-        <button class="delete-btn" onclick="event.stopPropagation();deleteMeasurementEntry(this,'${escHtml(String(m.id))}')" title="מחק מדידה">🗑</button>
         <span class="chevron">▼</span>
       </div>
     </div>
@@ -2029,6 +2063,8 @@ function buildMeasureCard(m, i, prev) {
 }
 
 function renderMeasurements() {
+  selectedMeasures.clear();
+  updateMeasBulkBar();
   const el = document.getElementById('measureList');
   if (!allMeasurements.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">📏</div><div class="empty-text">${t('meas.empty')}</div></div>`;
@@ -2429,6 +2465,79 @@ document.getElementById('m-date').addEventListener('input', function () {
 });
 
 // ─── EXPOSE TO WINDOW (for inline onclick handlers) ───────────
+// ─── BULK SELECT / DELETE ─────────────────────────────────────
+function toggleSessionSelect(id) {
+  if (selectedSessions.has(id)) selectedSessions.delete(id);
+  else selectedSessions.add(id);
+  const card = document.querySelector(`.session-card[data-sid="${id}"]`);
+  if (card) {
+    card.querySelector('.sel-check')?.classList.toggle('checked', selectedSessions.has(id));
+    card.classList.toggle('sel-active', selectedSessions.has(id));
+  }
+  updateHistBulkBar();
+}
+
+function updateHistBulkBar() {
+  const bar = document.getElementById('histBulkBar');
+  if (!bar) return;
+  if (selectedSessions.size && currentSection === 'history') {
+    document.getElementById('histBulkCount').textContent = selectedSessions.size + ' ' + t('bulk.selected');
+    bar.style.display = 'flex';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+async function bulkDeleteSessions() {
+  if (!selectedSessions.size) return;
+  const ids = [...selectedSessions];
+  document.getElementById('histBulkBar').style.display = 'none';
+  try {
+    await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, 'workouts', id))));
+    selectedSessions.clear();
+    toast(ids.length + ' ' + t('bulk.deleted'), 'success');
+    await reloadAppData();
+  } catch (err) {
+    toast(t('error.save') + err.message, 'error');
+  }
+}
+
+function toggleMeasureSelect(id) {
+  if (selectedMeasures.has(id)) selectedMeasures.delete(id);
+  else selectedMeasures.add(id);
+  const card = document.querySelector(`.measure-card[data-mid="${id}"]`);
+  if (card) {
+    card.querySelector('.sel-check')?.classList.toggle('checked', selectedMeasures.has(id));
+    card.classList.toggle('sel-active', selectedMeasures.has(id));
+  }
+  updateMeasBulkBar();
+}
+
+function updateMeasBulkBar() {
+  const bar = document.getElementById('measBulkBar');
+  if (!bar) return;
+  if (selectedMeasures.size && currentSection === 'measurements') {
+    document.getElementById('measBulkCount').textContent = selectedMeasures.size + ' ' + t('bulk.selected');
+    bar.style.display = 'flex';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+async function bulkDeleteMeasures() {
+  if (!selectedMeasures.size) return;
+  const ids = [...selectedMeasures];
+  document.getElementById('measBulkBar').style.display = 'none';
+  try {
+    await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, 'measurements', id))));
+    selectedMeasures.clear();
+    toast(ids.length + ' ' + t('bulk.deleted'), 'success');
+    await reloadAppData();
+  } catch (err) {
+    toast(t('error.save') + err.message, 'error');
+  }
+}
+
 Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
@@ -2437,10 +2546,21 @@ Object.assign(window, {
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, resetTimer, setTimerPreset, applyCustomTimer,
   filterHistory, toggleSess, toggleMonthGroup,
+  toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, removeWorkoutType, saveTemplates,
   saveMeasurement, toggleMeasure, toggleTypesEditor, addMeasureType, removeMeasureType, saveTypesEditor, deleteMeasurementEntry,
 });
 </script>
+
+<!-- Bulk-delete floating bars -->
+<div id="histBulkBar" class="bulk-bar" style="display:none;">
+  <span class="bulk-bar-count" id="histBulkCount"></span>
+  <button class="bulk-bar-del" onclick="bulkDeleteSessions()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+</div>
+<div id="measBulkBar" class="bulk-bar" style="display:none;">
+  <span class="bulk-bar-count" id="measBulkCount"></span>
+  <button class="bulk-bar-del" onclick="bulkDeleteMeasures()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+</div>
 </body>
 </html>
