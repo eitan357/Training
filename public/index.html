@@ -835,9 +835,8 @@
       </div>
       <div class="settings-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
         <span class="settings-row-label" data-i18n="settings.language">שפה</span>
-        <div class="lang-btns">
-          <button class="lang-btn" id="langHe" onclick="setLang('he')">עברית</button>
-          <button class="lang-btn" id="langEn" onclick="setLang('en')">English</button>
+        <div class="lang-btns" id="langBtns">
+          <!-- populated by renderLangSelector() -->
         </div>
       </div>
     </div>
@@ -864,6 +863,7 @@
 </nav>
 
 <script type="module">
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -885,248 +885,28 @@ const firebaseConfig = {
 // ─────────────────────────────────────────────────────────────
 
 // ─── i18n + THEME ────────────────────────────────────────────
-const TRANSLATIONS = {
-  he: {
-    dir:'rtl', lang:'he',
-    'nav.workout':'אימון','nav.timer':'טיימר','nav.measurements':'מדידות','nav.history':'היסטוריה',
-    'title.workout':'יומן האימון 💪','title.timer':'טיימר ⏱️','title.measurements':'מדידות 📏',
-    'title.history':'היסטוריה 📊','title.settings':'הגדרות ⚙️',
-    'btn.logout':'יציאה','btn.back':'← חזרה','btn.save':'שמור',
-    'btn.timer_start':'▶ התחל','btn.timer_pause':'⏸ השהה','btn.timer_resume':'▶ המשך',
-    'btn.timer_reset':'↺ איפוס','btn.timer_set':'הגדר',
-    'btn.save_workout':'שמור אימון','btn.add_exercise':'+ הוסף תרגיל',
-    'btn.copy_last':'📋 העתק משקלים מאימון אחרון ←',
-    'settings.section.edit':'עריכה','settings.section.profile':'פרופיל','settings.section.appearance':'מראה',
-    'settings.workout_edit':'עריכת תוכנית אימונים','settings.workout_edit_sub':'הוסף, הסר וערוך סוגי אימון ותרגילים',
-    'settings.meas_edit':'עריכת סוגי מדידות','settings.meas_edit_sub':'הוסף והסר סוגי מדידה',
-    'settings.display_name':'שם תצוגה','settings.display_name_ph':'יופיע בכותרת...',
-    'settings.dark_mode':'מצב לילה','settings.language':'שפה',
-    'workout.name_label':'שם האימון','workout.name_ph':'שם האימון',
-    'meas.add_title':'הוסף מדידה חדשה','meas.add_sub':'מלא רק את השדות שרצית למדוד',
-    'meas.date_label':'תאריך','meas.date_field':'תאריך המדידה',
-    'meas.save':'שמור מדידה','meas.history':'היסטוריית מדידות',
-    'edit.save':'💾 שמור שינויים','edit.add_exercise':'+ הוסף תרגיל',
-    'types.save':'💾 שמור סוגי מדידות','types.add':'+ הוסף סוג מדידה',
-    'loading':'טוען...',
-    'timer.done_toast':'⏰ זמן המנוחה הסתיים!','timer.done_notif':'זמן המנוחה הסתיים! חזור לאימון 💪',
-    'bulk.selected':'נבחרו','bulk.delete_btn':'מחק נבחרים','bulk.deleted':'נמחקו',
-    'display_name_saved':'שם תצוגה עודכן',
-    // Auth
-    'auth.title':'יומן האימון 💪',
-    'auth.sub':'התחבר כדי לגשת לנתונים שלך',
-    'auth.tab_login':'התחברות',
-    'auth.tab_register':'הרשמה',
-    'auth.email_ph':'כתובת מייל',
-    'auth.pass_ph':'סיסמה (לפחות 6 תווים)',
-    'auth.submit_login':'כניסה',
-    'auth.submit_register':'הרשמה',
-    'auth.forgot':'שכחתי סיסמה',
-    'auth.or':'או',
-    'auth.google':'כניסה עם Google',
-    'auth.reset_sent':'✓ קישור איפוס נשלח למייל!',
-    'auth.fill_email_pass':'נא למלא מייל וסיסמה',
-    'auth.fill_email':'הזן מייל לאיפוס הסיסמה',
-    'auth.loading':'טוען נתונים...',
-    // Errors
-    'err.user_not_found':'לא נמצא משתמש עם מייל זה',
-    'err.wrong_password':'סיסמה שגויה',
-    'err.invalid_credential':'מייל או סיסמה שגויים',
-    'err.email_in_use':'מייל זה כבר רשום',
-    'err.weak_password':'סיסמה חלשה מדי (לפחות 6 תווים)',
-    'err.invalid_email':'כתובת מייל לא תקינה',
-    'err.too_many':'יותר מדי ניסיונות — נסה שוב מאוחר יותר',
-    'err.popup_closed':'החלון נסגר לפני השלמת הכניסה',
-    'err.network':'בעיית חיבור לאינטרנט',
-    'err.unauth_domain':'הדומיין לא מורשה ב-Firebase Console',
-    'err.prefix':'שגיאה: ',
-    // UI
-    'saving':'שומר...',
-    'app.loading':'טוען נתונים...',
-    'preview.last':'📋 אימון אחרון',
-    'col.exercise':'תרגיל',
-    'col.weight':'משקל',
-    'col.sets':'סטים',
-    'col.reps':'חזרות',
-    'col.notes':'הערות',
-    'btn.add':'הוסף',
-    'btn.cancel':'ביטול',
-    'btn.delete_confirm':'מחק?',
-    'edit.add_type_ph':'שם האימון (C, D, כוח...)',
-    'edit.no_exercises':'אין תרגילים. לחץ "+ הוסף תרגיל".',
-    'edit.ex_name_ph':'שם תרגיל',
-    'edit.ex_target_ph':'יעד (3 X 8-10)',
-    'edit.type_exists':'סוג אימון זה כבר קיים',
-    'edit.type_added':'סוג אימון נוסף',
-    'edit.type_removed':'סוג הוסר — שמור כדי לשמר את השינוי',
-    'edit.min_one_type':'חייב להישאר לפחות סוג אימון אחד',
-    'edit.saved_ok':'תבניות האימון נשמרו בהצלחה',
-    'edit.no_items':'אין תרגילים לשמור.',
-    'sess.name_label':'שם האימון',
-    'sess.name_ph':'שם האימון',
-    'sess.save_btn':'שמור שינויים',
-    'sess.cancel_btn':'ביטול',
-    'sess.saved_ok':'האימון עודכן בהצלחה',
-    'sess.deleted_ok':'האימון נמחק',
-    'sess.notes_ph':'הערות...',
-    'workout.badge':'אימון',
-    'workout.exercises':'תרגילים',
-    'workout.no_results':'אין אימונים להצגה',
-    'workout.saved_ok':'האימון נשמר בהצלחה!',
-    'workout.fill_first':'מלא נתונים לפני השמירה.',
-    'workout.sessions':'אימונים',
-    'workout.name_last_ph':'אחרון: ',
-    'workout.name_default_ph':'שם האימון (ראשון, שני, דלואד...)',
-    'ex.notes_ph':'הוסף הערה...',
-    'filter.all':'הכל',
-    'meas.types_label':'סוגי מדידות',
-    'meas.circumferences':'היקפים',
-    'meas.no_circ':'אין היקפים נרשמו',
-    'meas.empty':'עדיין אין מדידות',
-    'meas.count':'מדידות',
-    'meas.date_required':'הזן תאריך בפורמט DD/MM/YYYY.',
-    'meas.fill_one':'מלא לפחות שדה אחד.',
-    'meas.saved_ok':'המדידה נשמרה בהצלחה',
-    'meas.deleted_ok':'המדידה נמחקה',
-    'meas.name_ph':'שם המדידה',
-    'meas.unit_ph':'יחידה',
-    'meas.default_unit':'ס"מ',
-    'types.min_one':'הוסף לפחות סוג מדידה אחד.',
-    'types.unique':'שמות חייבים להיות ייחודיים.',
-    'types.saved_ok':'סוגי המדידות נשמרו בהצלחה',
-    'timer.allow_notif':'אפשר התראות לקבל הודעה כשהזמן מסתיים',
-    'copy.success':'הועתקו',
-    'copy.from':'משקלים מ-',
-    'error.load':'שגיאה בטעינת הנתונים: ',
-    'error.update':'שגיאה בעדכון הנתונים: ',
-    'error.save':'שגיאה: ',
-  },
-  en: {
-    dir:'ltr', lang:'en',
-    'nav.workout':'Workout','nav.timer':'Timer','nav.measurements':'Measures','nav.history':'History',
-    'title.workout':'Training Diary 💪','title.timer':'Timer ⏱️','title.measurements':'Measurements 📏',
-    'title.history':'History 📊','title.settings':'Settings ⚙️',
-    'btn.logout':'Sign out','btn.back':'← Back','btn.save':'Save',
-    'btn.timer_start':'▶ Start','btn.timer_pause':'⏸ Pause','btn.timer_resume':'▶ Resume',
-    'btn.timer_reset':'↺ Reset','btn.timer_set':'Set',
-    'btn.save_workout':'Save Workout','btn.add_exercise':'+ Add Exercise',
-    'btn.copy_last':'📋 Copy weights from last workout →',
-    'settings.section.edit':'Edit','settings.section.profile':'Profile','settings.section.appearance':'Appearance',
-    'settings.workout_edit':'Edit Workout Plan','settings.workout_edit_sub':'Add, remove and edit workout types and exercises',
-    'settings.meas_edit':'Edit Measurement Types','settings.meas_edit_sub':'Add and remove measurement types',
-    'settings.display_name':'Display Name','settings.display_name_ph':'Shown in header...',
-    'settings.dark_mode':'Dark Mode','settings.language':'Language',
-    'workout.name_label':'Workout Name','workout.name_ph':'Workout Name',
-    'meas.add_title':'Add New Measurement','meas.add_sub':'Fill only the fields you want to measure',
-    'meas.date_label':'Date','meas.date_field':'Measurement Date',
-    'meas.save':'Save Measurement','meas.history':'Measurement History',
-    'edit.save':'💾 Save Changes','edit.add_exercise':'+ Add Exercise',
-    'types.save':'💾 Save Types','types.add':'+ Add Measurement Type',
-    'loading':'Loading...',
-    'timer.done_toast':'⏰ Rest time is over!','timer.done_notif':'Rest time is over! Back to training 💪',
-    'bulk.selected':'selected','bulk.delete_btn':'Delete selected','bulk.deleted':'deleted',
-    'display_name_saved':'Display name updated',
-    // Auth
-    'auth.title':'Training Diary 💪',
-    'auth.sub':'Sign in to access your data',
-    'auth.tab_login':'Sign In',
-    'auth.tab_register':'Register',
-    'auth.email_ph':'Email address',
-    'auth.pass_ph':'Password (at least 6 chars)',
-    'auth.submit_login':'Sign In',
-    'auth.submit_register':'Register',
-    'auth.forgot':'Forgot password',
-    'auth.or':'or',
-    'auth.google':'Sign in with Google',
-    'auth.reset_sent':'✓ Reset link sent to email!',
-    'auth.fill_email_pass':'Please fill in email and password',
-    'auth.fill_email':'Enter email to reset password',
-    'auth.loading':'Loading data...',
-    // Errors
-    'err.user_not_found':'No user found with this email',
-    'err.wrong_password':'Incorrect password',
-    'err.invalid_credential':'Invalid email or password',
-    'err.email_in_use':'Email already registered',
-    'err.weak_password':'Password too weak (min 6 chars)',
-    'err.invalid_email':'Invalid email address',
-    'err.too_many':'Too many attempts — try again later',
-    'err.popup_closed':'Window closed before sign in completed',
-    'err.network':'Network connection error',
-    'err.unauth_domain':'Domain not authorized in Firebase Console',
-    'err.prefix':'Error: ',
-    // UI
-    'saving':'Saving...',
-    'app.loading':'Loading data...',
-    'preview.last':'📋 Last Workout',
-    'col.exercise':'Exercise',
-    'col.weight':'Weight',
-    'col.sets':'Sets',
-    'col.reps':'Reps',
-    'col.notes':'Notes',
-    'btn.add':'Add',
-    'btn.cancel':'Cancel',
-    'btn.delete_confirm':'Delete?',
-    'edit.add_type_ph':'Workout name (C, D, Strength...)',
-    'edit.no_exercises':'No exercises. Tap "+ Add Exercise".',
-    'edit.ex_name_ph':'Exercise name',
-    'edit.ex_target_ph':'Target (3 X 8-10)',
-    'edit.type_exists':'This workout type already exists',
-    'edit.type_added':'Workout type added',
-    'edit.type_removed':'Type removed — save to keep',
-    'edit.min_one_type':'Must keep at least one workout type',
-    'edit.saved_ok':'Workout templates saved',
-    'edit.no_items':'No exercises to save.',
-    'sess.name_label':'Workout Name',
-    'sess.name_ph':'Workout Name',
-    'sess.save_btn':'Save Changes',
-    'sess.cancel_btn':'Cancel',
-    'sess.saved_ok':'Workout updated',
-    'sess.deleted_ok':'Workout deleted',
-    'sess.notes_ph':'Notes...',
-    'workout.badge':'Workout',
-    'workout.exercises':'exercises',
-    'workout.no_results':'No workouts to display',
-    'workout.saved_ok':'Workout saved!',
-    'workout.fill_first':'Fill in data before saving.',
-    'workout.sessions':'workouts',
-    'workout.name_last_ph':'Last: ',
-    'workout.name_default_ph':'Workout name (Push, Pull, Deload...)',
-    'ex.notes_ph':'Add note...',
-    'filter.all':'All',
-    'meas.types_label':'Measurement Types',
-    'meas.circumferences':'Circumferences',
-    'meas.no_circ':'No circumferences recorded',
-    'meas.empty':'No measurements yet',
-    'meas.count':'measurements',
-    'meas.date_required':'Enter date in DD/MM/YYYY format.',
-    'meas.fill_one':'Fill at least one field.',
-    'meas.saved_ok':'Measurement saved',
-    'meas.deleted_ok':'Measurement deleted',
-    'meas.name_ph':'Measurement name',
-    'meas.unit_ph':'Unit',
-    'meas.default_unit':'cm',
-    'types.min_one':'Add at least one measurement type.',
-    'types.unique':'Names must be unique.',
-    'types.saved_ok':'Measurement types saved',
-    'timer.allow_notif':'Allow notifications to be alerted when time is up',
-    'copy.success':'copied',
-    'copy.from':'weights from ',
-    'error.load':'Error loading data: ',
-    'error.update':'Error updating data: ',
-    'error.save':'Error: ',
-  }
-};
+// TRANSLATIONS and LANGUAGES are imported from ./translations.js
 
-let currentLang  = localStorage.getItem('lang')  || (navigator.language.startsWith('he') ? 'he' : 'en');
+let currentLang  = (() => { const s = localStorage.getItem('lang'); return LANGUAGES[s] ? s : (navigator.language.startsWith('he') ? 'he' : 'en'); })();
 let currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
 
-function t(key) { return TRANSLATIONS[currentLang][key] ?? TRANSLATIONS.he[key] ?? key; }
+function t(key) { return (TRANSLATIONS[currentLang] ?? TRANSLATIONS.he ?? {})[key] ?? key; }
 
 function applyLang() {
-  const tr = TRANSLATIONS[currentLang];
-  document.documentElement.lang = tr.lang;
-  document.documentElement.dir  = tr.dir;
+  const meta = LANGUAGES[currentLang] || LANGUAGES.he;
+  const tr   = TRANSLATIONS[currentLang] || TRANSLATIONS.he;
+  document.documentElement.lang = meta.locale;
+  document.documentElement.dir  = meta.dir;
   document.querySelectorAll('[data-i18n]').forEach(el => { const v = tr[el.dataset.i18n]; if (v != null) el.textContent = v; });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { const v = tr[el.dataset.i18nPh]; if (v != null) el.placeholder = v; });
+}
+
+function renderLangSelector() {
+  const el = document.getElementById('langBtns');
+  if (!el) return;
+  el.innerHTML = Object.entries(LANGUAGES)
+    .map(([code, meta]) => `<button class="lang-btn${currentLang === code ? ' active' : ''}" onclick="setLang('${escHtml(code)}')">${escHtml(meta.label)}</button>`)
+    .join('');
 }
 
 function setDarkMode(on) {
@@ -1136,11 +916,13 @@ function setDarkMode(on) {
 }
 
 function setLang(lang) {
+  if (!LANGUAGES[lang]) return;
   currentLang = lang;
   localStorage.setItem('lang', lang);
   applyLang();
+  renderLangSelector();
 
-  // Re-render all stateless dynamic content
+  // Re-render stateless dynamic content
   renderTypeButtons();
   renderFilterButtons();
   renderHistory();
@@ -1157,9 +939,6 @@ function setLang(lang) {
   // Timer start button
   const startBtn = document.getElementById('timerStartBtn');
   if (startBtn && !_timerRunning) startBtn.textContent = _timerSecs < _timerTotal ? t('btn.timer_resume') : t('btn.timer_start');
-
-  document.getElementById('langHe').classList.toggle('active', lang === 'he');
-  document.getElementById('langEn').classList.toggle('active', lang === 'en');
 }
 
 function saveDisplayName() {
@@ -1177,8 +956,7 @@ function _updateTopbarName() {
 
 function initSettingsUI() {
   document.getElementById('darkModeToggle').checked = currentTheme === 'dark';
-  document.getElementById('langHe').classList.toggle('active', currentLang === 'he');
-  document.getElementById('langEn').classList.toggle('active', currentLang === 'en');
+  renderLangSelector();
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName') || '';
 }
 
@@ -2559,7 +2337,7 @@ Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout,
-  goBack, setDarkMode, setLang, saveDisplayName,
+  goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, resetTimer, setTimerPreset, applyCustomTimer,
   filterHistory, toggleSess, toggleMonthGroup,
