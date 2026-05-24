@@ -559,20 +559,20 @@
 <!-- ══ AUTH SCREEN ══ -->
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-title">יומן האימון 💪</div>
-    <div class="auth-sub">התחבר כדי לגשת לנתונים שלך</div>
+    <div class="auth-title" data-i18n="auth.title">יומן האימון 💪</div>
+    <div class="auth-sub" data-i18n="auth.sub">התחבר כדי לגשת לנתונים שלך</div>
     <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login"    onclick="switchAuthTab('login')">התחברות</button>
-      <button class="auth-tab"        id="tab-register" onclick="switchAuthTab('register')">הרשמה</button>
+      <button class="auth-tab active" id="tab-login"    onclick="switchAuthTab('login')"    data-i18n="auth.tab_login">התחברות</button>
+      <button class="auth-tab"        id="tab-register" onclick="switchAuthTab('register')" data-i18n="auth.tab_register">הרשמה</button>
     </div>
     <div id="auth-msg" class="auth-err"></div>
-    <input type="email"    id="auth-email"    class="auth-input" placeholder="כתובת מייל" autocomplete="email">
-    <input type="password" id="auth-password" class="auth-input" placeholder="סיסמה (לפחות 6 תווים)" autocomplete="current-password">
-    <button id="auth-submit-btn" class="auth-btn" onclick="handleAuthSubmit()">כניסה</button>
-    <button class="auth-forgot" onclick="handleForgotPassword()">שכחתי סיסמה</button>
+    <input type="email"    id="auth-email"    class="auth-input" placeholder="כתובת מייל" autocomplete="email" data-i18n-ph="auth.email_ph">
+    <input type="password" id="auth-password" class="auth-input" placeholder="סיסמה (לפחות 6 תווים)" autocomplete="current-password" data-i18n-ph="auth.pass_ph">
+    <button id="auth-submit-btn" class="auth-btn" onclick="handleAuthSubmit()" data-i18n="auth.submit_login">כניסה</button>
+    <button class="auth-forgot" onclick="handleForgotPassword()" data-i18n="auth.forgot">שכחתי סיסמה</button>
     <div class="auth-separator">
       <div class="auth-sep-line"></div>
-      <span class="auth-sep-text">או</span>
+      <span class="auth-sep-text" data-i18n="auth.or">או</span>
       <div class="auth-sep-line"></div>
     </div>
     <button class="auth-google-btn" onclick="handleGoogleLogin()">
@@ -582,16 +582,16 @@
         <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
       </svg>
-      כניסה עם Google
+      <span data-i18n="auth.google">כניסה עם Google</span>
     </button>
   </div>
 </div>
 
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="loading-overlay" style="display:none;">
-  <div class="lo-title">יומן האימון 💪</div>
+  <div class="lo-title" data-i18n="auth.title">יומן האימון 💪</div>
   <div class="lo-spinner"></div>
-  <div class="lo-sub">טוען נתונים...</div>
+  <div class="lo-sub" data-i18n="auth.loading">טוען נתונים...</div>
 </div>
 
 <div id="main-content">
@@ -613,7 +613,7 @@
     <div id="historyPreview" style="display:none;" class="history-preview">
       <div class="history-preview-header" onclick="toggleHistPreview()">
         <div>
-          <span class="history-preview-title">📋 אימון אחרון</span>
+          <span class="history-preview-title" data-i18n="preview.last">📋 אימון אחרון</span>
           <span id="histPreviewName" class="hist-preview-session-name"></span>
         </div>
         <span id="histPreviewDate" class="history-preview-date"></span>
@@ -621,10 +621,10 @@
       <div id="histPreviewBody" class="history-preview-body">
         <table class="hist-table" style="margin-top:8px;">
           <thead><tr>
-            <th>תרגיל</th>
-            <th class="col-num">משקל</th>
-            <th class="col-num">סטים</th>
-            <th class="col-num">חזרות</th>
+            <th data-i18n="col.exercise">תרגיל</th>
+            <th class="col-num" data-i18n="col.weight">משקל</th>
+            <th class="col-num" data-i18n="col.sets">סטים</th>
+            <th class="col-num" data-i18n="col.reps">חזרות</th>
           </tr></thead>
           <tbody id="histPreviewRows"></tbody>
         </table>
@@ -649,10 +649,10 @@
   <div id="mainEditPanel" style="display:none; padding:16px;">
     <div id="editTabs" class="edit-tabs"></div>
     <div id="addTypeForm" class="add-type-form">
-      <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off">
+      <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off" data-i18n-ph="edit.add_type_ph">
       <div class="add-type-form-btns">
-        <button class="btn-sm btn-sm-primary" onclick="confirmAddType()">הוסף</button>
-        <button class="btn-sm btn-sm-ghost"   onclick="cancelAddType()">ביטול</button>
+        <button class="btn-sm btn-sm-primary" onclick="confirmAddType()" data-i18n="btn.add">הוסף</button>
+        <button class="btn-sm btn-sm-ghost"   onclick="cancelAddType()" data-i18n="btn.cancel">ביטול</button>
       </div>
     </div>
     <div id="editListContainer"></div>
@@ -672,7 +672,7 @@
   </div>
   <div style="padding:16px;">
     <div id="filterRow" class="filter-row"></div>
-    <div id="historyList"><div class="loading">טוען...</div></div>
+    <div id="historyList"><div class="loading" data-i18n="loading">טוען...</div></div>
   </div>
 </div>
 
@@ -739,7 +739,7 @@
   </div>
 
   <div id="typesEditorPanel" style="display:none; padding:16px;">
-    <div class="section-label">סוגי מדידות</div>
+    <div class="section-label" data-i18n="meas.types_label">סוגי מדידות</div>
     <div id="typesList"></div>
     <button class="btn-ghost"   onclick="addMeasureType()" data-i18n="types.add">+ הוסף סוג מדידה</button>
     <button class="btn-primary" onclick="saveTypesEditor()" data-i18n="types.save">💾 שמור סוגי מדידות</button>
@@ -760,7 +760,7 @@
       <button class="btn-primary" onclick="saveMeasurement()" data-i18n="meas.save">שמור מדידה</button>
     </div>
     <div class="section-label" data-i18n="meas.history">היסטוריית מדידות</div>
-    <div id="measureList"><div class="loading">טוען...</div></div>
+    <div id="measureList"><div class="loading" data-i18n="loading">טוען...</div></div>
   </div>
 </div>
 
@@ -888,6 +888,94 @@ const TRANSLATIONS = {
     'loading':'טוען...',
     'timer.done_toast':'⏰ זמן המנוחה הסתיים!','timer.done_notif':'זמן המנוחה הסתיים! חזור לאימון 💪',
     'display_name_saved':'שם תצוגה עודכן',
+    // Auth
+    'auth.title':'יומן האימון 💪',
+    'auth.sub':'התחבר כדי לגשת לנתונים שלך',
+    'auth.tab_login':'התחברות',
+    'auth.tab_register':'הרשמה',
+    'auth.email_ph':'כתובת מייל',
+    'auth.pass_ph':'סיסמה (לפחות 6 תווים)',
+    'auth.submit_login':'כניסה',
+    'auth.submit_register':'הרשמה',
+    'auth.forgot':'שכחתי סיסמה',
+    'auth.or':'או',
+    'auth.google':'כניסה עם Google',
+    'auth.reset_sent':'✓ קישור איפוס נשלח למייל!',
+    'auth.fill_email_pass':'נא למלא מייל וסיסמה',
+    'auth.fill_email':'הזן מייל לאיפוס הסיסמה',
+    'auth.loading':'טוען נתונים...',
+    // Errors
+    'err.user_not_found':'לא נמצא משתמש עם מייל זה',
+    'err.wrong_password':'סיסמה שגויה',
+    'err.invalid_credential':'מייל או סיסמה שגויים',
+    'err.email_in_use':'מייל זה כבר רשום',
+    'err.weak_password':'סיסמה חלשה מדי (לפחות 6 תווים)',
+    'err.invalid_email':'כתובת מייל לא תקינה',
+    'err.too_many':'יותר מדי ניסיונות — נסה שוב מאוחר יותר',
+    'err.popup_closed':'החלון נסגר לפני השלמת הכניסה',
+    'err.network':'בעיית חיבור לאינטרנט',
+    'err.unauth_domain':'הדומיין לא מורשה ב-Firebase Console',
+    'err.prefix':'שגיאה: ',
+    // UI
+    'saving':'שומר...',
+    'app.loading':'טוען נתונים...',
+    'preview.last':'📋 אימון אחרון',
+    'col.exercise':'תרגיל',
+    'col.weight':'משקל',
+    'col.sets':'סטים',
+    'col.reps':'חזרות',
+    'col.notes':'הערות',
+    'btn.add':'הוסף',
+    'btn.cancel':'ביטול',
+    'btn.delete_confirm':'מחק?',
+    'edit.add_type_ph':'שם האימון (C, D, כוח...)',
+    'edit.no_exercises':'אין תרגילים. לחץ "+ הוסף תרגיל".',
+    'edit.ex_name_ph':'שם תרגיל',
+    'edit.ex_target_ph':'יעד (3 X 8-10)',
+    'edit.type_exists':'סוג אימון זה כבר קיים',
+    'edit.type_added':'סוג אימון נוסף',
+    'edit.type_removed':'סוג הוסר — שמור כדי לשמר את השינוי',
+    'edit.min_one_type':'חייב להישאר לפחות סוג אימון אחד',
+    'edit.saved_ok':'תבניות האימון נשמרו בהצלחה',
+    'edit.no_items':'אין תרגילים לשמור.',
+    'sess.name_label':'שם האימון',
+    'sess.name_ph':'שם האימון',
+    'sess.save_btn':'שמור שינויים',
+    'sess.cancel_btn':'ביטול',
+    'sess.saved_ok':'האימון עודכן בהצלחה',
+    'sess.deleted_ok':'האימון נמחק',
+    'sess.notes_ph':'הערות...',
+    'workout.badge':'אימון',
+    'workout.exercises':'תרגילים',
+    'workout.no_results':'אין אימונים להצגה',
+    'workout.saved_ok':'האימון נשמר בהצלחה!',
+    'workout.fill_first':'מלא נתונים לפני השמירה.',
+    'workout.sessions':'אימונים',
+    'workout.name_last_ph':'אחרון: ',
+    'workout.name_default_ph':'שם האימון (ראשון, שני, דלואד...)',
+    'ex.notes_ph':'הוסף הערה...',
+    'filter.all':'הכל',
+    'meas.types_label':'סוגי מדידות',
+    'meas.circumferences':'היקפים',
+    'meas.no_circ':'אין היקפים נרשמו',
+    'meas.empty':'עדיין אין מדידות',
+    'meas.count':'מדידות',
+    'meas.date_required':'הזן תאריך בפורמט DD/MM/YYYY.',
+    'meas.fill_one':'מלא לפחות שדה אחד.',
+    'meas.saved_ok':'המדידה נשמרה בהצלחה',
+    'meas.deleted_ok':'המדידה נמחקה',
+    'meas.name_ph':'שם המדידה',
+    'meas.unit_ph':'יחידה',
+    'meas.default_unit':'ס"מ',
+    'types.min_one':'הוסף לפחות סוג מדידה אחד.',
+    'types.unique':'שמות חייבים להיות ייחודיים.',
+    'types.saved_ok':'סוגי המדידות נשמרו בהצלחה',
+    'timer.allow_notif':'אפשר התראות לקבל הודעה כשהזמן מסתיים',
+    'copy.success':'הועתקו',
+    'copy.from':'משקלים מ-',
+    'error.load':'שגיאה בטעינת הנתונים: ',
+    'error.update':'שגיאה בעדכון הנתונים: ',
+    'error.save':'שגיאה: ',
   },
   en: {
     dir:'ltr', lang:'en',
@@ -913,6 +1001,94 @@ const TRANSLATIONS = {
     'loading':'Loading...',
     'timer.done_toast':'⏰ Rest time is over!','timer.done_notif':'Rest time is over! Back to training 💪',
     'display_name_saved':'Display name updated',
+    // Auth
+    'auth.title':'Training Diary 💪',
+    'auth.sub':'Sign in to access your data',
+    'auth.tab_login':'Sign In',
+    'auth.tab_register':'Register',
+    'auth.email_ph':'Email address',
+    'auth.pass_ph':'Password (at least 6 chars)',
+    'auth.submit_login':'Sign In',
+    'auth.submit_register':'Register',
+    'auth.forgot':'Forgot password',
+    'auth.or':'or',
+    'auth.google':'Sign in with Google',
+    'auth.reset_sent':'✓ Reset link sent to email!',
+    'auth.fill_email_pass':'Please fill in email and password',
+    'auth.fill_email':'Enter email to reset password',
+    'auth.loading':'Loading data...',
+    // Errors
+    'err.user_not_found':'No user found with this email',
+    'err.wrong_password':'Incorrect password',
+    'err.invalid_credential':'Invalid email or password',
+    'err.email_in_use':'Email already registered',
+    'err.weak_password':'Password too weak (min 6 chars)',
+    'err.invalid_email':'Invalid email address',
+    'err.too_many':'Too many attempts — try again later',
+    'err.popup_closed':'Window closed before sign in completed',
+    'err.network':'Network connection error',
+    'err.unauth_domain':'Domain not authorized in Firebase Console',
+    'err.prefix':'Error: ',
+    // UI
+    'saving':'Saving...',
+    'app.loading':'Loading data...',
+    'preview.last':'📋 Last Workout',
+    'col.exercise':'Exercise',
+    'col.weight':'Weight',
+    'col.sets':'Sets',
+    'col.reps':'Reps',
+    'col.notes':'Notes',
+    'btn.add':'Add',
+    'btn.cancel':'Cancel',
+    'btn.delete_confirm':'Delete?',
+    'edit.add_type_ph':'Workout name (C, D, Strength...)',
+    'edit.no_exercises':'No exercises. Tap "+ Add Exercise".',
+    'edit.ex_name_ph':'Exercise name',
+    'edit.ex_target_ph':'Target (3 X 8-10)',
+    'edit.type_exists':'This workout type already exists',
+    'edit.type_added':'Workout type added',
+    'edit.type_removed':'Type removed — save to keep',
+    'edit.min_one_type':'Must keep at least one workout type',
+    'edit.saved_ok':'Workout templates saved',
+    'edit.no_items':'No exercises to save.',
+    'sess.name_label':'Workout Name',
+    'sess.name_ph':'Workout Name',
+    'sess.save_btn':'Save Changes',
+    'sess.cancel_btn':'Cancel',
+    'sess.saved_ok':'Workout updated',
+    'sess.deleted_ok':'Workout deleted',
+    'sess.notes_ph':'Notes...',
+    'workout.badge':'Workout',
+    'workout.exercises':'exercises',
+    'workout.no_results':'No workouts to display',
+    'workout.saved_ok':'Workout saved!',
+    'workout.fill_first':'Fill in data before saving.',
+    'workout.sessions':'workouts',
+    'workout.name_last_ph':'Last: ',
+    'workout.name_default_ph':'Workout name (Push, Pull, Deload...)',
+    'ex.notes_ph':'Add note...',
+    'filter.all':'All',
+    'meas.types_label':'Measurement Types',
+    'meas.circumferences':'Circumferences',
+    'meas.no_circ':'No circumferences recorded',
+    'meas.empty':'No measurements yet',
+    'meas.count':'measurements',
+    'meas.date_required':'Enter date in DD/MM/YYYY format.',
+    'meas.fill_one':'Fill at least one field.',
+    'meas.saved_ok':'Measurement saved',
+    'meas.deleted_ok':'Measurement deleted',
+    'meas.name_ph':'Measurement name',
+    'meas.unit_ph':'Unit',
+    'meas.default_unit':'cm',
+    'types.min_one':'Add at least one measurement type.',
+    'types.unique':'Names must be unique.',
+    'types.saved_ok':'Measurement types saved',
+    'timer.allow_notif':'Allow notifications to be alerted when time is up',
+    'copy.success':'copied',
+    'copy.from':'weights from ',
+    'error.load':'Error loading data: ',
+    'error.update':'Error updating data: ',
+    'error.save':'Error: ',
   }
 };
 
@@ -1018,7 +1194,7 @@ function switchAuthTab(mode) {
   authMode = mode;
   document.getElementById('tab-login').classList.toggle('active',    mode === 'login');
   document.getElementById('tab-register').classList.toggle('active', mode === 'register');
-  document.getElementById('auth-submit-btn').textContent = mode === 'login' ? 'כניסה' : 'הרשמה';
+  document.getElementById('auth-submit-btn').textContent = mode === 'login' ? t('auth.submit_login') : t('auth.submit_register');
   setAuthMsg('');
 }
 
@@ -1026,7 +1202,7 @@ async function handleAuthSubmit() {
   const email    = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const btn      = document.getElementById('auth-submit-btn');
-  if (!email || !password) { setAuthMsg('נא למלא מייל וסיסמה'); return; }
+  if (!email || !password) { setAuthMsg(t('auth.fill_email_pass')); return; }
   btn.disabled = true;
   try {
     if (authMode === 'login') {
@@ -1054,10 +1230,10 @@ async function handleGoogleLogin() {
 
 async function handleForgotPassword() {
   const email = document.getElementById('auth-email').value.trim();
-  if (!email) { setAuthMsg('הזן מייל לאיפוס הסיסמה'); return; }
+  if (!email) { setAuthMsg(t('auth.fill_email')); return; }
   try {
     await sendPasswordResetEmail(auth, email);
-    setAuthMsg('✓ קישור איפוס נשלח למייל!', true);
+    setAuthMsg(t('auth.reset_sent'), true);
   } catch (e) {
     setAuthMsg(firebaseErrMsg(e.code));
   }
@@ -1074,19 +1250,19 @@ function setAuthMsg(msg, ok = false) {
 }
 
 function firebaseErrMsg(code) {
-  const map = {
-    'auth/user-not-found':        'לא נמצא משתמש עם מייל זה',
-    'auth/wrong-password':        'סיסמה שגויה',
-    'auth/invalid-credential':    'מייל או סיסמה שגויים',
-    'auth/email-already-in-use':  'מייל זה כבר רשום',
-    'auth/weak-password':         'סיסמה חלשה מדי (לפחות 6 תווים)',
-    'auth/invalid-email':         'כתובת מייל לא תקינה',
-    'auth/too-many-requests':     'יותר מדי ניסיונות — נסה שוב מאוחר יותר',
-    'auth/popup-closed-by-user':  'החלון נסגר לפני השלמת הכניסה',
-    'auth/network-request-failed':  'בעיית חיבור לאינטרנט',
-    'auth/unauthorized-domain':     'הדומיין לא מורשה — יש להוסיף אותו ב-Firebase Console → Authentication → Authorized domains',
+  const msgs = {
+    'auth/user-not-found':        t('err.user_not_found'),
+    'auth/wrong-password':        t('err.wrong_password'),
+    'auth/invalid-credential':    t('err.invalid_credential'),
+    'auth/email-already-in-use':  t('err.email_in_use'),
+    'auth/weak-password':         t('err.weak_password'),
+    'auth/invalid-email':         t('err.invalid_email'),
+    'auth/too-many-requests':     t('err.too_many'),
+    'auth/popup-closed-by-user':  t('err.popup_closed'),
+    'auth/network-request-failed': t('err.network'),
+    'auth/unauthorized-domain':   t('err.unauth_domain'),
   };
-  return map[code] || 'שגיאה: ' + code;
+  return msgs[code] || t('err.prefix') + code;
 }
 
 // ─── NEW USER DEFAULTS ────────────────────────────────────────
@@ -1137,7 +1313,11 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 
-const MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const MONTHS = {
+  he: ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'],
+  en: ['January','February','March','April','May','June','July','August','September','October','November','December']
+};
+function getMonths() { return MONTHS[currentLang] || MONTHS.he; }
 function getMonthKey(dateStr) {
   if (!dateStr) return '0000-00';
   const s = String(dateStr);
@@ -1153,7 +1333,7 @@ function sessionDisplayDate(s) {
 }
 function getMonthLabel(key) {
   const [y, m] = key.split('-');
-  return MONTHS_HE[parseInt(m) - 1] + ' ' + y;
+  return getMonths()[parseInt(m) - 1] + ' ' + y;
 }
 
 // ─── LOAD ALL DATA ────────────────────────────────────────────
@@ -1185,7 +1365,7 @@ async function initApp() {
     applyAppData(data);
     selectType('A');
   } catch (err) {
-    toast('שגיאה בטעינת הנתונים: ' + err.message, 'error');
+    toast(t('error.load') + err.message, 'error');
     selectType('A');
   }
   hideOverlay();
@@ -1197,7 +1377,7 @@ async function reloadAppData() {
     applyAppData(data);
     if (selectedType) selectType(selectedType);
   } catch (err) {
-    toast('שגיאה בעדכון הנתונים: ' + err.message, 'error');
+    toast(t('error.update') + err.message, 'error');
   }
 }
 
@@ -1213,7 +1393,7 @@ function applyAppData(data) {
 
   workoutTypes    = (tmpl.types && tmpl.types.length) ? tmpl.types : ['A','B'];
   editTemplates   = {};
-  workoutTypes.forEach(t => { editTemplates[t] = tmpl[t] || []; });
+  workoutTypes.forEach(wtype => { editTemplates[wtype] = tmpl[wtype] || []; });
   allSessions     = safeArr(data.allWorkouts);
   measureTypes    = safeArr(data.measureTypes);
   allMeasurements = safeArr(data.measurements);
@@ -1291,8 +1471,8 @@ function selectType(type) {
   nameWrap.style.display = 'block';
   nameInput.value = '';
   nameInput.placeholder = (lastWorkouts[type]?.sessionName)
-    ? 'אחרון: ' + lastWorkouts[type].sessionName
-    : 'שם האימון (ראשון, שני, דלואד...)';
+    ? t('workout.name_last_ph') + lastWorkouts[type].sessionName
+    : t('workout.name_default_ph');
 
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
@@ -1318,12 +1498,12 @@ function makeExCard(name, target) {
         <button class="remove-btn" onclick="document.getElementById('card_${id}').remove()">✕</button>
       </div>
       <div class="field-group">
-        <div class="field"><label>משקל</label><input type="number" class="ex-weight" placeholder="—" autocomplete="off"></div>
-        <div class="field"><label>סטים</label><input type="number" class="ex-sets"   placeholder="—" autocomplete="off"></div>
-        <div class="field"><label>חזרות</label><input type="number" class="ex-reps"  placeholder="—" autocomplete="off"></div>
+        <div class="field"><label>${t('col.weight')}</label><input type="number" class="ex-weight" placeholder="—" autocomplete="off"></div>
+        <div class="field"><label>${t('col.sets')}</label><input type="number" class="ex-sets"   placeholder="—" autocomplete="off"></div>
+        <div class="field"><label>${t('col.reps')}</label><input type="number" class="ex-reps"  placeholder="—" autocomplete="off"></div>
       </div>
       <div class="field-group field-notes" style="margin-top:8px;">
-        <div class="field" style="flex:1;"><label>הערות</label><input type="text" class="ex-notes" placeholder="הוסף הערה..."></div>
+        <div class="field" style="flex:1;"><label>${t('col.notes')}</label><input type="text" class="ex-notes" placeholder="${t('ex.notes_ph')}"></div>
       </div>
     </div>
   </div>`;
@@ -1349,7 +1529,7 @@ async function submitData() {
       notes:  card.querySelector('.ex-notes').value
     });
   });
-  if (!exercises.length) { toast('מלא נתונים לפני השמירה.', 'error'); return; }
+  if (!exercises.length) { toast(t('workout.fill_first'), 'error'); return; }
 
   const sessionName = document.getElementById('sessionNameInput')?.value.trim() || '';
   const now  = new Date();
@@ -1357,7 +1537,7 @@ async function submitData() {
   const mm   = String(now.getMonth()+1).padStart(2,'0');
   const yyyy = now.getFullYear();
 
-  btn.disabled = true; btn.innerText = 'שומר...';
+  btn.disabled = true; btn.innerText = t('saving');
   try {
     await addDoc(collection(db, 'users', currentUser.uid, 'workouts'), {
       date:        `${dd}/${mm}/${yyyy}`,
@@ -1367,12 +1547,12 @@ async function submitData() {
       exercises,
       createdAt:   serverTimestamp()
     });
-    toast(`האימון נשמר בהצלחה! (${exercises.length} תרגילים)`, 'success');
+    toast(`${t('workout.saved_ok')} (${exercises.length} ${t('workout.exercises')})`, 'success');
     await reloadAppData();
   } catch (err) {
-    toast('שגיאה בשמירה: ' + err.message, 'error');
+    toast(t('error.save') + err.message, 'error');
   }
-  btn.disabled = false; btn.innerText = 'שמור אימון';
+  btn.disabled = false; btn.innerText = t('btn.save_workout');
 }
 
 // ─── HISTORY ──────────────────────────────────────────────────
@@ -1394,11 +1574,11 @@ function buildSessionCard(s, i) {
         <div>
           <div class="session-date">${sessionDisplayDate(s)}</div>
           ${s.sessionName ? `<div class="session-name-label">${escHtml(s.sessionName)}</div>` : ''}
-          <div class="session-count">${(s.exercises||[]).length} תרגילים</div>
+          <div class="session-count">${(s.exercises||[]).length} ${t('workout.exercises')}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:4px;">
-        <span class="session-badge ${badgeClass}">אימון ${escHtml(s.type)}</span>
+        <span class="session-badge ${badgeClass}">${t('workout.badge')} ${escHtml(s.type)}</span>
         <button class="delete-btn" onclick="event.stopPropagation();editSession(this,'${escHtml(s.id)}')"    title="ערוך">✏️</button>
         <button class="delete-btn" onclick="event.stopPropagation();deleteSession(this,'${escHtml(s.id)}')"  title="מחק סשן">🗑</button>
         <span class="chevron">▼</span>
@@ -1408,8 +1588,8 @@ function buildSessionCard(s, i) {
       <div class="divider"></div>
       <table class="hist-table">
         <thead><tr>
-          <th>תרגיל</th><th class="col-num">משקל</th>
-          <th class="col-num">סטים</th><th class="col-num">חזרות</th>
+          <th>${t('col.exercise')}</th><th class="col-num">${t('col.weight')}</th>
+          <th class="col-num">${t('col.sets')}</th><th class="col-num">${t('col.reps')}</th>
         </tr></thead>
         <tbody>
           ${(s.exercises||[]).map(e => `<tr>
@@ -1429,7 +1609,7 @@ function renderHistory() {
   const list = document.getElementById('historyList');
   const data = activeFilter === 'all' ? allSessions : allSessions.filter(s => s.type === activeFilter);
   if (!data.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">🏃</div><div class="empty-text">אין אימונים להצגה</div></div>';
+    list.innerHTML = `<div class="empty"><div class="empty-icon">🏃</div><div class="empty-text">${t('workout.no_results')}</div></div>`;
     return;
   }
 
@@ -1454,7 +1634,7 @@ function renderHistory() {
       html += `<div class="month-group-header" onclick="toggleMonthGroup('${gid}',this)">
         <span class="month-group-title">${label}</span>
         <span style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:12px;color:var(--sub)">${sessions.length} אימונים</span>
+          <span style="font-size:12px;color:var(--sub)">${sessions.length} ${t('workout.sessions')}</span>
           <span class="chevron">▼</span>
         </span>
       </div>
@@ -1496,8 +1676,8 @@ function editSession(btn, sessionId) {
     <div class="edit-session-wrap">
       <div class="divider"></div>
       <div class="edit-session-name-row">
-        <label>שם האימון</label>
-        <input type="text" class="edit-session-name-input" value="${escHtml(session.sessionName||'')}" placeholder="שם האימון">
+        <label>${t('sess.name_label')}</label>
+        <input type="text" class="edit-session-name-input" value="${escHtml(session.sessionName||'')}" placeholder="${t('sess.name_ph')}">
       </div>
       ${(session.exercises||[]).map(e => `
         <div class="edit-ex-row"
@@ -1509,16 +1689,16 @@ function editSession(btn, sessionId) {
             <button class="edit-ex-delete" onclick="removeEditRow(this)" title="מחק תרגיל">✕</button>
           </div>
           <div class="edit-ex-fields">
-            <div class="field"><label>משקל</label><input type="text" class="edit-num-input edit-weight" value="${escHtml(String(e.weight||''))}" placeholder="—"></div>
-            <div class="field"><label>סטים</label><input type="text" class="edit-num-input edit-sets"   value="${escHtml(String(e.sets||''))}"   placeholder="—"></div>
-            <div class="field"><label>חזרות</label><input type="text" class="edit-num-input edit-reps"  value="${escHtml(String(e.reps||''))}"   placeholder="—"></div>
+            <div class="field"><label>${t('col.weight')}</label><input type="text" class="edit-num-input edit-weight" value="${escHtml(String(e.weight||''))}" placeholder="—"></div>
+            <div class="field"><label>${t('col.sets')}</label><input type="text" class="edit-num-input edit-sets"   value="${escHtml(String(e.sets||''))}"   placeholder="—"></div>
+            <div class="field"><label>${t('col.reps')}</label><input type="text" class="edit-num-input edit-reps"  value="${escHtml(String(e.reps||''))}"   placeholder="—"></div>
           </div>
-          <input type="text" class="edit-notes-input" value="${escHtml(String(e.notes||''))}" placeholder="הערות...">
+          <input type="text" class="edit-notes-input" value="${escHtml(String(e.notes||''))}" placeholder="${t('sess.notes_ph')}">
         </div>
       `).join('')}
       <div class="edit-save-row">
-        <button class="btn-primary" onclick="saveSessionEdit(this,'${escHtml(sessionId)}')">שמור שינויים</button>
-        <button class="btn-ghost"   onclick="cancelSessionEdit(this)">ביטול</button>
+        <button class="btn-primary" onclick="saveSessionEdit(this,'${escHtml(sessionId)}')">${t('sess.save_btn')}</button>
+        <button class="btn-ghost"   onclick="cancelSessionEdit(this)">${t('sess.cancel_btn')}</button>
       </div>
     </div>`;
 }
@@ -1536,14 +1716,14 @@ async function saveSessionEdit(saveBtn, sessionId) {
     notes:  row.querySelector('.edit-notes-input')?.value || '',
   }));
 
-  saveBtn.disabled = true; saveBtn.innerText = 'שומר...';
+  saveBtn.disabled = true; saveBtn.innerText = t('saving');
   try {
     await updateDoc(doc(db, 'users', currentUser.uid, 'workouts', sessionId), { sessionName, exercises });
-    toast('האימון עודכן בהצלחה', 'success');
+    toast(t('sess.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
-    toast('שגיאה: ' + err.message, 'error');
-    saveBtn.disabled = false; saveBtn.innerText = 'שמור שינויים';
+    toast(t('error.save') + err.message, 'error');
+    saveBtn.disabled = false; saveBtn.innerText = t('sess.save_btn');
   }
 }
 
@@ -1568,10 +1748,10 @@ async function deleteSession(btn, sessionId) {
   armDelete(btn, async () => {
     try {
       await deleteDoc(doc(db, 'users', currentUser.uid, 'workouts', sessionId));
-      toast('האימון נמחק', 'success');
+      toast(t('sess.deleted_ok'), 'success');
       await reloadAppData();
     } catch (err) {
-      toast('שגיאה: ' + err.message, 'error');
+      toast(t('error.save') + err.message, 'error');
     }
   });
 }
@@ -1586,7 +1766,7 @@ function armDelete(btn, callback) {
     callback();
   } else {
     btn.classList.add('armed');
-    btn.innerHTML = 'מחק?';
+    btn.innerHTML = t('btn.delete_confirm');
     _armTimer = setTimeout(() => {
       btn.classList.remove('armed');
       btn.innerHTML = '🗑';
@@ -1596,29 +1776,29 @@ function armDelete(btn, callback) {
 
 // ─── EDIT TEMPLATES ───────────────────────────────────────────
 function renderTypeButtons() {
-  document.getElementById('typeRow').innerHTML = workoutTypes.map(t =>
-    `<button class="type-btn${t === selectedType ? ' active' : ''}" data-type="${escHtml(t)}" onclick="selectType('${escHtml(t)}')">${escHtml('אימון ' + t)}</button>`
+  document.getElementById('typeRow').innerHTML = workoutTypes.map(wtype =>
+    `<button class="type-btn${wtype === selectedType ? ' active' : ''}" data-type="${escHtml(wtype)}" onclick="selectType('${escHtml(wtype)}')">${escHtml(t('workout.badge') + ' ' + wtype)}</button>`
   ).join('');
 }
 
 function renderFilterButtons() {
   document.getElementById('filterRow').innerHTML =
-    `<button class="filter-btn${activeFilter==='all'?' active':''}" data-filter="all" onclick="filterHistory('all')">הכל</button>` +
-    workoutTypes.map(t =>
-      `<button class="filter-btn${activeFilter===t?' active':''}" data-filter="${escHtml(t)}" onclick="filterHistory('${escHtml(t)}')">${escHtml('אימון ' + t)}</button>`
+    `<button class="filter-btn${activeFilter==='all'?' active':''}" data-filter="all" onclick="filterHistory('all')">${t('filter.all')}</button>` +
+    workoutTypes.map(wtype =>
+      `<button class="filter-btn${activeFilter===wtype?' active':''}" data-filter="${escHtml(wtype)}" onclick="filterHistory('${escHtml(wtype)}')">${escHtml(t('workout.badge') + ' ' + wtype)}</button>`
     ).join('');
 }
 
 function renderEditTabs() {
   const canRemove = workoutTypes.length > 1;
   document.getElementById('editTabs').innerHTML =
-    workoutTypes.map(t =>
-      `<div class="tab-item${t===editTab?' active':''}">
-        <button class="tab-btn" onclick="switchEditTab('${escHtml(t)}')">
-          <span class="count-pill">${(editTemplates[t]||[]).length}</span>
-          ${escHtml(t)}
+    workoutTypes.map(wtype =>
+      `<div class="tab-item${wtype===editTab?' active':''}">
+        <button class="tab-btn" onclick="switchEditTab('${escHtml(wtype)}')">
+          <span class="count-pill">${(editTemplates[wtype]||[]).length}</span>
+          ${escHtml(wtype)}
         </button>
-        ${canRemove ? `<button class="tab-remove" onclick="removeWorkoutType('${escHtml(t)}')" title="הסר">✕</button>` : ''}
+        ${canRemove ? `<button class="tab-remove" onclick="removeWorkoutType('${escHtml(wtype)}')" title="✕">✕</button>` : ''}
       </div>`
     ).join('') +
     `<div class="tab-item add-tab-item">
@@ -1638,7 +1818,7 @@ function renderEditList(type) {
   const el    = document.getElementById('editListContainer');
   const items = editTemplates[type] || [];
   if (!items.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-text">אין תרגילים. לחץ "+ הוסף תרגיל".</div></div>';
+    el.innerHTML = `<div class="empty"><div class="empty-text">${t('edit.no_exercises')}</div></div>`;
     return;
   }
   el.innerHTML = '';
@@ -1649,8 +1829,8 @@ function renderEditList(type) {
     card.innerHTML  = `
       <span class="drag-handle">⠿</span>
       <div class="edit-fields">
-        <input class="ex-name-input"   value="${escHtml(ex.name)}"   placeholder="שם תרגיל">
-        <input class="ex-target-input" value="${escHtml(ex.target)}" placeholder="יעד (3 X 8-10)">
+        <input class="ex-name-input"   value="${escHtml(ex.name)}"   placeholder="${t('edit.ex_name_ph')}">
+        <input class="ex-target-input" value="${escHtml(ex.target)}" placeholder="${t('edit.ex_target_ph')}">
       </div>
       <button class="edit-remove" onclick="removeEditEx(${idx})">✕</button>`;
     el.appendChild(card);
@@ -1697,47 +1877,47 @@ function cancelAddType() { document.getElementById('addTypeForm').style.display 
 function confirmAddType() {
   const val = document.getElementById('newTypeName').value.trim();
   if (!val) return;
-  if (workoutTypes.map(t => t.toLowerCase()).includes(val.toLowerCase())) { toast('סוג אימון זה כבר קיים', 'error'); return; }
+  if (workoutTypes.map(wtype => wtype.toLowerCase()).includes(val.toLowerCase())) { toast(t('edit.type_exists'), 'error'); return; }
   collectEdits();
   workoutTypes.push(val);
   editTemplates[val] = [];
   editTab = val;
   document.getElementById('addTypeForm').style.display = 'none';
   renderEditAll();
-  toast('סוג אימון "' + val + '" נוסף', 'success');
+  toast(t('edit.type_added'), 'success');
 }
 
 function removeWorkoutType(type) {
-  if (workoutTypes.length <= 1) { toast('חייב להישאר לפחות סוג אימון אחד', 'error'); return; }
+  if (workoutTypes.length <= 1) { toast(t('edit.min_one_type'), 'error'); return; }
   collectEdits();
-  workoutTypes = workoutTypes.filter(t => t !== type);
+  workoutTypes = workoutTypes.filter(wtype => wtype !== type);
   delete editTemplates[type];
   if (editTab === type) editTab = workoutTypes[0];
   renderEditAll();
-  toast('סוג "' + type + '" הוסר — שמור כדי לשמר את השינוי', 'success');
+  toast(t('edit.type_removed'), 'success');
 }
 
 async function saveTemplates() {
   collectEdits();
   const templateData = { types: workoutTypes };
-  workoutTypes.forEach(t => {
-    templateData[t] = (editTemplates[t]||[])
+  workoutTypes.forEach(wtype => {
+    templateData[wtype] = (editTemplates[wtype]||[])
       .filter(ex => ex.name.trim())
       .map(ex => ({ id: ex.id || genId(), name: ex.name.trim(), target: ex.target.trim() }));
   });
-  const total = workoutTypes.reduce((n, t) => n + (templateData[t]||[]).length, 0);
-  if (!total) { toast('אין תרגילים לשמור.', 'error'); return; }
+  const total = workoutTypes.reduce((n, wtype) => n + (templateData[wtype]||[]).length, 0);
+  if (!total) { toast(t('edit.no_items'), 'error'); return; }
 
   const btn = document.querySelector('#mainEditPanel .btn-primary');
-  if (btn) { btn.disabled = true; btn.innerText = 'שומר...'; }
+  if (btn) { btn.disabled = true; btn.innerText = t('saving'); }
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData);
-    toast('תבניות האימון נשמרו בהצלחה', 'success');
+    toast(t('edit.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
-    toast('שגיאה: ' + err.message, 'error');
+    toast(t('error.save') + err.message, 'error');
   }
-  if (btn) { btn.disabled = false; btn.innerText = '💾 שמור שינויים'; }
+  if (btn) { btn.disabled = false; btn.innerText = t('edit.save'); }
 }
 
 // ─── DRAG & DROP ──────────────────────────────────────────────
@@ -1791,7 +1971,7 @@ function renderMeasureForm() {
     </div>
   </div>`;
   if (rest.length) {
-    html += `<div class="section-label">היקפים</div>`;
+    html += `<div class="section-label">${t('meas.circumferences')}</div>`;
     for (let i = 0; i < rest.length; i += 3) {
       html += '<div class="m-row">';
       const chunk = rest.slice(i, i + 3);
@@ -1843,7 +2023,7 @@ function buildMeasureCard(m, i, prev) {
       </div>
     </div>
     <div class="measure-body" id="measure_${i}">
-      ${chips ? `<div class="measure-chips">${chips}</div>` : '<div class="empty-text" style="padding:8px 0;font-size:13px;">אין היקפים נרשמו</div>'}
+      ${chips ? `<div class="measure-chips">${chips}</div>` : `<div class="empty-text" style="padding:8px 0;font-size:13px;">${t('meas.no_circ')}</div>`}
     </div>
   </div>`;
 }
@@ -1851,7 +2031,7 @@ function buildMeasureCard(m, i, prev) {
 function renderMeasurements() {
   const el = document.getElementById('measureList');
   if (!allMeasurements.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📏</div><div class="empty-text">עדיין אין מדידות</div></div>';
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📏</div><div class="empty-text">${t('meas.empty')}</div></div>`;
     return;
   }
   const groups = {}, order = [];
@@ -1875,7 +2055,7 @@ function renderMeasurements() {
       html += `<div class="month-group-header" onclick="toggleMonthGroup('${gid}',this)">
         <span class="month-group-title">${label}</span>
         <span style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:12px;color:var(--sub)">${measurements.length} מדידות</span>
+          <span style="font-size:12px;color:var(--sub)">${measurements.length} ${t('meas.count')}</span>
           <span class="chevron">▼</span>
         </span>
       </div>
@@ -1907,7 +2087,7 @@ function setDefaultDate() {
 
 async function saveMeasurement() {
   const dateVal = document.getElementById('m-date').value;
-  if (!dateVal || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateVal)) { toast('הזן תאריך בפורמט DD/MM/YYYY.', 'error'); return; }
+  if (!dateVal || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateVal)) { toast(t('meas.date_required'), 'error'); return; }
   const [dd, mm, yyyy] = dateVal.split('/');
   const dateISO = `${yyyy}-${mm}-${dd}`;
 
@@ -1915,32 +2095,32 @@ async function saveMeasurement() {
   document.querySelectorAll('#measureFormFields [data-type-name]').forEach(input => {
     if (input.value !== '') fields[input.dataset.typeName] = input.value;
   });
-  if (!Object.keys(fields).length) { toast('מלא לפחות שדה אחד.', 'error'); return; }
+  if (!Object.keys(fields).length) { toast(t('meas.fill_one'), 'error'); return; }
 
   const btn = document.querySelector('#measurementsContent .btn-primary');
-  btn.disabled = true; btn.innerText = 'שומר...';
+  btn.disabled = true; btn.innerText = t('saving');
   try {
     await addDoc(collection(db, 'users', currentUser.uid, 'measurements'), {
       date: dateVal, dateISO, ...fields, createdAt: serverTimestamp()
     });
-    toast('המדידה נשמרה בהצלחה', 'success');
+    toast(t('meas.saved_ok'), 'success');
     document.querySelectorAll('#measureFormFields [data-type-name]').forEach(i => i.value = '');
     setDefaultDate();
     await reloadAppData();
   } catch (err) {
-    toast('שגיאה: ' + err.message, 'error');
+    toast(t('error.save') + err.message, 'error');
   }
-  btn.disabled = false; btn.innerText = 'שמור מדידה';
+  btn.disabled = false; btn.innerText = t('meas.save');
 }
 
 async function deleteMeasurementEntry(btn, id) {
   armDelete(btn, async () => {
     try {
       await deleteDoc(doc(db, 'users', currentUser.uid, 'measurements', id));
-      toast('המדידה נמחקה', 'success');
+      toast(t('meas.deleted_ok'), 'success');
       await reloadAppData();
     } catch (err) {
-      toast('שגיאה: ' + err.message, 'error');
+      toast(t('error.save') + err.message, 'error');
     }
   });
 }
@@ -1961,15 +2141,15 @@ function toggleTypesEditor() {
 function renderTypesList() {
   const el = document.getElementById('typesList');
   el.innerHTML = '';
-  editMeasureTypes.forEach((t, idx) => {
+  editMeasureTypes.forEach((mtype, idx) => {
     const card = document.createElement('div');
     card.className  = 'edit-card';
-    card.dataset.id = t.id || '';
+    card.dataset.id = mtype.id || '';
     card.innerHTML  = `
       <span class="drag-handle">⠿</span>
       <div class="edit-fields" style="display:flex;gap:8px;align-items:center;flex:1;">
-        <input class="ex-name-input type-name-input" value="${escHtml(t.name)}" placeholder="שם המדידה" style="flex:1;">
-        <input class="type-unit-input"               value="${escHtml(t.unit)}" placeholder="יחידה">
+        <input class="ex-name-input type-name-input" value="${escHtml(mtype.name)}" placeholder="${t('meas.name_ph')}" style="flex:1;">
+        <input class="type-unit-input"               value="${escHtml(mtype.unit)}" placeholder="${t('meas.unit_ph')}">
       </div>
       <button class="edit-remove" onclick="removeMeasureType(${idx})">✕</button>`;
     el.appendChild(card);
@@ -1987,7 +2167,7 @@ function collectTypeEdits() {
 
 function addMeasureType() {
   collectTypeEdits();
-  editMeasureTypes.push({ name: '', unit: 'ס"מ', id: '' });
+  editMeasureTypes.push({ name: '', unit: t('meas.default_unit'), id: '' });
   renderTypesList();
   window.scrollTo(0, document.body.scrollHeight);
 }
@@ -2000,23 +2180,23 @@ function removeMeasureType(idx) {
 
 async function saveTypesEditor() {
   collectTypeEdits();
-  const valid = editMeasureTypes.filter(t => t.name.trim());
-  if (!valid.length) { toast('הוסף לפחות סוג מדידה אחד.', 'error'); return; }
-  const names = valid.map(t => t.name);
-  if (new Set(names).size !== names.length) { toast('שמות חייבים להיות ייחודיים.', 'error'); return; }
+  const valid = editMeasureTypes.filter(mtype => mtype.name.trim());
+  if (!valid.length) { toast(t('types.min_one'), 'error'); return; }
+  const names = valid.map(mtype => mtype.name);
+  if (new Set(names).size !== names.length) { toast(t('types.unique'), 'error'); return; }
 
   const btn = document.querySelector('#typesEditorPanel .btn-primary');
-  btn.disabled = true; btn.innerText = 'שומר...';
-  const types = valid.map(t => ({ id: t.id || genId(), name: t.name.trim(), unit: t.unit.trim() }));
+  btn.disabled = true; btn.innerText = t('saving');
+  const types = valid.map(mtype => ({ id: mtype.id || genId(), name: mtype.name.trim(), unit: mtype.unit.trim() }));
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'measurementTypes'), { types });
-    toast('סוגי המדידות נשמרו בהצלחה', 'success');
+    toast(t('types.saved_ok'), 'success');
     toggleTypesEditor();
     await reloadAppData();
   } catch (err) {
-    toast('שגיאה: ' + err.message, 'error');
+    toast(t('error.save') + err.message, 'error');
   }
-  btn.disabled = false; btn.innerText = '💾 שמור סוגי מדידות';
+  btn.disabled = false; btn.innerText = t('types.save');
 }
 
 function initMeasureTypeDrag(container) {
@@ -2103,7 +2283,7 @@ function copyLastWorkout() {
       copied++;
     }
   });
-  toast(`✓ הועתקו ${copied} משקלים מ-${sessionDisplayDate(last)}`, 'success');
+  toast(`✓ ${copied} ${t('copy.success')} ${t('copy.from')}${sessionDisplayDate(last)}`, 'success');
 }
 
 // ─── TIMER ────────────────────────────────────────────────────
@@ -2132,7 +2312,7 @@ function _startTimer() {
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().then(p => {
       document.getElementById('timerNote').textContent =
-        p === 'granted' ? '' : 'אפשר התראות לקבל הודעה כשהזמן מסתיים';
+        p === 'granted' ? '' : t('timer.allow_notif');
     });
   }
   _timerInterval = setInterval(_timerTick, 1000);
