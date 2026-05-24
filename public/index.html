@@ -1139,10 +1139,27 @@ function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('lang', lang);
   applyLang();
-  document.getElementById('langHe').classList.toggle('active', lang === 'he');
-  document.getElementById('langEn').classList.toggle('active', lang === 'en');
+
+  // Re-render all stateless dynamic content
+  renderTypeButtons();
+  renderFilterButtons();
+  renderHistory();
+  renderMeasurements();
+
+  // Update session name placeholder (preserves typed input)
+  const nameInput = document.getElementById('sessionNameInput');
+  if (nameInput && selectedType) {
+    nameInput.placeholder = (lastWorkouts[selectedType]?.sessionName)
+      ? t('workout.name_last_ph') + lastWorkouts[selectedType].sessionName
+      : t('workout.name_default_ph');
+  }
+
+  // Timer start button
   const startBtn = document.getElementById('timerStartBtn');
   if (startBtn && !_timerRunning) startBtn.textContent = _timerSecs < _timerTotal ? t('btn.timer_resume') : t('btn.timer_start');
+
+  document.getElementById('langHe').classList.toggle('active', lang === 'he');
+  document.getElementById('langEn').classList.toggle('active', lang === 'en');
 }
 
 function saveDisplayName() {
@@ -1526,12 +1543,12 @@ function makeExCard(name, target) {
         <button class="remove-btn" onclick="document.getElementById('card_${id}').remove()">✕</button>
       </div>
       <div class="field-group">
-        <div class="field"><label>${t('col.weight')}</label><input type="number" class="ex-weight" placeholder="—" autocomplete="off"></div>
-        <div class="field"><label>${t('col.sets')}</label><input type="number" class="ex-sets"   placeholder="—" autocomplete="off"></div>
-        <div class="field"><label>${t('col.reps')}</label><input type="number" class="ex-reps"  placeholder="—" autocomplete="off"></div>
+        <div class="field"><label data-i18n="col.weight">${t('col.weight')}</label><input type="number" class="ex-weight" placeholder="—" autocomplete="off"></div>
+        <div class="field"><label data-i18n="col.sets">${t('col.sets')}</label><input type="number" class="ex-sets"   placeholder="—" autocomplete="off"></div>
+        <div class="field"><label data-i18n="col.reps">${t('col.reps')}</label><input type="number" class="ex-reps"  placeholder="—" autocomplete="off"></div>
       </div>
       <div class="field-group field-notes" style="margin-top:8px;">
-        <div class="field" style="flex:1;"><label>${t('col.notes')}</label><input type="text" class="ex-notes" placeholder="${t('ex.notes_ph')}"></div>
+        <div class="field" style="flex:1;"><label data-i18n="col.notes">${t('col.notes')}</label><input type="text" class="ex-notes" data-i18n-ph="ex.notes_ph" placeholder="${t('ex.notes_ph')}"></div>
       </div>
     </div>
   </div>`;
@@ -1617,8 +1634,8 @@ function buildSessionCard(s, i) {
       <div class="divider"></div>
       <table class="hist-table">
         <thead><tr>
-          <th>${t('col.exercise')}</th><th class="col-num">${t('col.weight')}</th>
-          <th class="col-num">${t('col.sets')}</th><th class="col-num">${t('col.reps')}</th>
+          <th data-i18n="col.exercise">${t('col.exercise')}</th><th class="col-num" data-i18n="col.weight">${t('col.weight')}</th>
+          <th class="col-num" data-i18n="col.sets">${t('col.sets')}</th><th class="col-num" data-i18n="col.reps">${t('col.reps')}</th>
         </tr></thead>
         <tbody>
           ${(s.exercises||[]).map(e => `<tr>
@@ -1707,8 +1724,8 @@ function editSession(btn, sessionId) {
     <div class="edit-session-wrap">
       <div class="divider"></div>
       <div class="edit-session-name-row">
-        <label>${t('sess.name_label')}</label>
-        <input type="text" class="edit-session-name-input" value="${escHtml(session.sessionName||'')}" placeholder="${t('sess.name_ph')}">
+        <label data-i18n="sess.name_label">${t('sess.name_label')}</label>
+        <input type="text" class="edit-session-name-input" value="${escHtml(session.sessionName||'')}" data-i18n-ph="sess.name_ph" placeholder="${t('sess.name_ph')}">
       </div>
       ${(session.exercises||[]).map(e => `
         <div class="edit-ex-row"
@@ -1717,19 +1734,19 @@ function editSession(btn, sessionId) {
              data-target="${escHtml(String(e.target||''))}">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <div class="edit-ex-title" style="margin-bottom:0;">${escHtml(String(e.name))}</div>
-            <button class="edit-ex-delete" onclick="removeEditRow(this)" title="מחק תרגיל">✕</button>
+            <button class="edit-ex-delete" onclick="removeEditRow(this)" title="✕">✕</button>
           </div>
           <div class="edit-ex-fields">
-            <div class="field"><label>${t('col.weight')}</label><input type="text" class="edit-num-input edit-weight" value="${escHtml(String(e.weight||''))}" placeholder="—"></div>
-            <div class="field"><label>${t('col.sets')}</label><input type="text" class="edit-num-input edit-sets"   value="${escHtml(String(e.sets||''))}"   placeholder="—"></div>
-            <div class="field"><label>${t('col.reps')}</label><input type="text" class="edit-num-input edit-reps"  value="${escHtml(String(e.reps||''))}"   placeholder="—"></div>
+            <div class="field"><label data-i18n="col.weight">${t('col.weight')}</label><input type="text" class="edit-num-input edit-weight" value="${escHtml(String(e.weight||''))}" placeholder="—"></div>
+            <div class="field"><label data-i18n="col.sets">${t('col.sets')}</label><input type="text" class="edit-num-input edit-sets"   value="${escHtml(String(e.sets||''))}"   placeholder="—"></div>
+            <div class="field"><label data-i18n="col.reps">${t('col.reps')}</label><input type="text" class="edit-num-input edit-reps"  value="${escHtml(String(e.reps||''))}"   placeholder="—"></div>
           </div>
-          <input type="text" class="edit-notes-input" value="${escHtml(String(e.notes||''))}" placeholder="${t('sess.notes_ph')}">
+          <input type="text" class="edit-notes-input" value="${escHtml(String(e.notes||''))}" data-i18n-ph="sess.notes_ph" placeholder="${t('sess.notes_ph')}">
         </div>
       `).join('')}
       <div class="edit-save-row">
-        <button class="btn-primary" onclick="saveSessionEdit(this,'${escHtml(sessionId)}')">${t('sess.save_btn')}</button>
-        <button class="btn-ghost"   onclick="cancelSessionEdit(this)">${t('sess.cancel_btn')}</button>
+        <button class="btn-primary" data-i18n="sess.save_btn" onclick="saveSessionEdit(this,'${escHtml(sessionId)}')">${t('sess.save_btn')}</button>
+        <button class="btn-ghost"   data-i18n="sess.cancel_btn" onclick="cancelSessionEdit(this)">${t('sess.cancel_btn')}</button>
       </div>
     </div>`;
 }
@@ -2002,7 +2019,7 @@ function renderMeasureForm() {
     </div>
   </div>`;
   if (rest.length) {
-    html += `<div class="section-label">${t('meas.circumferences')}</div>`;
+    html += `<div class="section-label" data-i18n="meas.circumferences">${t('meas.circumferences')}</div>`;
     for (let i = 0; i < rest.length; i += 3) {
       html += '<div class="m-row">';
       const chunk = rest.slice(i, i + 3);
