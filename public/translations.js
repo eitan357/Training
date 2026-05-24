@@ -214,7 +214,7 @@ export const TRANSLATIONS = {
 
     // ── General buttons ───────────────────────────────────────────
     'btn.logout':         'Sign out',
-    'btn.back':           '← Back',
+    'btn.back':           'Back →',
     'btn.save':           'Save',
     'btn.add':            'Add',
     'btn.cancel':         'Cancel',
