@@ -59,6 +59,7 @@ export const TRANSLATIONS = {
     'timer.done_toast':  '⏰ זמן המנוחה הסתיים!',
     'timer.done_notif':  'זמן המנוחה הסתיים! חזור לאימון 💪',
     'timer.allow_notif': 'אפשר התראות לקבל הודעה כשהזמן מסתיים',
+    'timer.sound':       'צליל בסוף',
 
     // ── Workout ───────────────────────────────────────────────────
     'btn.save_workout':        'שמור אימון',
@@ -236,6 +237,7 @@ export const TRANSLATIONS = {
     'timer.done_toast':  '⏰ Rest time is over!',
     'timer.done_notif':  'Rest time is over! Back to training 💪',
     'timer.allow_notif': 'Allow notifications to be alerted when time is up',
+    'timer.sound':       'Sound at end',
 
     // ── Workout ───────────────────────────────────────────────────
     'btn.save_workout':        'Save Workout',
