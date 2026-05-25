@@ -34,6 +34,14 @@
       --text:    #f1f5f9;
       --sub:     #94a3b8;
     }
+    [data-theme="dark"] input,
+    [data-theme="dark"] textarea {
+      background: var(--surface) !important;
+      color: var(--text) !important;
+      -webkit-text-fill-color: var(--text);
+    }
+    [data-theme="dark"] .m-field.weight-field input { background: #2d1f5e !important; border-color: #6d4fc0 !important; }
+    [data-theme="dark"] .measure-header { background: #252f45; border-bottom-color: var(--border); }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
     body {
@@ -80,7 +88,7 @@
       color: var(--text); margin-bottom: 12px; transition: border-color .15s;
       direction: ltr; text-align: left;
     }
-    .auth-input:focus { outline: none; border-color: var(--primary); background: white; }
+    .auth-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .auth-btn {
       width: 100%; padding: 13px; border: none; border-radius: var(--radius);
       background: var(--primary); color: white; font-size: 15px; font-weight: 700;
@@ -307,7 +315,7 @@
       font-size: 15px; color: var(--text);
       background: var(--bg); transition: border-color .15s; text-align: center;
     }
-    .field input:focus { outline: none; border-color: var(--primary); background: white; }
+    .field input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .field-notes input { text-align: start; }
     .ex-name-input {
       width: 100%; padding: 9px 10px;
@@ -315,14 +323,14 @@
       font-size: 15px; font-weight: 700; color: var(--text);
       background: var(--bg); margin-bottom: 6px;
     }
-    .ex-name-input:focus { outline: none; border-color: var(--primary); background: white; }
+    .ex-name-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .ex-target-input {
       width: 100%; padding: 7px 10px;
       border: 1.5px solid var(--border); border-radius: 8px;
       font-size: 13px; color: var(--primary);
       background: var(--bg); direction: ltr; text-align: left;
     }
-    .ex-target-input:focus { outline: none; border-color: var(--primary); background: white; }
+    .ex-target-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
 
     /* ── HISTORY ── */
     .session-card {
@@ -525,7 +533,7 @@
 
     /* ── MEASUREMENTS ── */
     .type-unit-input { width: 72px; padding: 9px 6px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: var(--bg); text-align: center; }
-    .type-unit-input:focus { outline: none; border-color: var(--primary); background: white; }
+    .type-unit-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .m-row  { display: flex; gap: 10px; margin-bottom: 10px; width: 100%; }
     .m-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
     .m-field label { font-size: 11px; color: var(--sub); font-weight: 600; letter-spacing: .3px; }
@@ -534,7 +542,7 @@
       border-radius: 8px; font-size: 15px; color: var(--text);
       background: var(--bg); text-align: center; transition: border-color .15s; min-width: 0;
     }
-    .m-field input:focus { outline: none; border-color: var(--primary); background: white; }
+    .m-field input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .m-field.weight-field input { background: #ede9fe; border-color: #c4b5fd; font-weight: 700; font-size: 18px; padding: 13px 6px; }
     .measure-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; border: 1px solid var(--border); overflow: hidden; }
     .measure-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; background: #faf5ff; border-bottom: 1px solid #ede9fe; }
@@ -2396,6 +2404,9 @@ async function bulkDeleteMeasures() {
   }
 }
 
+function editSelectedSession()  { editSession([...selectedSessions][0]); }
+function editSelectedMeasure()  { editMeasurement([...selectedMeasures][0]); }
+
 Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
@@ -2407,6 +2418,7 @@ Object.assign(window, {
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   editMeasurement, saveMeasureEdit, cancelMeasureEdit,
+  editSelectedSession, editSelectedMeasure,
   switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, removeWorkoutType, saveTemplates,
   saveMeasurement, toggleMeasure, toggleTypesEditor, addMeasureType, removeMeasureType, saveTypesEditor, deleteMeasurementEntry,
 });
@@ -2416,14 +2428,14 @@ Object.assign(window, {
 <div id="histBulkBar" class="bulk-bar" style="display:none;">
   <span class="bulk-bar-count" id="histBulkCount"></span>
   <div class="bulk-bar-actions">
-    <button id="histBulkEditBtn" class="bulk-bar-edit" onclick="editSession([...selectedSessions][0])">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
+    <button id="histBulkEditBtn" class="bulk-bar-edit" onclick="editSelectedSession()">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
     <button class="bulk-bar-del" onclick="bulkDeleteSessions()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
   </div>
 </div>
 <div id="measBulkBar" class="bulk-bar" style="display:none;">
   <span class="bulk-bar-count" id="measBulkCount"></span>
   <div class="bulk-bar-actions">
-    <button id="measBulkEditBtn" class="bulk-bar-edit" onclick="editMeasurement([...selectedMeasures][0])">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
+    <button id="measBulkEditBtn" class="bulk-bar-edit" onclick="editSelectedMeasure()">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
     <button class="bulk-bar-del" onclick="bulkDeleteMeasures()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
   </div>
 </div>

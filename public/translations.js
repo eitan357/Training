@@ -60,7 +60,7 @@ export const TRANSLATIONS = {
     // ── Workout ───────────────────────────────────────────────────
     'btn.save_workout':        'שמור אימון',
     'btn.add_exercise':        '+ הוסף תרגיל',
-    'btn.copy_last':           '📋 העתק מאימון אחרון',
+    'btn.copy_last':           '📋 העתקת אימון אחרון',
     'workout.name_label':      'שם האימון',
     'workout.name_ph':         'שם האימון',
     'workout.name_last_ph':    'אחרון: ',
@@ -234,7 +234,7 @@ export const TRANSLATIONS = {
     // ── Workout ───────────────────────────────────────────────────
     'btn.save_workout':        'Save Workout',
     'btn.add_exercise':        '+ Add Exercise',
-    'btn.copy_last':           '📋 Copy from last workout',
+    'btn.copy_last':           '📋 Copy last workout',
     'workout.name_label':      'Workout Name',
     'workout.name_ph':         'Workout Name',
     'workout.name_last_ph':    'Last: ',
