@@ -185,49 +185,56 @@
     /* ── SECTIONS ── */
     .section { display: none; padding: 0; }
     .section.active { display: block; }
-    /* ── TIMER ── */
-    .timer-wrap    { display: flex; flex-direction: column; height: calc(100dvh - 130px); }
-    .timer-center  { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 16px; gap: 16px; }
-    .timer-bottom  { padding: 0 16px 24px; }
-    .timer-ring-wrap { position: relative; width: 200px; height: 200px; margin: 0 auto 8px; }
-    .timer-svg       { width: 200px; height: 200px; transform: rotate(-90deg); }
-    .timer-track     { fill: none; stroke: var(--border); stroke-width: 12; }
-    .timer-arc       { fill: none; stroke: var(--border); stroke-width: 12; stroke-linecap: round;
-                       stroke-dasharray: 553; stroke-dashoffset: 0; transition: stroke-dashoffset .9s linear, stroke .4s; }
-    .timer-ring-wrap.running .timer-arc { stroke: var(--primary); }
-    .timer-ring-wrap.done    .timer-arc { stroke: var(--green); }
-    .timer-num-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-    .timer-num     { font-size: 52px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -2px; }
-    .timer-presets { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .timer-pre-btn { padding: 9px 16px; border: 1.5px solid var(--border); border-radius: var(--radius);
-                     background: var(--surface); font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
-    .timer-pre-btn.active { border-color: var(--primary); background: var(--primary); color: white; }
-    .timer-controls{ display: flex; gap: 10px; }
-    .timer-start   { flex: 2; padding: 14px; background: var(--primary); color: white; border: none;
-                     border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; }
-    .timer-reset-b { flex: 1; padding: 14px; background: var(--bg); border: 1.5px solid var(--border);
-                     border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; }
-    .timer-note    { font-size: 12px; color: var(--sub); margin-top: 14px; }
-    /* scroll-wheel picker */
-    .picker-wrap   { display: flex; align-items: center; gap: 4px; }
-    .picker-col    { position: relative; width: 76px; height: 144px; overflow: hidden;
-                     background: var(--surface); border-radius: 12px; border: 1.5px solid var(--border); }
-    .picker-scroll { height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory;
-                     scrollbar-width: none; -ms-overflow-style: none; }
-    .picker-scroll::-webkit-scrollbar { display: none; }
-    .picker-item   { height: 48px; display: flex; align-items: center; justify-content: center;
-                     font-size: 26px; font-weight: 700; color: var(--sub); scroll-snap-align: center; }
-    .picker-sep    { font-size: 28px; font-weight: 800; color: var(--sub); padding: 0 2px; line-height: 1; }
-    .picker-col::before, .picker-col::after {
-      content: ''; position: absolute; left: 0; right: 0; height: 44px; z-index: 2; pointer-events: none;
-    }
-    .picker-col::before { top: 0;    background: linear-gradient(to bottom, var(--bg) 20%, transparent); }
-    .picker-col::after  { bottom: 0; background: linear-gradient(to top,   var(--bg) 20%, transparent); }
-    .picker-highlight   { position: absolute; top: 48px; left: 0; right: 0; height: 48px;
-                          border-top: 2px solid var(--primary); border-bottom: 2px solid var(--primary);
-                          pointer-events: none; z-index: 1; }
-    .picker-apply  { padding: 10px 20px; background: var(--primary); color: white; border: none;
-                     border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; }
+    /* ── TIMER V2 ── */
+    .tv2-wrap     { display:flex; flex-direction:column; align-items:center; justify-content:center;
+                    height:calc(100dvh - 130px); }
+    /* — setting view — */
+    .tv2-setting  { display:flex; flex-direction:column; align-items:center; gap:48px; width:100%; }
+    .tv2-picker-row { display:flex; align-items:center; gap:8px; }
+    .tv2-picker-col { display:flex; flex-direction:column; align-items:center; gap:10px; }
+    .tv2-col-label  { font-size:11px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:.6px; }
+    .tv2-scroller   { position:relative; width:100px; height:192px; overflow:hidden; border-radius:16px; }
+    .tv2-scroll-inner { height:100%; overflow-y:scroll; scroll-snap-type:y mandatory; scrollbar-width:none; }
+    .tv2-scroll-inner::-webkit-scrollbar { display:none; }
+    .tv2-scroll-item  { height:64px; display:flex; align-items:center; justify-content:center;
+                        font-size:42px; font-weight:300; color:var(--sub); scroll-snap-align:center;
+                        font-variant-numeric:tabular-nums; }
+    .tv2-scroller::before,.tv2-scroller::after { content:''; position:absolute; left:0; right:0; z-index:2; height:64px; pointer-events:none; }
+    .tv2-scroller::before { top:0;    background:linear-gradient(to bottom,var(--bg) 10%,transparent); }
+    .tv2-scroller::after  { bottom:0; background:linear-gradient(to top,  var(--bg) 10%,transparent); }
+    .tv2-highlight { position:absolute; top:64px; left:4px; right:4px; height:64px;
+                     border-top:2px solid var(--primary); border-bottom:2px solid var(--primary);
+                     border-radius:6px; z-index:1; pointer-events:none; }
+    .tv2-sep { font-size:52px; font-weight:200; color:var(--text); line-height:1; margin-top:20px; }
+    .tv2-play-btn { width:76px; height:76px; border-radius:50%; background:var(--primary); color:white;
+                    border:none; font-size:30px; cursor:pointer;
+                    display:flex; align-items:center; justify-content:center;
+                    box-shadow:0 4px 24px rgba(99,102,241,.45); transition:transform .12s,opacity .12s; }
+    .tv2-play-btn:active { transform:scale(.92); }
+    /* — running view — */
+    .tv2-running  { display:flex; flex-direction:column; align-items:center; gap:52px; }
+    .tv2-ring-wrap { position:relative; width:260px; height:260px; }
+    .tv2-ring-svg  { width:260px; height:260px; transform:rotate(-90deg); }
+    .tv2-ring-track { fill:none; stroke:var(--border); stroke-width:10; }
+    .tv2-ring-arc   { fill:none; stroke:var(--primary); stroke-width:10; stroke-linecap:round;
+                      stroke-dasharray:754; stroke-dashoffset:0;
+                      transition:stroke-dashoffset .9s linear, stroke .3s; }
+    .tv2-ring-arc.done { stroke:var(--green); }
+    .tv2-ring-center { position:absolute; inset:0; display:flex; flex-direction:column;
+                       align-items:center; justify-content:center; gap:6px; }
+    .tv2-ring-time  { font-size:56px; font-weight:700; color:var(--text);
+                      font-variant-numeric:tabular-nums; letter-spacing:-2px; }
+    .tv2-ring-total { font-size:13px; color:var(--sub); }
+    .tv2-ctrl-btns  { display:flex; gap:28px; align-items:center; }
+    .tv2-btn-stop   { width:60px; height:60px; border-radius:50%; background:var(--surface);
+                      border:1.5px solid var(--border); color:var(--red); font-size:20px;
+                      cursor:pointer; display:flex; align-items:center; justify-content:center;
+                      transition:transform .12s; }
+    .tv2-btn-pause  { width:72px; height:72px; border-radius:50%; background:var(--primary); color:white;
+                      border:none; font-size:24px; cursor:pointer;
+                      display:flex; align-items:center; justify-content:center;
+                      box-shadow:0 4px 20px rgba(99,102,241,.4); transition:transform .12s; }
+    .tv2-btn-stop:active,.tv2-btn-pause:active { transform:scale(.92); }
     .copy-last-btn { display: inline-flex; align-items: center; gap: 6px;
                      padding: 7px 14px; background: none;
                      border: 1.5px solid var(--primary); border-radius: 20px;
@@ -720,44 +727,44 @@
       <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
     </div>
   </div>
-  <div class="timer-wrap">
-    <div class="timer-center">
-      <div class="timer-ring-wrap" id="timerRing">
-        <svg viewBox="0 0 200 200" class="timer-svg">
-          <circle cx="100" cy="100" r="88" class="timer-track"/>
-          <circle cx="100" cy="100" r="88" class="timer-arc" id="timerProgressRing"/>
-        </svg>
-        <div class="timer-num-overlay">
-          <span class="timer-num" id="timerNum">01:30</span>
-        </div>
-      </div>
-      <div class="timer-presets">
-        <button class="timer-pre-btn"        onclick="setTimerPreset(60,  this)">1:00</button>
-        <button class="timer-pre-btn active" onclick="setTimerPreset(90,  this)">1:30</button>
-        <button class="timer-pre-btn"        onclick="setTimerPreset(120, this)">2:00</button>
-        <button class="timer-pre-btn"        onclick="setTimerPreset(180, this)">3:00</button>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
-        <div class="picker-wrap">
-          <div class="picker-col">
-            <div class="picker-highlight"></div>
-            <div class="picker-scroll" id="pickerMin"></div>
-          </div>
-          <span class="picker-sep">:</span>
-          <div class="picker-col">
-            <div class="picker-highlight"></div>
-            <div class="picker-scroll" id="pickerSec"></div>
+  <div class="tv2-wrap">
+    <!-- Setting view -->
+    <div class="tv2-setting" id="tv2SettingView">
+      <div class="tv2-picker-row">
+        <div class="tv2-picker-col">
+          <div class="tv2-col-label" data-i18n="timer.min">דקות</div>
+          <div class="tv2-scroller" id="tv2Min">
+            <div class="tv2-highlight"></div>
+            <div class="tv2-scroll-inner" id="tv2MinInner"></div>
           </div>
         </div>
-        <button class="picker-apply" onclick="applyCustomTimer()" data-i18n="btn.timer_set">הגדר</button>
+        <div class="tv2-sep">:</div>
+        <div class="tv2-picker-col">
+          <div class="tv2-col-label" data-i18n="timer.sec">שניות</div>
+          <div class="tv2-scroller" id="tv2Sec">
+            <div class="tv2-highlight"></div>
+            <div class="tv2-scroll-inner" id="tv2SecInner"></div>
+          </div>
+        </div>
       </div>
+      <button class="tv2-play-btn" onclick="tv2Start()">▶</button>
     </div>
-    <div class="timer-bottom">
-      <div class="timer-controls">
-        <button class="timer-reset-b" onclick="resetTimer()" data-i18n="btn.timer_reset">↺ איפוס</button>
-        <button class="timer-start"   id="timerStartBtn" onclick="toggleTimer()" data-i18n="btn.timer_start">▶ התחל</button>
+    <!-- Running view -->
+    <div class="tv2-running" id="tv2RunningView" style="display:none;">
+      <div class="tv2-ring-wrap">
+        <svg class="tv2-ring-svg" viewBox="0 0 280 280">
+          <circle class="tv2-ring-track" cx="140" cy="140" r="120"/>
+          <circle class="tv2-ring-arc"   cx="140" cy="140" r="120" id="tv2Arc"/>
+        </svg>
+        <div class="tv2-ring-center">
+          <div class="tv2-ring-time"  id="tv2Time">00:00</div>
+          <div class="tv2-ring-total" id="tv2Total"></div>
+        </div>
       </div>
-      <div class="timer-note" id="timerNote"></div>
+      <div class="tv2-ctrl-btns">
+        <button class="tv2-btn-stop"  onclick="tv2Stop()" title="Stop">■</button>
+        <button class="tv2-btn-pause" id="tv2PauseBtn" onclick="tv2TogglePause()">⏸</button>
+      </div>
     </div>
   </div>
 </div>
@@ -950,9 +957,6 @@ function setLang(lang) {
       : t('workout.name_default_ph');
   }
 
-  // Timer start button
-  const startBtn = document.getElementById('timerStartBtn');
-  if (startBtn && !_timerRunning) startBtn.textContent = _timerSecs < _timerTotal ? t('btn.timer_resume') : t('btn.timer_start');
 }
 
 function saveDisplayName() {
@@ -1272,7 +1276,10 @@ function showSection(name) {
   if (navEl) navEl.classList.add('active');
   currentSection = name;
   if (name === 'measurements') setDefaultDate();
-  if (name === 'timer') _initPickers();
+  if (name === 'timer') {
+    if (_timerRunning || _timerSecs < _timerTotal) { _tv2ShowView('running'); _tv2UpdateDisplay(); }
+    else { _tv2ShowView('setting'); _tv2InitPickers(); }
+  }
   if (name === 'settings') initSettingsUI();
   updateHistBulkBar();
   updateMeasBulkBar();
@@ -2191,124 +2198,139 @@ function copyLastWorkout() {
 
 // ─── TIMER ────────────────────────────────────────────────────
 let _timerInterval = null;
-let _timerSecs     = 90;
-let _timerTotal    = 90;
+let _timerSecs     = +(localStorage.getItem('timerLastSecs') || 90);
+let _timerTotal    = _timerSecs;
 let _timerRunning  = false;
+const _TV2_CIRC    = 754;
 
-function setTimerPreset(secs, btn) {
-  resetTimer();
-  _timerSecs = secs; _timerTotal = secs;
-  document.querySelectorAll('.timer-pre-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  _updateTimerDisplay();
+function tv2Start() {
+  const m = _tv2GetVal('tv2MinInner');
+  const s = _tv2GetVal('tv2SecInner');
+  const total = m * 60 + s;
+  if (total <= 0) return;
+  _timerSecs = total; _timerTotal = total;
+  localStorage.setItem('timerLastSecs', total);
+  _tv2ShowView('running');
+  _tv2UpdateDisplay();
+  _tv2DoStart();
 }
 
-function toggleTimer() {
-  _timerRunning ? _pauseTimer() : _startTimer();
-}
-
-function _startTimer() {
-  if (_timerSecs <= 0) { resetTimer(); return; }
-  _timerRunning = true;
-  document.getElementById('timerStartBtn').textContent = t('btn.timer_pause');
-  document.getElementById('timerRing').classList.add('running');
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().then(p => {
-      document.getElementById('timerNote').textContent =
-        p === 'granted' ? '' : t('timer.allow_notif');
-    });
+function tv2TogglePause() {
+  if (_timerRunning) {
+    clearInterval(_timerInterval);
+    _timerRunning = false;
+    document.getElementById('tv2PauseBtn').innerHTML = '▶';
+  } else {
+    if (_timerSecs <= 0) return;
+    _tv2DoStart();
   }
-  _timerInterval = setInterval(_timerTick, 1000);
 }
 
-function _pauseTimer() {
-  _timerRunning = false;
+function tv2Stop() {
   clearInterval(_timerInterval);
-  document.getElementById('timerStartBtn').textContent = t('btn.timer_resume');
+  _timerRunning = false;
+  _timerSecs = _timerTotal;
+  const arc = document.getElementById('tv2Arc');
+  if (arc) { arc.classList.remove('done'); arc.style.strokeDashoffset = '0'; }
+  document.getElementById('timerNavIcon').textContent  = '⏱️';
+  document.getElementById('timerNavLabel').textContent = t('nav.timer');
+  _tv2ShowView('setting');
 }
 
 function resetTimer() {
-  clearInterval(_timerInterval);
-  _timerRunning = false; _timerSecs = _timerTotal;
-  const btn = document.getElementById('timerStartBtn');
-  const ring = document.getElementById('timerRing');
-  if (btn)  btn.textContent = t('btn.timer_start');
-  if (ring) ring.classList.remove('running', 'done');
-  document.getElementById('timerNavIcon').textContent  = '⏱️';
-  document.getElementById('timerNavLabel').textContent = t('nav.timer');
-  _updateTimerDisplay();
+  tv2Stop();
+}
+
+function toggleTimer() {
+  if (!_timerRunning && _timerSecs === _timerTotal) { tv2Start(); }
+  else tv2TogglePause();
+}
+
+function _tv2DoStart() {
+  _timerRunning = true;
+  document.getElementById('tv2PauseBtn').innerHTML = '⏸';
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  _timerInterval = setInterval(_timerTick, 1000);
 }
 
 function _timerTick() {
   _timerSecs--;
-  _updateTimerDisplay();
+  _tv2UpdateDisplay();
   const m = Math.floor(_timerSecs / 60);
   const s = String(_timerSecs % 60).padStart(2, '0');
   document.getElementById('timerNavLabel').textContent = _timerSecs > 0 ? `${m}:${s}` : t('nav.timer');
-
   if (_timerSecs <= 0) {
     clearInterval(_timerInterval);
     _timerRunning = false;
-    document.getElementById('timerRing').classList.replace('running', 'done');
-    document.getElementById('timerStartBtn').textContent = t('btn.timer_start');
-    document.getElementById('timerNavIcon').textContent  = '✅';
+    const arc = document.getElementById('tv2Arc');
+    if (arc) arc.classList.add('done');
+    document.getElementById('tv2PauseBtn').innerHTML = '▶';
+    document.getElementById('timerNavIcon').textContent = '✅';
     if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400]);
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted')
       new Notification('Training Diary ⚡', { body: t('timer.done_notif'), icon: '/icon-bolt.svg' });
-    }
     toast(t('timer.done_toast'), 'success');
   }
 }
 
-function _buildPicker(id, max, initVal) {
-  const el = document.getElementById(id);
-  if (el.dataset.built) return;
-  el.dataset.built = '1';
-  const top = document.createElement('div'); top.style.height = '48px'; el.appendChild(top);
-  for (let i = 0; i <= max; i++) {
-    const item = document.createElement('div');
-    item.className = 'picker-item';
-    item.textContent = String(i).padStart(2, '0');
-    el.appendChild(item);
-  }
-  const bot = document.createElement('div'); bot.style.height = '48px'; el.appendChild(bot);
-  requestAnimationFrame(() => { el.scrollTop = initVal * 48; });
-}
-
-function _getPickerVal(id) {
-  const el = document.getElementById(id);
-  return Math.min(Math.round(el.scrollTop / 48), 59);
-}
-
-function _initPickers() {
-  const initM = Math.floor(_timerTotal / 60);
-  const initS = _timerTotal % 60;
-  _buildPicker('pickerMin', 59, initM);
-  _buildPicker('pickerSec', 59, initS);
-}
-
-function applyCustomTimer() {
-  const m = _getPickerVal('pickerMin');
-  const s = _getPickerVal('pickerSec');
-  const total = m * 60 + s;
-  if (total <= 0) return;
-  resetTimer();
-  _timerSecs = total; _timerTotal = total;
-  document.querySelectorAll('.timer-pre-btn').forEach(b => b.classList.remove('active'));
-  _updateTimerDisplay();
-}
-
-function _updateTimerDisplay() {
-  const m   = Math.floor(_timerSecs / 60);
-  const s   = String(_timerSecs % 60).padStart(2, '0');
-  const num = document.getElementById('timerNum');
-  const arc = document.getElementById('timerProgressRing');
-  if (num) num.textContent = `${String(m).padStart(2,'0')}:${s}`;
+function _tv2UpdateDisplay() {
+  const m = Math.floor(_timerSecs / 60);
+  const s = String(_timerSecs % 60).padStart(2, '0');
+  const timeEl = document.getElementById('tv2Time');
+  if (timeEl) timeEl.textContent = `${String(m).padStart(2,'0')}:${s}`;
+  const arc = document.getElementById('tv2Arc');
   if (arc) {
     const pct = _timerTotal > 0 ? _timerSecs / _timerTotal : 1;
-    arc.style.strokeDashoffset = (553 * (1 - pct)).toFixed(1);
+    arc.style.strokeDashoffset = (_TV2_CIRC * (1 - pct)).toFixed(1);
+  }
+  const totalEl = document.getElementById('tv2Total');
+  if (totalEl) {
+    const tm = Math.floor(_timerTotal / 60);
+    const ts = String(_timerTotal % 60).padStart(2, '0');
+    totalEl.textContent = `${t('timer.total')} ${String(tm).padStart(2,'0')}:${ts}`;
   }
 }
+
+function _tv2ShowView(view) {
+  document.getElementById('tv2SettingView').style.display  = view === 'setting' ? '' : 'none';
+  document.getElementById('tv2RunningView').style.display  = view === 'running' ? '' : 'none';
+}
+
+function _tv2BuildPicker(innerId, maxVal, initVal) {
+  const inner = document.getElementById(innerId);
+  if (!inner) return;
+  inner.innerHTML = '';
+  const padT = document.createElement('div'); padT.style.height = '64px'; inner.appendChild(padT);
+  for (let i = 0; i <= maxVal; i++) {
+    const item = document.createElement('div');
+    item.className = 'tv2-scroll-item';
+    item.textContent = String(i).padStart(2, '0');
+    inner.appendChild(item);
+  }
+  const padB = document.createElement('div'); padB.style.height = '64px'; inner.appendChild(padB);
+  requestAnimationFrame(() => { inner.scrollTop = initVal * 64; });
+}
+
+function _tv2GetVal(innerId) {
+  const el = document.getElementById(innerId);
+  return el ? Math.min(Math.round(el.scrollTop / 64), 59) : 0;
+}
+
+function _tv2InitPickers() {
+  const m = Math.floor(_timerTotal / 60);
+  const s = _timerTotal % 60;
+  _tv2BuildPicker('tv2MinInner', 59, m);
+  _tv2BuildPicker('tv2SecInner', 59, s);
+}
+
+function setTimerPreset(secs) {
+  _timerSecs = secs; _timerTotal = secs;
+  localStorage.setItem('timerLastSecs', secs);
+  _tv2ShowView('setting');
+  _tv2InitPickers();
+}
+
+function applyCustomTimer() { tv2Start(); }
 
 // ─── TOAST ────────────────────────────────────────────────────
 let _toastTimer;
@@ -2424,7 +2446,7 @@ Object.assign(window, {
   selectType, addCustomExercise, submitData, copyLastWorkout,
   goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
-  toggleTimer, resetTimer, setTimerPreset, applyCustomTimer,
+  toggleTimer, resetTimer, setTimerPreset, applyCustomTimer, tv2Start, tv2Stop, tv2TogglePause,
   filterHistory, toggleSess, toggleMonthGroup,
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
