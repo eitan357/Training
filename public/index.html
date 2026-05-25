@@ -218,11 +218,12 @@
                           pointer-events: none; z-index: 1; }
     .picker-apply  { padding: 10px 20px; background: var(--primary); color: white; border: none;
                      border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; }
-    .copy-last-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
-                     padding: 12px 16px; background: var(--primary); border: none; border-radius: var(--radius);
-                     color: white; font-size: 14px; font-weight: 700; cursor: pointer;
-                     box-shadow: 0 2px 8px rgba(99,102,241,.35); margin-bottom: 14px; }
-    .copy-last-btn:active { opacity: .85; }
+    .copy-last-btn { display: inline-flex; align-items: center; gap: 6px;
+                     padding: 7px 14px; background: none;
+                     border: 1.5px solid var(--primary); border-radius: 20px;
+                     color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer;
+                     margin-bottom: 10px; transition: all .15s; }
+    .copy-last-btn:active { background: color-mix(in srgb, var(--primary) 10%, transparent); }
     .topbar-edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px;
       padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--sub); cursor: pointer; transition: all .15s; }
     .topbar-edit-btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -2165,8 +2166,10 @@ function copyLastWorkout() {
   document.querySelectorAll('#exerciseList .card').forEach(card => {
     const name   = card.querySelector('.ex-name-text')?.innerText?.trim();
     const lastEx = last.exercises?.find(e => String(e.name).trim() === name);
-    if (lastEx && lastEx.weight !== '' && lastEx.weight !== undefined) {
-      card.querySelector('.ex-weight').value = lastEx.weight;
+    if (lastEx) {
+      if (lastEx.weight !== '' && lastEx.weight !== undefined) card.querySelector('.ex-weight').value = lastEx.weight;
+      if (lastEx.sets   !== '' && lastEx.sets   !== undefined) card.querySelector('.ex-sets').value   = lastEx.sets;
+      if (lastEx.reps   !== '' && lastEx.reps   !== undefined) card.querySelector('.ex-reps').value   = lastEx.reps;
       copied++;
     }
   });

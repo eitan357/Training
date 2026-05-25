@@ -60,7 +60,7 @@ export const TRANSLATIONS = {
     // ── Workout ───────────────────────────────────────────────────
     'btn.save_workout':        'שמור אימון',
     'btn.add_exercise':        '+ הוסף תרגיל',
-    'btn.copy_last':           '📋 העתק משקלים מאימון אחרון ←',
+    'btn.copy_last':           '📋 העתק מאימון אחרון',
     'workout.name_label':      'שם האימון',
     'workout.name_ph':         'שם האימון',
     'workout.name_last_ph':    'אחרון: ',
@@ -71,8 +71,8 @@ export const TRANSLATIONS = {
     'workout.no_results':      'אין אימונים להצגה',
     'workout.saved_ok':        'האימון נשמר בהצלחה!',
     'workout.fill_first':      'מלא נתונים לפני השמירה.',
-    'copy.success':            'הועתקו',
-    'copy.from':               'משקלים מ-',
+    'copy.success':            'תרגילים הועתקו מ-',
+    'copy.from':               '',
 
     // ── Exercise card fields ──────────────────────────────────────
     'col.exercise': 'תרגיל',
@@ -234,7 +234,7 @@ export const TRANSLATIONS = {
     // ── Workout ───────────────────────────────────────────────────
     'btn.save_workout':        'Save Workout',
     'btn.add_exercise':        '+ Add Exercise',
-    'btn.copy_last':           '📋 Copy weights from last workout →',
+    'btn.copy_last':           '📋 Copy from last workout',
     'workout.name_label':      'Workout Name',
     'workout.name_ph':         'Workout Name',
     'workout.name_last_ph':    'Last: ',
@@ -245,8 +245,8 @@ export const TRANSLATIONS = {
     'workout.no_results':      'No workouts to display',
     'workout.saved_ok':        'Workout saved!',
     'workout.fill_first':      'Fill in data before saving.',
-    'copy.success':            'copied',
-    'copy.from':               'weights from ',
+    'copy.success':            'exercises copied from',
+    'copy.from':               '',
 
     // ── Exercise card fields ──────────────────────────────────────
     'col.exercise': 'Exercise',
