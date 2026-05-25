@@ -139,6 +139,7 @@ export const TRANSLATIONS = {
     // ── Bulk delete ───────────────────────────────────────────────
     'bulk.selected':   'נבחרו',
     'bulk.delete_btn': 'מחק נבחרים',
+    'bulk.edit_btn':   'ערוך',
     'bulk.deleted':    'נמחקו',
 
     // ── Settings ──────────────────────────────────────────────────
@@ -312,6 +313,7 @@ export const TRANSLATIONS = {
     // ── Bulk delete ───────────────────────────────────────────────
     'bulk.selected':   'selected',
     'bulk.delete_btn': 'Delete selected',
+    'bulk.edit_btn':   'Edit',
     'bulk.deleted':    'deleted',
 
     // ── Settings ──────────────────────────────────────────────────

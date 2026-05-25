@@ -464,7 +464,9 @@
     }
     @keyframes bulkSlide { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .bulk-bar-count { font-size: 14px; font-weight: 600; color: var(--text); }
-    .bulk-bar-del { background: var(--red); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .bulk-bar-actions { display: flex; gap: 8px; }
+    .bulk-bar-del  { background: var(--red); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .bulk-bar-edit { background: none; color: var(--primary); border: 1.5px solid var(--primary); border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
 
     /* ── SESSION NAME ── */
     .session-name-label-title { display: block; font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 6px; }
@@ -1406,7 +1408,6 @@ function buildSessionCard(s, i) {
       </div>
       <div style="display:flex;align-items:center;gap:4px;">
         <span class="session-badge ${badgeClass}">${t('workout.badge')} ${escHtml(s.type)}</span>
-        <button class="delete-btn" onclick="event.stopPropagation();editSession(this,'${escHtml(s.id)}')" title="✏️">✏️</button>
         <span class="chevron">▼</span>
       </div>
     </div>
@@ -1492,11 +1493,13 @@ function toggleMonthGroup(id, header) {
 }
 
 // ─── SESSION EDIT ─────────────────────────────────────────────
-function editSession(btn, sessionId) {
+function editSession(sessionId) {
   const session = allSessions.find(s => s.id === sessionId);
   if (!session) return;
 
-  const card = btn.closest('.session-card');
+  const card = document.querySelector(`.session-card[data-sid="${sessionId}"]`);
+  if (!card) return;
+  toggleSess(allSessions.indexOf(session), card.querySelector('.session-header'));
   const body = card.querySelector('.session-body');
   body.classList.add('open');
 
@@ -1958,6 +1961,59 @@ async function deleteMeasurementEntry(btn, id) {
   });
 }
 
+// ─── MEASUREMENT EDIT ─────────────────────────────────────────
+function editMeasurement(measureId) {
+  const m = allMeasurements.find(x => String(x.id) === String(measureId));
+  if (!m) return;
+  const card = document.querySelector(`.measure-card[data-mid="${measureId}"]`);
+  if (!card) return;
+  const body = card.querySelector('.measure-body');
+  body.classList.add('open');
+  const [primary, ...rest] = measureTypes;
+  let fieldsHtml = '';
+  if (primary) {
+    fieldsHtml += `<div class="m-row"><div class="m-field weight-field">
+      <label>${escHtml(primary.name)} (${escHtml(primary.unit)})</label>
+      <input type="number" data-type-name="${escHtml(primary.name)}" value="${escHtml(String(m[primary.name]||''))}" placeholder="—" step="0.1">
+    </div></div>`;
+  }
+  for (let i = 0; i < rest.length; i += 3) {
+    fieldsHtml += '<div class="m-row">';
+    const chunk = rest.slice(i, i + 3);
+    chunk.forEach(f => {
+      fieldsHtml += `<div class="m-field"><label>${escHtml(f.name)}</label>
+        <input type="number" data-type-name="${escHtml(f.name)}" value="${escHtml(String(m[f.name]||''))}" placeholder="—" step="0.1"></div>`;
+    });
+    for (let p = chunk.length; p < 3; p++) fieldsHtml += '<div class="m-field"></div>';
+    fieldsHtml += '</div>';
+  }
+  body.innerHTML = `<div class="edit-session-wrap"><div class="divider"></div>
+    ${fieldsHtml}
+    <div class="edit-save-row">
+      <button class="btn-primary" onclick="saveMeasureEdit(this,'${escHtml(String(measureId))}')" data-i18n="sess.save_btn">${t('sess.save_btn')}</button>
+      <button class="btn-ghost" onclick="cancelMeasureEdit()" data-i18n="sess.cancel_btn">${t('sess.cancel_btn')}</button>
+    </div></div>`;
+}
+
+async function saveMeasureEdit(saveBtn, measureId) {
+  const body = saveBtn.closest('.measure-body');
+  const fields = {};
+  body.querySelectorAll('[data-type-name]').forEach(input => {
+    fields[input.dataset.typeName] = input.value !== '' ? input.value : null;
+  });
+  saveBtn.disabled = true; saveBtn.innerText = t('saving');
+  try {
+    await updateDoc(doc(db, 'users', currentUser.uid, 'measurements', measureId), fields);
+    toast(t('sess.saved_ok'), 'success');
+    await reloadAppData();
+  } catch (err) {
+    toast(t('error.save') + err.message, 'error');
+    saveBtn.disabled = false; saveBtn.innerText = t('sess.save_btn');
+  }
+}
+
+function cancelMeasureEdit() { renderMeasurements(); }
+
 // ─── MEASUREMENT TYPES EDITOR ─────────────────────────────────
 function toggleTypesEditor() {
   typesEditorOpen = !typesEditorOpen;
@@ -2277,6 +2333,8 @@ function updateHistBulkBar() {
   if (!bar) return;
   if (selectedSessions.size && currentSection === 'history') {
     document.getElementById('histBulkCount').textContent = selectedSessions.size + ' ' + t('bulk.selected');
+    const editBtn = document.getElementById('histBulkEditBtn');
+    if (editBtn) editBtn.style.display = selectedSessions.size === 1 ? '' : 'none';
     bar.style.display = 'flex';
   } else {
     bar.style.display = 'none';
@@ -2313,6 +2371,8 @@ function updateMeasBulkBar() {
   if (!bar) return;
   if (selectedMeasures.size && currentSection === 'measurements') {
     document.getElementById('measBulkCount').textContent = selectedMeasures.size + ' ' + t('bulk.selected');
+    const editBtn = document.getElementById('measBulkEditBtn');
+    if (editBtn) editBtn.style.display = selectedMeasures.size === 1 ? '' : 'none';
     bar.style.display = 'flex';
   } else {
     bar.style.display = 'none';
@@ -2343,19 +2403,26 @@ Object.assign(window, {
   filterHistory, toggleSess, toggleMonthGroup,
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
+  editMeasurement, saveMeasureEdit, cancelMeasureEdit,
   switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, removeWorkoutType, saveTemplates,
   saveMeasurement, toggleMeasure, toggleTypesEditor, addMeasureType, removeMeasureType, saveTypesEditor, deleteMeasurementEntry,
 });
 </script>
 
-<!-- Bulk-delete floating bars -->
+<!-- Bulk action floating bars -->
 <div id="histBulkBar" class="bulk-bar" style="display:none;">
   <span class="bulk-bar-count" id="histBulkCount"></span>
-  <button class="bulk-bar-del" onclick="bulkDeleteSessions()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+  <div class="bulk-bar-actions">
+    <button id="histBulkEditBtn" class="bulk-bar-edit" onclick="editSession([...selectedSessions][0])">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
+    <button class="bulk-bar-del" onclick="bulkDeleteSessions()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+  </div>
 </div>
 <div id="measBulkBar" class="bulk-bar" style="display:none;">
   <span class="bulk-bar-count" id="measBulkCount"></span>
-  <button class="bulk-bar-del" onclick="bulkDeleteMeasures()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+  <div class="bulk-bar-actions">
+    <button id="measBulkEditBtn" class="bulk-bar-edit" onclick="editMeasurement([...selectedMeasures][0])">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
+    <button class="bulk-bar-del" onclick="bulkDeleteMeasures()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+  </div>
 </div>
 </body>
 </html>
