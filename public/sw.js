@@ -23,7 +23,7 @@ self.addEventListener('fetch', e => {
 
   // HTML and translations — always network (change frequently)
   if (e.request.headers.get('accept')?.includes('text/html')) return;
-  if (url.pathname.endsWith('/translations.js')) return;
+  if (url.pathname.endsWith('/translations.js') || url.searchParams.has('v')) return;
 
   // Everything else — cache-first
   e.respondWith(
