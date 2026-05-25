@@ -56,7 +56,9 @@
       bottom: calc(56px + env(safe-area-inset-bottom));
       overflow-y: auto; overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
+      transition: padding-bottom .18s ease;
     }
+    #main-content.bulk-open { padding-bottom: 88px; }
 
     /* ── AUTH SCREEN ── */
     #auth-screen {
@@ -316,7 +318,7 @@
       background: var(--bg); transition: border-color .15s; text-align: center; direction: ltr;
     }
     .field input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
-    .field-notes input { text-align: start; }
+    .field-notes input { text-align: start; direction: inherit; }
     .ex-name-input {
       width: 100%; padding: 9px 10px;
       border: 1.5px solid var(--border); border-radius: 8px;
@@ -2342,14 +2344,17 @@ function toggleSessionSelect(id) {
 
 function updateHistBulkBar() {
   const bar = document.getElementById('histBulkBar');
+  const mc  = document.getElementById('main-content');
   if (!bar) return;
   if (selectedSessions.size && currentSection === 'history') {
     document.getElementById('histBulkCount').textContent = selectedSessions.size + ' ' + t('bulk.selected');
     const editBtn = document.getElementById('histBulkEditBtn');
     if (editBtn) editBtn.style.display = selectedSessions.size === 1 ? '' : 'none';
     bar.style.display = 'flex';
+    mc?.classList.add('bulk-open');
   } else {
     bar.style.display = 'none';
+    mc?.classList.remove('bulk-open');
   }
 }
 
@@ -2380,14 +2385,17 @@ function toggleMeasureSelect(id) {
 
 function updateMeasBulkBar() {
   const bar = document.getElementById('measBulkBar');
+  const mc  = document.getElementById('main-content');
   if (!bar) return;
   if (selectedMeasures.size && currentSection === 'measurements') {
     document.getElementById('measBulkCount').textContent = selectedMeasures.size + ' ' + t('bulk.selected');
     const editBtn = document.getElementById('measBulkEditBtn');
     if (editBtn) editBtn.style.display = selectedMeasures.size === 1 ? '' : 'none';
     bar.style.display = 'flex';
+    mc?.classList.add('bulk-open');
   } else {
     bar.style.display = 'none';
+    mc?.classList.remove('bulk-open');
   }
 }
 
