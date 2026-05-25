@@ -190,7 +190,7 @@
                     height:calc(100dvh - 130px); }
     /* — setting view — */
     .tv2-setting  { display:flex; flex-direction:column; align-items:center; gap:48px; width:100%; }
-    .tv2-picker-row { display:flex; align-items:center; gap:8px; }
+    .tv2-picker-row { display:flex; align-items:center; gap:8px; direction:ltr; }
     .tv2-picker-col { display:flex; flex-direction:column; align-items:center; gap:10px; }
     .tv2-col-label  { font-size:11px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:.6px; }
     .tv2-scroller   { position:relative; width:100px; height:192px; overflow:hidden; border-radius:16px; }
@@ -235,6 +235,12 @@
                       display:flex; align-items:center; justify-content:center;
                       box-shadow:0 4px 20px rgba(99,102,241,.4); transition:transform .12s; }
     .tv2-btn-stop:active,.tv2-btn-pause:active { transform:scale(.92); }
+    /* CSS-drawn icons (no emoji colour issues) */
+    .tv2-icon { display:inline-flex; align-items:center; justify-content:center; }
+    .tv2-icon-pause { gap:5px; }
+    .tv2-icon-pause::before,.tv2-icon-pause::after { content:''; width:4px; height:20px; background:white; border-radius:2px; display:block; }
+    .tv2-icon-play::before { content:''; display:block; width:0; height:0; border-style:solid; border-width:10px 0 10px 16px; border-color:transparent transparent transparent white; margin-left:3px; }
+    .tv2-icon-stop-sq::before { content:''; display:block; width:16px; height:16px; background:var(--red); border-radius:3px; }
     .copy-last-btn { display: inline-flex; align-items: center; gap: 6px;
                      padding: 7px 14px; background: none;
                      border: 1.5px solid var(--primary); border-radius: 20px;
@@ -747,7 +753,7 @@
           </div>
         </div>
       </div>
-      <button class="tv2-play-btn" onclick="tv2Start()">▶</button>
+      <button class="tv2-play-btn" onclick="tv2Start()"><span class="tv2-icon tv2-icon-play"></span></button>
     </div>
     <!-- Running view -->
     <div class="tv2-running" id="tv2RunningView" style="display:none;">
@@ -762,8 +768,8 @@
         </div>
       </div>
       <div class="tv2-ctrl-btns">
-        <button class="tv2-btn-stop"  onclick="tv2Stop()" title="Stop">■</button>
-        <button class="tv2-btn-pause" id="tv2PauseBtn" onclick="tv2TogglePause()">⏸</button>
+        <button class="tv2-btn-stop"  onclick="tv2Stop()"><span class="tv2-icon tv2-icon-stop-sq"></span></button>
+        <button class="tv2-btn-pause" id="tv2PauseBtn" onclick="tv2TogglePause()"><span class="tv2-icon tv2-icon-pause" id="tv2PauseIcon"></span></button>
       </div>
     </div>
   </div>
@@ -2219,7 +2225,7 @@ function tv2TogglePause() {
   if (_timerRunning) {
     clearInterval(_timerInterval);
     _timerRunning = false;
-    document.getElementById('tv2PauseBtn').innerHTML = '▶';
+    _tv2SetPauseIcon('play');
   } else {
     if (_timerSecs <= 0) return;
     _tv2DoStart();
@@ -2246,9 +2252,15 @@ function toggleTimer() {
   else tv2TogglePause();
 }
 
+function _tv2SetPauseIcon(state) {
+  const icon = document.getElementById('tv2PauseIcon');
+  if (!icon) return;
+  icon.className = 'tv2-icon ' + (state === 'play' ? 'tv2-icon-play' : 'tv2-icon-pause');
+}
+
 function _tv2DoStart() {
   _timerRunning = true;
-  document.getElementById('tv2PauseBtn').innerHTML = '⏸';
+  _tv2SetPauseIcon('pause');
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   _timerInterval = setInterval(_timerTick, 1000);
 }
@@ -2264,7 +2276,7 @@ function _timerTick() {
     _timerRunning = false;
     const arc = document.getElementById('tv2Arc');
     if (arc) arc.classList.add('done');
-    document.getElementById('tv2PauseBtn').innerHTML = '▶';
+    _tv2SetPauseIcon('play');
     document.getElementById('timerNavIcon').textContent = '✅';
     if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400]);
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted')
