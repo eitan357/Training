@@ -595,7 +595,7 @@
 <body>
 
 <!-- ══ AUTH SCREEN ══ -->
-<div id="auth-screen">
+<div id="auth-screen" class="hidden">
   <div class="auth-card">
     <div class="auth-title" data-i18n="auth.title">יומן האימון 💪</div>
     <div class="auth-sub" data-i18n="auth.sub">התחבר כדי לגשת לנתונים שלך</div>
@@ -626,7 +626,7 @@
 </div>
 
 <!-- ══ LOADING OVERLAY ══ -->
-<div id="loading-overlay" style="display:none;">
+<div id="loading-overlay" style="display:flex;">
   <div class="lo-title" data-i18n="auth.title">יומן האימון 💪</div>
   <div class="lo-spinner"></div>
   <div class="lo-sub" data-i18n="auth.loading">טוען נתונים...</div>
@@ -1012,13 +1012,11 @@ onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
     _updateTopbarName();
-    document.getElementById('auth-screen').classList.add('hidden');
-    document.getElementById('loading-overlay').style.display = 'flex';
     await initApp();
   } else {
     currentUser = null;
     document.getElementById('auth-screen').classList.remove('hidden');
-    document.getElementById('loading-overlay').style.display = 'none';
+    hideOverlay();
   }
 });
 
