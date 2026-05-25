@@ -241,15 +241,6 @@
     .tv2-icon-pause::before,.tv2-icon-pause::after { content:''; width:4px; height:20px; background:white; border-radius:2px; display:block; }
     .tv2-icon-play::before { content:''; display:block; width:0; height:0; border-style:solid; border-width:10px 0 10px 16px; border-color:transparent transparent transparent white; margin-left:3px; }
     .tv2-icon-stop-sq::before { content:''; display:block; width:16px; height:16px; background:var(--red); border-radius:3px; }
-    /* — sound toggle — */
-    .tv2-sound-row   { display:flex; align-items:center; gap:10px; }
-    .tv2-sound-toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
-    .tv2-sound-toggle input { opacity:0; width:0; height:0; position:absolute; }
-    .tv2-sound-slider { position:absolute; cursor:pointer; inset:0; background:var(--border); border-radius:12px; transition:.25s; }
-    .tv2-sound-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:white; border-radius:50%; transition:.25s; }
-    .tv2-sound-toggle input:checked + .tv2-sound-slider { background:var(--primary); }
-    .tv2-sound-toggle input:checked + .tv2-sound-slider::before { transform:translateX(20px); }
-    .tv2-sound-label { font-size:14px; color:var(--sub); }
     .copy-last-btn { display: inline-flex; align-items: center; gap: 6px;
                      padding: 7px 14px; background: none;
                      border: 1.5px solid var(--primary); border-radius: 20px;
@@ -763,13 +754,6 @@
         </div>
       </div>
       <button class="tv2-play-btn" onclick="tv2Start()"><span class="tv2-icon tv2-icon-play"></span></button>
-      <div class="tv2-sound-row">
-        <label class="tv2-sound-toggle">
-          <input type="checkbox" id="tv2SoundToggle" onchange="tv2ToggleSound(this.checked)">
-          <span class="tv2-sound-slider"></span>
-        </label>
-        <span class="tv2-sound-label" data-i18n="timer.sound">צליל בסוף</span>
-      </div>
     </div>
     <!-- Running view -->
     <div class="tv2-running" id="tv2RunningView" style="display:none;">
@@ -882,6 +866,20 @@
       </div>
     </div>
 
+    <div class="settings-group-label" style="margin-top:8px;" data-i18n="settings.section.timer">טיימר</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <div class="settings-item-text">
+          <div class="settings-row-label" data-i18n="settings.timer_sound">צליל בסוף טיימר</div>
+          <div class="settings-item-sub" data-i18n="settings.timer_sound_sub">השמע צליל כאשר הטיימר מסתיים</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="tv2SoundToggle" onchange="tv2ToggleSound(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
     <button class="settings-logout-btn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
 
   </div>
@@ -906,7 +904,7 @@
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=8';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=9';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -996,6 +994,7 @@ function _updateTopbarName() {
 
 function initSettingsUI() {
   document.getElementById('darkModeToggle').checked = currentTheme === 'dark';
+  document.getElementById('tv2SoundToggle').checked = _timerSoundOn;
   renderLangSelector();
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName') || '';
 }
@@ -2358,8 +2357,6 @@ function _tv2InitPickers() {
   const s = _timerTotal % 60;
   _tv2BuildPicker('tv2MinInner', 59, m);
   _tv2BuildPicker('tv2SecInner', 59, s);
-  const toggle = document.getElementById('tv2SoundToggle');
-  if (toggle) toggle.checked = _timerSoundOn;
 }
 
 function _tv2PlayBeep() {
