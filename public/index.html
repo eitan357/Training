@@ -1012,6 +1012,10 @@ onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
     _updateTopbarName();
+    document.getElementById('auth-screen').classList.add('hidden');
+    const ov = document.getElementById('loading-overlay');
+    ov.classList.remove('fade-out');
+    ov.style.display = 'flex';
     await initApp();
   } else {
     currentUser = null;
