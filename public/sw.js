@@ -1,4 +1,4 @@
-const CACHE = 'training-diary-v5';
+const CACHE = 'training-diary-v6';
 const STATIC = ['/manifest.json', '/icon-bolt.svg', '/icon-bolt-192.png', '/icon-bolt-512.png'];
 
 self.addEventListener('install', e => {
