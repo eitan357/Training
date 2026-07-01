@@ -78,6 +78,17 @@ export const TRANSLATIONS = {
     'copy.success':            'תרגילים הועתקו מ-',
     'copy.from':               '',
 
+    // ── Draft / auto-save ─────────────────────────────────────────
+    'draft.saving':            'שומר...',
+    'draft.saved':             'נשמר ✓',
+    'draft.minutes_ago':       'דק׳ לפני',
+    'draft.found_today':       'טיוטה מהיום,',
+    'draft.resume':            'המשך',
+    'draft.discard':           'מחק טיוטה',
+    'draft.autosaved_toast':   'אימונים נשמרו אוטומטית להיסטוריה',
+    'draft.overwrite_confirm': 'יש טיוטה שמורה. האם לדרוס אותה בנתוני האימון האחרון?',
+    'draft.auto_badge':        'שמירה אוטומטית',
+
     // ── Exercise card fields ──────────────────────────────────────
     'col.exercise': 'תרגיל',
     'col.weight':   'משקל',
@@ -258,6 +269,17 @@ export const TRANSLATIONS = {
     'workout.fill_first':      'Fill in data before saving.',
     'copy.success':            'exercises copied from',
     'copy.from':               '',
+
+    // ── Draft / auto-save ─────────────────────────────────────────
+    'draft.saving':            'Saving...',
+    'draft.saved':             'Saved ✓',
+    'draft.minutes_ago':       'min ago',
+    'draft.found_today':       "Today's draft,",
+    'draft.resume':            'Resume',
+    'draft.discard':           'Discard draft',
+    'draft.autosaved_toast':   'workouts auto-saved to history',
+    'draft.overwrite_confirm': 'There is a saved draft. Overwrite it with the last workout data?',
+    'draft.auto_badge':        'Auto-saved',
 
     // ── Exercise card fields ──────────────────────────────────────
     'col.exercise': 'Exercise',
