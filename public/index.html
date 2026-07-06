@@ -684,9 +684,9 @@
     </div>
   </div>
 
-  <div id="draftModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog">
+  <div id="draftModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="draftModalTitle">
     <div class="draft-modal-card">
-      <div class="draft-modal-title"></div>
+      <div id="draftModalTitle" class="draft-modal-title"></div>
       <div class="draft-modal-details"></div>
       <button class="draft-modal-btn-resume"  onclick="_draftModalResume()"></button>
       <button class="draft-modal-btn-discard" onclick="_draftModalDiscard()"></button>
@@ -1534,6 +1534,7 @@ function _tabRestoreOrDraft(type) {
 }
 
 function _draftShowModal(type, draft) {
+  if (_draftModalType) return;
   _draftModalType = type;
   const exCount = (draft.exercises || []).filter(e => e.weight || e.sets || e.reps).length;
   const timeStr = draft.lastModified
@@ -1551,13 +1552,12 @@ function _draftShowModal(type, draft) {
 
 function _draftModalResume() {
   const type  = _draftModalType;
-  const draft = _draftLoadLocal(type);
-  if (draft) {
-    _draftApplyToForm(draft);
-    _tabState[type] = _draftSerialize();
-  }
   document.getElementById('draftModal').style.display = 'none';
   _draftModalType = null;
+  const draft = _draftLoadLocal(type);
+  if (!draft) { toast(t('draft.discard'), 'error'); return; }
+  _draftApplyToForm(draft);
+  _tabState[type] = _draftSerialize();
 }
 
 async function _draftModalDiscard() {
@@ -1569,9 +1569,10 @@ async function _draftModalDiscard() {
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
 function selectType(type) {
+  if (selectedType === type) return;
   // Snapshot current tab into memory, then save to localStorage as safety net
   _tabSnapshotCurrent();
-  if (selectedType && selectedType !== type && _draftHasFormData()) {
+  if (selectedType && _draftHasFormData()) {
     _draftSaveLocal(selectedType);
     _draftDirty[selectedType] = true;
   }
