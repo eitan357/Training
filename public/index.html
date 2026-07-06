@@ -1418,8 +1418,6 @@ async function _draftSaveFirestore(type) {
   if (!local) return;
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'drafts', type), local);
-    _draftLastSavedTime = Date.now();
-    _draftIndicatorShow('saved');
   } catch(e) { /* silent — localStorage is the fallback */ }
 }
 
@@ -1428,9 +1426,6 @@ async function _draftDelete(type) {
   localStorage.removeItem(_draftKey(type));
   delete _draftDirty[type];
   try { await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', type)); } catch(e) {}
-  const banner = document.getElementById(`draftBanner_${type}`);
-  if (banner) banner.remove();
-  if (!document.querySelector('.draft-banner')) _draftIndicatorHide();
 }
 
 function _draftApplyToForm(draft) {
@@ -1447,33 +1442,9 @@ function _draftApplyToForm(draft) {
   });
 }
 
-function _draftIndicatorShow(state) {
-  const el = document.getElementById('draftIndicator');
-  if (!el) return;
-  clearInterval(_draftIndicatorTimer);
-  el.style.display = '';
-  if (state === 'saving') {
-    el.textContent = t('draft.saving');
-    return;
-  }
-  _draftLastSavedTime = Date.now();
-  const update = () => {
-    const mins = Math.floor((Date.now() - _draftLastSavedTime) / 60000);
-    el.textContent = mins < 1 ? t('draft.saved') : `${t('draft.saved')} · ${mins} ${t('draft.minutes_ago')}`;
-  };
-  update();
-  _draftIndicatorTimer = setInterval(update, 60000);
-}
-
-function _draftIndicatorHide() {
-  clearInterval(_draftIndicatorTimer);
-  const el = document.getElementById('draftIndicator');
-  if (el) el.style.display = 'none';
-}
 
 function _draftOnInput() {
   if (!selectedType) return;
-  _draftIndicatorShow('saving');
   clearTimeout(_draftSaveDebounce[selectedType]);
   _draftSaveDebounce[selectedType] = setTimeout(() => {
     _draftSaveLocal(selectedType);
@@ -1496,51 +1467,8 @@ function _draftStartFirestoreTimer() {
   }, 30000);
 }
 
-function _draftRenderBanner(type, draft) {
-  if (document.getElementById(`draftBanner_${type}`)) return;
-  const exCount = (draft.exercises || []).filter(e => e.weight || e.sets || e.reps).length;
-  const timeStr = draft.lastModified
-    ? new Date(draft.lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '';
-  const nameStr = draft.workoutName ? ` · "${escHtml(draft.workoutName)}"` : '';
-  const banner  = document.createElement('div');
-  banner.className = 'draft-banner';
-  banner.id        = `draftBanner_${type}`;
-  banner.innerHTML = `
-    <div class="draft-banner-info">
-      <span><strong>${t('workout.badge')} ${escHtml(type)}</strong>${nameStr}</span>
-      <span>${exCount} ${t('workout.exercises')}</span>
-      <span class="draft-banner-time">${t('draft.found_today')} ${timeStr}</span>
-    </div>
-    <div class="draft-banner-actions">
-      <button class="draft-btn-resume"  onclick="_draftResume('${escHtml(type)}')">${t('draft.resume')}</button>
-      <button class="draft-btn-discard" onclick="_draftDiscard('${escHtml(type)}')">${t('draft.discard')}</button>
-    </div>`;
-  document.getElementById('draftBanners')?.appendChild(banner);
-}
 
-function _draftCheckAndShowBanner(type) {
-  if (_draftAutoLoading) return;
-  const draft = _draftLoadLocal(type);
-  if (!draft || !_draftHasBannerData(draft)) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if ((draft.createdAt || '').slice(0, 10) === today) _draftRenderBanner(type, draft);
-}
 
-function _draftResume(type) {
-  _draftAutoLoading = true;
-  if (selectedType !== type) selectType(type);
-  _draftAutoLoading = false;
-  const draft = _draftLoadLocal(type);
-  if (!draft) return;
-  _draftApplyToForm(draft);
-  document.getElementById(`draftBanner_${type}`)?.remove();
-  _draftIndicatorShow('saved');
-}
-
-async function _draftDiscard(type) {
-  await _draftDelete(type);
-}
 
 async function checkAndAutoSavePreviousDrafts() {
   if (!currentUser) return 0;
