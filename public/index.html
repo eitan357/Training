@@ -1641,7 +1641,8 @@ async function _draftModalDiscard() {
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
 function selectType(type) {
-  // Save draft for current type before switching
+  // Snapshot current tab into memory, then save to localStorage as safety net
+  _tabSnapshotCurrent();
   if (selectedType && selectedType !== type && _draftHasFormData()) {
     _draftSaveLocal(selectedType);
     _draftDirty[selectedType] = true;
@@ -1687,8 +1688,7 @@ function selectType(type) {
   document.getElementById('saveBtn').style.display = 'block';
   document.getElementById('addBtn').style.display  = 'block';
 
-  // Show draft recovery banner if there's a today-draft for this type
-  _draftCheckAndShowBanner(type);
+  _tabRestoreOrDraft(type);
 }
 
 function toggleHistPreview() {
@@ -1758,7 +1758,7 @@ async function submitData() {
       createdAt:   serverTimestamp()
     });
     await _draftDelete(selectedType);
-    _draftIndicatorHide();
+    delete _tabState[selectedType];
     toast(`${t('workout.saved_ok')} (${exercises.length} ${t('workout.exercises')})`, 'success');
     await reloadAppData();
   } catch (err) {
@@ -2853,7 +2853,7 @@ Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout,
-  _draftResume, _draftDiscard,
+  _draftModalResume, _draftModalDiscard,
   goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, resetTimer, setTimerPreset, applyCustomTimer, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
