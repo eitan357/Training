@@ -1073,9 +1073,10 @@ let lastWorkouts     = {};
 let _draftDirty          = {};   // { type: boolean }
 let _draftSaveDebounce   = {};   // { type: timeoutId }
 let _draftFirestoreTimer = null;
-let _draftLastSavedTime  = null;
-let _draftIndicatorTimer = null;
-let _draftAutoLoading    = false;
+let _tabState            = {};   // { type: serialized form state }
+let _draftModalType      = null;
+const _isNewSession      = !sessionStorage.getItem('session_active');
+if (_isNewSession) sessionStorage.setItem('session_active', '1');
 
 // ─── AUTH STATE LISTENER ─────────────────────────────────────
 onAuthStateChanged(auth, async user => {
@@ -1578,6 +1579,64 @@ async function checkAndAutoSavePreviousDrafts() {
     if (count > 0) toast(`${count} ${t('draft.autosaved_toast')}`, 'success');
   } catch(e) { /* silent */ }
   return count;
+}
+
+// ─── TAB STATE & DRAFT MODAL ─────────────────────────────────
+function _tabSnapshotCurrent() {
+  if (!selectedType) return;
+  _tabState[selectedType] = _draftSerialize();
+}
+
+function _tabRestoreOrDraft(type) {
+  if (_tabState[type]) {
+    _draftApplyToForm(_tabState[type]);
+    return;
+  }
+  const draft = _draftLoadLocal(type);
+  if (!draft || !_draftHasBannerData(draft)) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if ((draft.createdAt || '').slice(0, 10) !== today) return;
+  if (_isNewSession) {
+    _draftShowModal(type, draft);
+  } else {
+    // Refresh within same session — restore silently
+    _draftApplyToForm(draft);
+    _tabState[type] = _draftSerialize();
+  }
+}
+
+function _draftShowModal(type, draft) {
+  _draftModalType = type;
+  const exCount = (draft.exercises || []).filter(e => e.weight || e.sets || e.reps).length;
+  const timeStr = draft.lastModified
+    ? new Date(draft.lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
+  const nameStr = draft.workoutName ? `"${escHtml(draft.workoutName)}" · ` : '';
+  const modal = document.getElementById('draftModal');
+  modal.querySelector('.draft-modal-title').textContent = `נמצאה טיוטה לאימון ${escHtml(type)}`;
+  modal.querySelector('.draft-modal-details').innerHTML =
+    `${nameStr}${exCount} ${t('workout.exercises')}<br><span style="font-size:11px;">${t('draft.found_today')} ${timeStr}</span>`;
+  modal.querySelector('.draft-modal-btn-resume').textContent  = t('draft.resume');
+  modal.querySelector('.draft-modal-btn-discard').textContent = t('draft.discard');
+  modal.style.display = 'flex';
+}
+
+function _draftModalResume() {
+  const type  = _draftModalType;
+  const draft = _draftLoadLocal(type);
+  if (draft) {
+    _draftApplyToForm(draft);
+    _tabState[type] = _draftSerialize();
+  }
+  document.getElementById('draftModal').style.display = 'none';
+  _draftModalType = null;
+}
+
+async function _draftModalDiscard() {
+  const type = _draftModalType;
+  document.getElementById('draftModal').style.display = 'none';
+  _draftModalType = null;
+  await _draftDelete(type);
 }
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
