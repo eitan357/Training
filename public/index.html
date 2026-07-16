@@ -631,7 +631,57 @@
     .lo-spinner { width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--border); border-top-color: var(--primary); animation: lo-spin .75s linear infinite; }
     @keyframes lo-spin { to { transform: rotate(360deg); } }
     .lo-sub { font-size: 14px; color: var(--sub); }
+    /* ── RUNNING SECTION ── */
+    .run-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+      padding: 16px; margin-bottom: 12px;
+    }
+    .run-card-title { font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 10px; letter-spacing: .4px; text-transform: uppercase; }
+    .run-stat-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .run-stat { flex: 1; min-width: 80px; text-align: center; }
+    .run-stat-val { font-size: 22px; font-weight: 800; color: var(--text); }
+    .run-stat-lbl { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .run-sub-view { display: none; }
+    .run-sub-view.active { display: block; }
+    .run-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 18px; border: none; border-radius: var(--radius);
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+    .run-btn:active { opacity: .8; }
+    .run-btn-primary { background: var(--primary); color: #fff; }
+    .run-btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
+    .run-type-btn { width: 100%; padding: 14px; background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      font-size: 15px; font-weight: 700; color: var(--text); cursor: pointer;
+      text-align: center; margin-bottom: 10px; transition: border-color .15s; }
+    .run-type-btn:hover { border-color: var(--primary); }
+    .run-range-btn { padding: 6px 14px; border: 1.5px solid var(--border); border-radius: 20px;
+      background: transparent; color: var(--sub); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .run-range-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .run-range-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .run-chart-wrap { position: relative; height: 160px; margin-bottom: 20px; }
+    .run-history-row { display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .run-history-row:last-child { border-bottom: none; }
+    .run-history-detail { padding: 10px 0 4px; display: none; font-size: 13px; color: var(--sub); }
+    .run-history-detail.open { display: block; }
+    .run-history-date { font-size: 14px; font-weight: 700; color: var(--text); }
+    .run-history-meta { font-size: 13px; color: var(--sub); margin-top: 2px; }
+    .run-streak-badge { text-align: center; padding: 16px; }
+    .run-streak-num { font-size: 48px; font-weight: 900; color: var(--primary); }
+    .run-streak-lbl { font-size: 14px; color: var(--sub); margin-top: 4px; }
+    .run-form-field { margin-bottom: 14px; }
+    .run-form-label { font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 6px; display: block; }
+    .run-form-input { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: 15px; background: var(--bg); color: var(--text); }
+    .run-form-input:focus { outline: none; border-color: var(--primary); }
+    .run-toggle-row { display: flex; justify-content: space-between; align-items: center; }
+    .run-ocr-zone { width: 100%; padding: 32px 16px; border: 2px dashed var(--primary);
+      border-radius: var(--radius); text-align: center; cursor: pointer; color: var(--primary);
+      font-weight: 700; font-size: 15px; margin-bottom: 12px; }
+    .settings-running-gate { display: none; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1068,6 +1118,16 @@ let measureTypes     = [];
 let typesEditorOpen  = false;
 let editMeasureTypes = [];
 let lastWorkouts     = {};
+
+// ─── RUNNING STATE ────────────────────────────────────────────
+let runningEnabled    = false;
+let runWorkouts       = [];
+let runWorkoutTypes   = [];
+let _runCharts        = {};
+let _runCurrentRange  = 'year';
+let _runAddStep       = 1;
+let _runSelectedTypeId = null;
+let _runPrefill       = {};
 
 // ─── DRAFT STATE ──────────────────────────────────────────────
 let _draftDirty          = {};   // { type: boolean }
