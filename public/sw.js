@@ -1,4 +1,4 @@
-const CACHE = 'training-diary-v7';
+const CACHE = 'training-diary-v8';
 const STATIC = ['/manifest.json', '/icon-bolt.svg', '/icon-bolt-192.png', '/icon-bolt-512.png'];
 
 self.addEventListener('install', e => {
@@ -21,8 +21,8 @@ self.addEventListener('fetch', e => {
   // Firebase / Google APIs — always network
   if (url.hostname.includes('firebase') || url.hostname.includes('googleapis') || url.hostname.includes('gstatic')) return;
 
-  // HTML and translations — always network (change frequently)
-  if (e.request.headers.get('accept')?.includes('text/html')) return;
+  // Navigation requests (HTML pages) — always network (change frequently)
+  if (e.request.mode === 'navigate') return;
   if (url.pathname.endsWith('/translations.js') || url.searchParams.has('v')) return;
 
   // Everything else — cache-first
