@@ -1429,7 +1429,7 @@ function renderRunDashboard() {
 
   const last = runWorkouts[0];
   if (last) {
-    const typeName = runWorkoutTypes.find(t => t.id === last.workoutTypeId)?.name ?? 'אימון';
+    const typeName = escHtml(runWorkoutTypes.find(t => t.id === last.workoutTypeId)?.name ?? 'אימון');
     document.getElementById('run-last-card').innerHTML = `
       <div class="run-card-title">אימון אחרון</div>
       <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">${last.date} — ${typeName}</div>
@@ -1660,7 +1660,7 @@ function renderRunHistory() {
     return;
   }
   list.innerHTML = runWorkouts.map(w => {
-    const typeName = runWorkoutTypes.find(t => t.id === w.workoutTypeId)?.name ?? '';
+    const typeName = escHtml(runWorkoutTypes.find(t => t.id === w.workoutTypeId)?.name ?? '');
     const pace     = w.paceMinPerKm ? formatPace(w.paceMinPerKm) : '--';
     const tired    = w.feltTired ? '😴' : '';
     return `
