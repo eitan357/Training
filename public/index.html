@@ -1184,6 +1184,97 @@ let _runAddStep       = 1;
 let _runSelectedTypeId = null;
 let _runPrefill       = {};
 
+// ─── RUNNING DATA LAYER ──────────────────────────────────────
+async function loadRunData() {
+  if (!currentUser) return;
+  try {
+    const typesRef = collection(db, 'users', currentUser.uid, 'runWorkoutTypes');
+    const typesSnap = await getDocs(query(typesRef, orderBy('order')));
+    if (typesSnap.empty) {
+      await Promise.all([
+        addDoc(typesRef, { name: 'Running',    order: 0 }),
+        addDoc(typesRef, { name: 'Elliptical', order: 1 }),
+      ]);
+      const fresh = await getDocs(query(typesRef, orderBy('order')));
+      runWorkoutTypes = fresh.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else {
+      runWorkoutTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+    const wRef  = collection(db, 'users', currentUser.uid, 'runWorkouts');
+    const wSnap = await getDocs(query(wRef, orderBy('date', 'desc')));
+    runWorkouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    toast('שגיאה בטעינת נתוני ריצה: ' + err.message, 'error');
+  }
+}
+
+async function addRunWorkout(workout) {
+  const ref = collection(db, 'users', currentUser.uid, 'runWorkouts');
+  await addDoc(ref, { ...workout, createdAt: serverTimestamp() });
+  const snap = await getDocs(query(ref, orderBy('date', 'desc')));
+  runWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// ─── RUNNING CALCULATIONS ────────────────────────────────────
+function calcPace(durationMinutes, distanceKm) {
+  if (!distanceKm || distanceKm === 0) return 0;
+  return durationMinutes / distanceKm;
+}
+
+function formatPace(paceMinPerKm) {
+  if (!paceMinPerKm || paceMinPerKm <= 0) return '--:--';
+  const mins = Math.floor(paceMinPerKm);
+  const secs = Math.round((paceMinPerKm - mins) * 60);
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function calcRunStreak(workouts) {
+  if (!workouts.length) return 0;
+  const weeksWithWorkout = new Set(workouts.map(w => {
+    const d = new Date(w.date);
+    const jan4 = new Date(d.getFullYear(), 0, 4);
+    const week = Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${week}`;
+  }));
+  const now = new Date();
+  let streak = 0;
+  let checkDate = new Date(now);
+  while (true) {
+    const jan4 = new Date(checkDate.getFullYear(), 0, 4);
+    const week = Math.ceil(((checkDate - jan4) / 86400000 + checkDate.getDay() + 1) / 7);
+    const key = `${checkDate.getFullYear()}-W${week}`;
+    if (!weeksWithWorkout.has(key)) break;
+    streak++;
+    checkDate.setDate(checkDate.getDate() - 7);
+  }
+  return streak;
+}
+
+function calcRunPRs(workouts) {
+  let bestDistanceKm = 0, bestPaceMinPerKm = Infinity, lowestHeartRate = Infinity;
+  for (const w of workouts) {
+    if ((w.distanceKm ?? 0) > bestDistanceKm) bestDistanceKm = w.distanceKm;
+    if ((w.paceMinPerKm ?? 0) > 0 && w.paceMinPerKm < bestPaceMinPerKm) bestPaceMinPerKm = w.paceMinPerKm;
+    if ((w.avgHeartRate ?? 0) > 0 && w.avgHeartRate < lowestHeartRate) lowestHeartRate = w.avgHeartRate;
+  }
+  return {
+    bestDistanceKm,
+    bestPaceMinPerKm: isFinite(bestPaceMinPerKm) ? bestPaceMinPerKm : 0,
+    lowestHeartRate:  isFinite(lowestHeartRate)  ? lowestHeartRate  : 0,
+  };
+}
+
+function filterRunByRange(workouts, range) {
+  const now = new Date();
+  if (range === 'all') return workouts;
+  return workouts.filter(w => {
+    const d = new Date(w.date);
+    if (range === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (range === 'year')  return d.getFullYear() === now.getFullYear();
+    return true;
+  });
+}
+
 // ─── DRAFT STATE ──────────────────────────────────────────────
 let _draftDirty          = {};   // { type: boolean }
 let _draftSaveDebounce   = {};   // { type: timeoutId }
