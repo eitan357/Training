@@ -1215,7 +1215,7 @@ function initSettingsUI() {
   // Running gate — only for eitan357@gmail.com
   const gateBlock = document.getElementById('runningGateBlock');
   if (gateBlock) {
-    gateBlock.style.display = currentUser?.email === 'eitan357@gmail.com' ? '' : 'none';
+    gateBlock.style.display = currentUser?.email === 'eitan357@gmail.com' ? 'block' : 'none';
     const tog = document.getElementById('runningEnabledToggle');
     if (tog) tog.checked = runningEnabled;
   }
