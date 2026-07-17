@@ -967,6 +967,23 @@
       </div>
     </div>
 
+    <!-- RUNNING GATE (eitan357 only) -->
+    <div class="settings-running-gate" id="runningGateBlock" style="margin-top:8px;">
+      <div class="settings-group-label">ריצה</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-item-text">
+            <div class="settings-row-label">הצג עמוד ריצה</div>
+            <div class="settings-item-sub">מחליף את עמוד המדידות בנב-בר</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="runningEnabledToggle" onchange="saveRunningEnabled(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <button class="settings-logout-btn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
 
   </div>
@@ -984,6 +1001,9 @@
   </button>
   <button class="nav-item"        id="nav-measurements" onclick="showSection('measurements')">
     <span class="nav-icon">📏</span><span data-i18n="nav.measurements">מדידות</span>
+  </button>
+  <button class="nav-item"        id="nav-running"      onclick="showSection('running')" style="display:none;">
+    <span class="nav-icon">🏃</span><span>ריצה</span>
   </button>
   <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
     <span class="nav-icon">📊</span><span data-i18n="nav.history">היסטוריה</span>
@@ -1084,6 +1104,41 @@ function initSettingsUI() {
   document.getElementById('tv2SoundToggle').checked = _timerSoundOn;
   renderLangSelector();
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName') || '';
+
+  // Running gate — only for eitan357@gmail.com
+  const gateBlock = document.getElementById('runningGateBlock');
+  if (gateBlock) {
+    gateBlock.style.display = currentUser?.email === 'eitan357@gmail.com' ? '' : 'none';
+    const tog = document.getElementById('runningEnabledToggle');
+    if (tog) tog.checked = runningEnabled;
+  }
+}
+
+// ─── RUNNING SETTINGS ────────────────────────────────────────
+async function loadRunningEnabled() {
+  if (!currentUser) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', currentUser.uid, 'config', 'settings'));
+    const data = snap.exists() ? snap.data() : {};
+    runningEnabled = data.runningEnabled === true;
+  } catch { runningEnabled = false; }
+  applyRunningGate();
+}
+
+async function saveRunningEnabled(val) {
+  runningEnabled = val;
+  try {
+    await setDoc(doc(db, 'users', currentUser.uid, 'config', 'settings'), { runningEnabled: val }, { merge: true });
+  } catch { toast('שגיאה בשמירת הגדרות', 'error'); }
+  applyRunningGate();
+}
+
+function applyRunningGate() {
+  const navMeas = document.getElementById('nav-measurements');
+  const navRun  = document.getElementById('nav-running');
+  if (!navMeas || !navRun) return;
+  navMeas.style.display = runningEnabled ? 'none' : '';
+  navRun.style.display  = runningEnabled ? '' : 'none';
 }
 
 // Apply lang immediately on load
@@ -1341,6 +1396,7 @@ async function initApp() {
     toast(t('error.load') + err.message, 'error');
     selectType('A');
   }
+  await loadRunningEnabled();
   _draftAttachListeners();
   _draftStartFirestoreTimer();
   hideOverlay();
@@ -1382,7 +1438,7 @@ function applyAppData(data) {
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────
-const SECTION_ORDER = { main: 0, timer: 1, measurements: 2, history: 3, settings: 4 };
+const SECTION_ORDER = { main: 0, timer: 1, running: 2, measurements: 2, history: 3, settings: 4 };
 let currentSection = 'main';
 let prevSection    = 'main';
 
@@ -1410,6 +1466,7 @@ function showSection(name) {
   if (navEl) navEl.classList.add('active');
   currentSection = name;
   if (name === 'measurements') setDefaultDate();
+  if (name === 'running') initRunSection();
   if (name === 'timer') {
     if (_timerRunning || _timerSecs < _timerTotal) { _tv2ShowView('running'); _tv2UpdateDisplay(); }
     else { _tv2ShowView('setting'); _tv2InitPickers(); }
