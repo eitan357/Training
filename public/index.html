@@ -1616,7 +1616,7 @@ async function runSaveWorkout() {
 
   const distanceKm      = parseFloat(distStr);
   const durationMinutes = parseFloat(durStr);
-  if (distanceKm <= 0 || durationMinutes <= 0) {
+  if (!(distanceKm > 0) || !(durationMinutes > 0)) {
     errEl.textContent = 'מרחק ומשך חייבים להיות גדולים מ-0';
     errEl.style.display = '';
     return;
