@@ -1516,6 +1516,141 @@ function renderRunCharts() {
   }
 }
 
+// ─── RUNNING ADD WORKOUT ─────────────────────────────────────
+function runShowStep1() {
+  _runSelectedTypeId = null;
+  document.getElementById('run-add-step1').style.display = '';
+  document.getElementById('run-add-step2').style.display = 'none';
+  document.getElementById('run-add-step3').style.display = 'none';
+
+  const list = document.getElementById('run-type-list');
+  list.innerHTML = runWorkoutTypes.map(type =>
+    `<button class="run-type-btn" onclick="runSelectType('${type.id}','${escHtml(type.name)}')">${escHtml(type.name)}</button>`
+  ).join('');
+}
+
+function runSelectType(id, name) {
+  _runSelectedTypeId = id;
+  if (name === 'Elliptical') {
+    runShowStep2();
+  } else {
+    runShowStep3({});
+  }
+}
+
+function runShowStep2() {
+  document.getElementById('run-add-step1').style.display = 'none';
+  document.getElementById('run-add-step2').style.display = '';
+  document.getElementById('run-add-step3').style.display = 'none';
+  document.getElementById('runOcrZoneText').textContent = '📷 צלם או בחר תמונה';
+  document.getElementById('runOcrError').style.display = 'none';
+}
+
+function runShowStep3(prefill) {
+  _runPrefill = prefill;
+  document.getElementById('run-add-step1').style.display = 'none';
+  document.getElementById('run-add-step2').style.display = 'none';
+  document.getElementById('run-add-step3').style.display = '';
+
+  document.getElementById('run-f-date').value  = prefill.date              ?? new Date().toISOString().slice(0, 10);
+  document.getElementById('run-f-dist').value  = prefill.distanceKm        ?? '';
+  document.getElementById('run-f-dur').value   = prefill.durationMinutes   ?? '';
+  document.getElementById('run-f-cal').value   = prefill.calories          ?? '';
+  document.getElementById('run-f-spm').value   = prefill.avgStridesPerMin  ?? '';
+  document.getElementById('run-f-hr').value    = prefill.avgHeartRate      ?? '';
+  document.getElementById('run-f-tired').checked = prefill.feltTired ?? false;
+  document.getElementById('run-f-notes').value = prefill.notes ?? '';
+  document.getElementById('runFormError').style.display = 'none';
+  document.getElementById('runSaveBtn').disabled = false;
+  document.getElementById('runSaveBtn').textContent = 'שמור אימון';
+}
+
+async function runHandleOcr(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  input.value = '';
+  document.getElementById('runOcrZoneText').textContent = 'מפענח תמונה...';
+  document.getElementById('runOcrError').style.display = 'none';
+
+  try {
+    if (!window.Tesseract) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    const { data: { text } } = await Tesseract.recognize(file, 'eng');
+    const prefill = parseOcrText(text);
+    runShowStep3(prefill);
+  } catch {
+    document.getElementById('runOcrZoneText').textContent = '📷 צלם או בחר תמונה';
+    document.getElementById('runOcrError').textContent = 'לא הצלחתי לקרוא את התמונה. נסה שוב או הכנס ידנית.';
+    document.getElementById('runOcrError').style.display = '';
+  }
+}
+
+function parseOcrText(text) {
+  const num = (pattern) => { const m = text.match(pattern); return m ? parseFloat(m[1]) : undefined; };
+  return {
+    distanceKm:       num(/(\d+\.?\d*)\s*(?:km|ק"מ)/i),
+    durationMinutes:  num(/(\d+)\s*(?:min|דק)/i),
+    calories:         num(/(\d+)\s*(?:cal|kcal|קל)/i),
+    avgStridesPerMin: num(/(\d+)\s*(?:spm|strides)/i),
+    avgHeartRate:     num(/(\d+)\s*(?:bpm|דופק)/i),
+  };
+}
+
+async function runSaveWorkout() {
+  const date    = document.getElementById('run-f-date').value;
+  const distStr = document.getElementById('run-f-dist').value;
+  const durStr  = document.getElementById('run-f-dur').value;
+  const errEl   = document.getElementById('runFormError');
+
+  if (!date || !distStr || !durStr) {
+    errEl.textContent = 'יש למלא תאריך, מרחק ומשך';
+    errEl.style.display = '';
+    return;
+  }
+
+  const distanceKm      = parseFloat(distStr);
+  const durationMinutes = parseFloat(durStr);
+  if (distanceKm <= 0 || durationMinutes <= 0) {
+    errEl.textContent = 'מרחק ומשך חייבים להיות גדולים מ-0';
+    errEl.style.display = '';
+    return;
+  }
+
+  const btn = document.getElementById('runSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'שומר...';
+
+  const workout = {
+    date,
+    workoutTypeId:    _runSelectedTypeId,
+    distanceKm,
+    durationMinutes,
+    paceMinPerKm:     calcPace(durationMinutes, distanceKm),
+    calories:         document.getElementById('run-f-cal').value  ? parseFloat(document.getElementById('run-f-cal').value)  : null,
+    avgStridesPerMin: document.getElementById('run-f-spm').value  ? parseFloat(document.getElementById('run-f-spm').value)  : null,
+    avgHeartRate:     document.getElementById('run-f-hr').value   ? parseFloat(document.getElementById('run-f-hr').value)   : null,
+    feltTired:        document.getElementById('run-f-tired').checked,
+    notes:            document.getElementById('run-f-notes').value.trim() || null,
+  };
+
+  try {
+    await addRunWorkout(workout);
+    toast('האימון נשמר בהצלחה! 🏃');
+    runShowDashboard();
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'שמור אימון';
+    errEl.textContent = 'שגיאה בשמירה: ' + err.message;
+    errEl.style.display = '';
+  }
+}
+
 // ─── DRAFT STATE ──────────────────────────────────────────────
 let _draftDirty          = {};   // { type: boolean }
 let _draftSaveDebounce   = {};   // { type: timeoutId }
