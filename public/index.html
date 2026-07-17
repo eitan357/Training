@@ -898,6 +898,113 @@
   </div>
 </div>
 
+<!-- ══ RUNNING ══ -->
+<div id="sec-running" class="section">
+  <div class="topbar">
+    <div><div class="topbar-title">ריצה 🏃</div><div class="topbar-sub topbar-email"></div></div>
+    <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+  </div>
+  <div style="padding:16px;">
+
+    <!-- Dashboard sub-view -->
+    <div id="run-view-dashboard" class="run-sub-view active">
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <button class="run-btn run-btn-primary" style="flex:1;" onclick="runShowAdd()">+ הוסף אימון</button>
+        <button class="run-btn run-btn-secondary" style="flex:1;" onclick="runShowHistory()">היסטוריה</button>
+      </div>
+      <div id="run-streak-card" class="run-card"></div>
+      <div id="run-prs-card" class="run-card"></div>
+      <div id="run-last-card" class="run-card"></div>
+      <div id="run-charts-card" class="run-card">
+        <div class="run-card-title">גרפים</div>
+        <div class="run-range-row">
+          <button class="run-range-btn" onclick="runSetRange('month')">חודש</button>
+          <button class="run-range-btn active" onclick="runSetRange('year')">שנה</button>
+          <button class="run-range-btn" onclick="runSetRange('all')">הכל</button>
+        </div>
+        <div id="run-charts-list"></div>
+      </div>
+    </div>
+
+    <!-- Add workout sub-view -->
+    <div id="run-view-add" class="run-sub-view">
+      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runShowDashboard()">← חזרה</button>
+      <!-- Step 1: Type -->
+      <div id="run-add-step1">
+        <div class="run-card"><div class="run-card-title">בחר סוג אימון</div><div id="run-type-list"></div></div>
+      </div>
+      <!-- Step 2: OCR -->
+      <div id="run-add-step2" style="display:none;">
+        <div class="run-card">
+          <div class="run-card-title">תמונה מהמסך</div>
+          <div class="run-ocr-zone" id="runOcrZone" onclick="document.getElementById('runFileInput').click()">
+            <span id="runOcrZoneText">📷 צלם או בחר תמונה</span>
+          </div>
+          <input type="file" id="runFileInput" accept="image/*" capture="environment" style="display:none;" onchange="runHandleOcr(this)">
+          <p id="runOcrError" style="color:var(--red);font-size:13px;display:none;"></p>
+          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep3({})">הכנס ידנית</button>
+          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep1()">← חזרה</button>
+        </div>
+      </div>
+      <!-- Step 3: Review form -->
+      <div id="run-add-step3" style="display:none;">
+        <div class="run-card">
+          <div class="run-card-title">פרטי האימון</div>
+          <div class="run-form-field">
+            <label class="run-form-label">תאריך *</label>
+            <input type="date" id="run-f-date" class="run-form-input">
+          </div>
+          <div class="run-form-field">
+            <label class="run-form-label">מרחק (ק"מ) *</label>
+            <input type="number" id="run-f-dist" class="run-form-input" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="run-form-field">
+            <label class="run-form-label">משך (דקות) *</label>
+            <input type="number" id="run-f-dur" class="run-form-input" min="0" placeholder="30">
+          </div>
+          <div class="run-form-field">
+            <label class="run-form-label">קלוריות</label>
+            <input type="number" id="run-f-cal" class="run-form-input" min="0" placeholder="--">
+          </div>
+          <div class="run-form-field">
+            <label class="run-form-label">צעדים/דקה</label>
+            <input type="number" id="run-f-spm" class="run-form-input" min="0" placeholder="--">
+          </div>
+          <div class="run-form-field">
+            <label class="run-form-label">דופק ממוצע</label>
+            <input type="number" id="run-f-hr" class="run-form-input" min="0" placeholder="--">
+          </div>
+          <div class="run-form-field">
+            <div class="run-toggle-row">
+              <span class="run-form-label" style="margin:0;">הרגשתי עייפות</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="run-f-tired">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="run-form-field">
+            <label class="run-form-label">הערות</label>
+            <textarea id="run-f-notes" class="run-form-input" rows="3" placeholder="הערות אופציונליות..."></textarea>
+          </div>
+          <button class="run-btn run-btn-primary" style="width:100%;margin-top:4px;" id="runSaveBtn" onclick="runSaveWorkout()">שמור אימון</button>
+          <p id="runFormError" style="color:var(--red);font-size:13px;margin-top:8px;display:none;"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- History sub-view -->
+    <div id="run-view-history" class="run-sub-view">
+      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runShowDashboard()">← חזרה</button>
+      <div class="run-card">
+        <div class="run-card-title">היסטוריית אימונים</div>
+        <div id="run-history-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ══════════ SETTINGS ══════════ -->
 <div id="sec-settings" class="section">
   <div class="topbar">
@@ -1273,6 +1380,69 @@ function filterRunByRange(workouts, range) {
     if (range === 'year')  return d.getFullYear() === now.getFullYear();
     return true;
   });
+}
+
+// ─── RUNNING UI ──────────────────────────────────────────────
+async function initRunSection() {
+  await loadRunData();
+  runShowDashboard();
+}
+
+function runShowDashboard() {
+  document.getElementById('run-view-dashboard').classList.add('active');
+  document.getElementById('run-view-add').classList.remove('active');
+  document.getElementById('run-view-history').classList.remove('active');
+  renderRunDashboard();
+  renderRunCharts();
+}
+
+function runShowAdd() {
+  document.getElementById('run-view-dashboard').classList.remove('active');
+  document.getElementById('run-view-add').classList.add('active');
+  document.getElementById('run-view-history').classList.remove('active');
+  runShowStep1();
+}
+
+function runShowHistory() {
+  document.getElementById('run-view-dashboard').classList.remove('active');
+  document.getElementById('run-view-add').classList.remove('active');
+  document.getElementById('run-view-history').classList.add('active');
+  renderRunHistory();
+}
+
+function renderRunDashboard() {
+  const streak = calcRunStreak(runWorkouts);
+  document.getElementById('run-streak-card').innerHTML = `
+    <div class="run-streak-badge">
+      <div class="run-streak-num">${streak}</div>
+      <div class="run-streak-lbl">שבועות רצופים</div>
+    </div>`;
+
+  const prs = calcRunPRs(runWorkouts);
+  document.getElementById('run-prs-card').innerHTML = `
+    <div class="run-card-title">שיאים אישיים</div>
+    <div class="run-stat-row">
+      <div class="run-stat"><div class="run-stat-val">${prs.bestDistanceKm > 0 ? prs.bestDistanceKm.toFixed(1) : '--'}</div><div class="run-stat-lbl">מרחק מירבי (ק"מ)</div></div>
+      <div class="run-stat"><div class="run-stat-val">${prs.bestPaceMinPerKm > 0 ? formatPace(prs.bestPaceMinPerKm) : '--'}</div><div class="run-stat-lbl">קצב מהיר</div></div>
+      <div class="run-stat"><div class="run-stat-val">${prs.lowestHeartRate > 0 ? prs.lowestHeartRate : '--'}</div><div class="run-stat-lbl">דופק נמוך</div></div>
+    </div>`;
+
+  const last = runWorkouts[0];
+  if (last) {
+    const typeName = runWorkoutTypes.find(t => t.id === last.workoutTypeId)?.name ?? 'אימון';
+    document.getElementById('run-last-card').innerHTML = `
+      <div class="run-card-title">אימון אחרון</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">${last.date} — ${typeName}</div>
+      <div class="run-stat-row">
+        <div class="run-stat"><div class="run-stat-val">${(last.distanceKm ?? 0).toFixed(1)}</div><div class="run-stat-lbl">ק"מ</div></div>
+        <div class="run-stat"><div class="run-stat-val">${last.durationMinutes ?? '--'}</div><div class="run-stat-lbl">דקות</div></div>
+        <div class="run-stat"><div class="run-stat-val">${last.paceMinPerKm ? formatPace(last.paceMinPerKm) : '--'}</div><div class="run-stat-lbl">קצב</div></div>
+      </div>`;
+  } else {
+    document.getElementById('run-last-card').innerHTML = `
+      <div class="run-card-title">אימון אחרון</div>
+      <div style="text-align:center;color:var(--sub);padding:12px;">עוד לא נרשמו אימונים</div>`;
+  }
 }
 
 // ─── DRAFT STATE ──────────────────────────────────────────────
