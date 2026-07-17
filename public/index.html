@@ -1445,6 +1445,77 @@ function renderRunDashboard() {
   }
 }
 
+const RUN_CHARTS_CONFIG = [
+  { key: 'distanceKm',       label: 'מרחק (ק"מ)',      color: '#2563eb', fmt: v => v.toFixed(1) },
+  { key: 'avgHeartRate',     label: 'דופק ממוצע',      color: '#dc2626', fmt: v => Math.round(v) },
+  { key: 'paceMinPerKm',     label: 'קצב (דק/ק"מ)',     color: '#16a34a', fmt: formatPace },
+  { key: 'calories',         label: 'קלוריות',          color: '#d97706', fmt: v => Math.round(v) },
+  { key: 'avgStridesPerMin', label: 'צעדים/דקה',        color: '#7c3aed', fmt: v => Math.round(v) },
+];
+
+function runSetRange(range) {
+  _runCurrentRange = range;
+  const labels = { month: 'חודש', year: 'שנה', all: 'הכל' };
+  document.querySelectorAll('.run-range-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === labels[range]);
+  });
+  renderRunCharts();
+}
+
+function renderRunCharts() {
+  const filtered  = filterRunByRange(runWorkouts, _runCurrentRange);
+  const sorted    = [...filtered].sort((a, b) => a.date.localeCompare(b.date));
+  const container = document.getElementById('run-charts-list');
+  if (!container) return;
+
+  Object.values(_runCharts).forEach(c => c.destroy());
+  _runCharts = {};
+  container.innerHTML = '';
+
+  for (const cfg of RUN_CHARTS_CONFIG) {
+    const rows   = sorted.filter(w => w[cfg.key] != null);
+    if (rows.length === 0) continue;
+
+    const labels = rows.map(w => w.date.slice(5));
+    const data   = rows.map(w => w[cfg.key]);
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px;">${cfg.label}</div>
+      <div class="run-chart-wrap"><canvas id="rChart-${cfg.key}"></canvas></div>`;
+    container.appendChild(wrap);
+
+    const ctx = document.getElementById('rChart-' + cfg.key).getContext('2d');
+    _runCharts[cfg.key] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          borderColor: cfg.color,
+          backgroundColor: cfg.color + '22',
+          borderWidth: 2,
+          pointRadius: data.length > 20 ? 0 : 3,
+          fill: true,
+          tension: 0.3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#33415533' } },
+          y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#33415533' } },
+        },
+      },
+    });
+  }
+
+  if (container.innerHTML === '') {
+    container.innerHTML = '<div style="text-align:center;color:var(--sub);padding:20px;">אין נתונים לטווח הנבחר</div>';
+  }
+}
+
 // ─── DRAFT STATE ──────────────────────────────────────────────
 let _draftDirty          = {};   // { type: boolean }
 let _draftSaveDebounce   = {};   // { type: timeoutId }
