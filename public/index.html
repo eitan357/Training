@@ -1195,14 +1195,16 @@ function setLang(lang) {
 
 function saveDisplayName() {
   const name = document.getElementById('displayNameInput').value.trim();
-  if (name) localStorage.setItem('displayName', name); else localStorage.removeItem('displayName');
+  const key  = 'displayName_' + (currentUser?.uid || '');
+  if (name) localStorage.setItem(key, name); else localStorage.removeItem(key);
   _updateTopbarName();
   if (currentUser) setDoc(doc(db, 'users', currentUser.uid, 'config', 'profile'), { displayName: name }, { merge: true }).catch(() => {});
   toast(t('display_name_saved'), 'success');
 }
 
 function _updateTopbarName() {
-  const name = localStorage.getItem('displayName') || (currentUser?.email || '');
+  const key  = 'displayName_' + (currentUser?.uid || '');
+  const name = localStorage.getItem(key) || (currentUser?.email || '');
   document.querySelectorAll('.topbar-email').forEach(el => el.textContent = name);
 }
 
@@ -1210,7 +1212,7 @@ function initSettingsUI() {
   document.getElementById('darkModeToggle').checked = currentTheme === 'dark';
   document.getElementById('tv2SoundToggle').checked = _timerSoundOn;
   renderLangSelector();
-  document.getElementById('displayNameInput').value = localStorage.getItem('displayName') || '';
+  document.getElementById('displayNameInput').value = localStorage.getItem('displayName_' + (currentUser?.uid || '')) || '';
 
   // Running gate — only for eitan357@gmail.com
   const gateBlock = document.getElementById('runningGateBlock');
@@ -1707,6 +1709,19 @@ onAuthStateChanged(auth, async user => {
     await initApp();
   } else {
     currentUser = null;
+
+    // Reset all per-user in-memory state so the next login gets a clean slate
+    selectedType       = null;
+    _tabState          = {};
+    activeFilter       = 'all';
+    runWorkouts        = [];
+    runWorkoutTypes    = [];
+    _runSelectedTypeId = null;
+    _runPrefill        = {};
+    clearInterval(_draftFirestoreTimer);
+    if (editPanelOpen)   toggleEditPanel();
+    if (typesEditorOpen) toggleTypesEditor();
+
     document.getElementById('auth-screen').classList.remove('hidden');
     hideOverlay();
   }
@@ -1864,12 +1879,17 @@ function getMonthLabel(key) {
 // ─── LOAD ALL DATA ────────────────────────────────────────────
 async function loadAllData() {
   const uid = currentUser.uid;
-  const [tmplSnap, mtSnap, workoutsSnap, measurementsSnap] = await Promise.all([
+  const [tmplSnap, mtSnap, workoutsSnap, measurementsSnap, profSnap] = await Promise.all([
     getDoc(doc(db, 'users', uid, 'config', 'templates')),
     getDoc(doc(db, 'users', uid, 'config', 'measurementTypes')),
     getDocs(query(collection(db, 'users', uid, 'workouts'),     orderBy('dateISO', 'desc'))),
     getDocs(query(collection(db, 'users', uid, 'measurements'), orderBy('dateISO', 'desc'))),
+    getDoc(doc(db, 'users', uid, 'config', 'profile')),
   ]);
+
+  // Sync displayName from Firestore into uid-namespaced localStorage
+  const profName = profSnap.exists() ? (profSnap.data().displayName || '') : '';
+  if (profName) localStorage.setItem('displayName_' + uid, profName);
 
   const templates  = tmplSnap.exists() ? tmplSnap.data() : { types: ['A','B'], A: [], B: [] };
   const mtData     = mtSnap.exists()   ? mtSnap.data()   : { types: [] };
@@ -1888,6 +1908,7 @@ async function initApp() {
   try {
     const data = await loadAllData();
     applyAppData(data);
+    _updateTopbarName(); // refresh after Firestore profile loaded
     const autoSaved = await checkAndAutoSavePreviousDrafts();
     if (autoSaved > 0) {
       const fresh = await loadAllData();
