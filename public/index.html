@@ -1651,6 +1651,41 @@ async function runSaveWorkout() {
   }
 }
 
+// ─── RUNNING HISTORY ─────────────────────────────────────────
+function renderRunHistory() {
+  const list = document.getElementById('run-history-list');
+  if (!list) return;
+  if (runWorkouts.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--sub);padding:20px;">עוד לא נרשמו אימונים</div>';
+    return;
+  }
+  list.innerHTML = runWorkouts.map(w => {
+    const typeName = runWorkoutTypes.find(t => t.id === w.workoutTypeId)?.name ?? '';
+    const pace     = w.paceMinPerKm ? formatPace(w.paceMinPerKm) : '--';
+    const tired    = w.feltTired ? '😴' : '';
+    return `
+      <div class="run-history-row" onclick="runToggleHistoryRow('${w.id}')">
+        <div>
+          <div class="run-history-date">${w.date} ${tired}</div>
+          <div class="run-history-meta">${typeName} · ${(w.distanceKm ?? 0).toFixed(1)} ק"מ · ${pace} דק/ק"מ</div>
+        </div>
+        <span style="color:var(--sub);">›</span>
+      </div>
+      <div class="run-history-detail" id="rhd-${w.id}">
+        ${w.durationMinutes != null ? `<div>משך: ${w.durationMinutes} דקות</div>` : ''}
+        ${w.calories        != null ? `<div>קלוריות: ${w.calories}</div>` : ''}
+        ${w.avgHeartRate    != null ? `<div>דופק ממוצע: ${w.avgHeartRate} bpm</div>` : ''}
+        ${w.avgStridesPerMin!= null ? `<div>צעדים/דקה: ${w.avgStridesPerMin}</div>` : ''}
+        ${w.notes           ? `<div>הערות: ${escHtml(w.notes)}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function runToggleHistoryRow(id) {
+  const el = document.getElementById('rhd-' + id);
+  if (el) el.classList.toggle('open');
+}
+
 // ─── DRAFT STATE ──────────────────────────────────────────────
 let _draftDirty          = {};   // { type: boolean }
 let _draftSaveDebounce   = {};   // { type: timeoutId }
