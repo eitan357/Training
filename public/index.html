@@ -937,10 +937,13 @@
       <div id="run-add-step2" style="display:none;">
         <div class="run-card">
           <div class="run-card-title" data-i18n="run.step2_title">תמונה מהמסך</div>
-          <div class="run-ocr-zone" id="runOcrZone" onclick="document.getElementById('runFileInput').click()">
-            <span id="runOcrZoneText" data-i18n="run.ocr_btn">📷 צלם או בחר תמונה</span>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runCameraInput').click()">📷 <span data-i18n="run.camera_btn">צלם תמונה</span></button>
+            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runGalleryInput').click()">🖼️ <span data-i18n="run.gallery_btn">בחר מגלריה</span></button>
           </div>
-          <input type="file" id="runFileInput" accept="image/*" style="display:none;" onchange="runHandleOcr(this)">
+          <input type="file" id="runCameraInput" accept="image/*" capture="environment" style="display:none;" onchange="runHandleOcr(this)">
+          <input type="file" id="runGalleryInput" accept="image/*" style="display:none;" onchange="runHandleOcr(this)">
+          <span id="runOcrZoneText" style="display:block;text-align:center;font-size:13px;color:var(--sub);min-height:18px;margin:4px 0;"></span>
           <p id="runOcrError" style="color:var(--red);font-size:13px;display:none;"></p>
           <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep3({})" data-i18n="run.manual_btn">הכנס ידנית</button>
           <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep1()" data-i18n="btn.back">← חזרה</button>
@@ -1112,7 +1115,7 @@
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=11';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=12';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -1444,7 +1447,8 @@ function renderRunDashboard() {
 
   const last = runWorkouts[0];
   if (last) {
-    const typeName = escHtml(runWorkoutTypes.find(tp => tp.id === last.workoutTypeId)?.name ?? t('run.default_type'));
+    const rawLastType = runWorkoutTypes.find(tp => tp.id === last.workoutTypeId)?.name;
+    const typeName = rawLastType ? escHtml(translateTypeName(rawLastType)) : t('run.default_type');
     document.getElementById('run-last-card').innerHTML = `
       <div class="run-card-title">${t('run.last_title')}</div>
       <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">${last.date} — ${typeName}</div>
@@ -1531,6 +1535,12 @@ function renderRunCharts() {
 }
 
 // ─── RUNNING ADD WORKOUT ─────────────────────────────────────
+function translateTypeName(name) {
+  if (name === 'Running')    return t('run.type.running');
+  if (name === 'Elliptical') return t('run.type.elliptical');
+  return name;
+}
+
 function runShowStep1() {
   _runSelectedTypeId = null;
   document.getElementById('run-add-step1').style.display = '';
@@ -1539,7 +1549,7 @@ function runShowStep1() {
 
   const list = document.getElementById('run-type-list');
   list.innerHTML = runWorkoutTypes.map(type =>
-    `<button class="run-type-btn" onclick="runSelectType('${type.id}','${escHtml(type.name)}')">${escHtml(type.name)}</button>`
+    `<button class="run-type-btn" onclick="runSelectType('${type.id}','${escHtml(type.name)}')">${escHtml(translateTypeName(type.name))}</button>`
   ).join('');
 }
 
@@ -1556,7 +1566,7 @@ function runShowStep2() {
   document.getElementById('run-add-step1').style.display = 'none';
   document.getElementById('run-add-step2').style.display = '';
   document.getElementById('run-add-step3').style.display = 'none';
-  document.getElementById('runOcrZoneText').textContent = t('run.ocr_btn');
+  document.getElementById('runOcrZoneText').textContent = '';
   document.getElementById('runOcrError').style.display = 'none';
 }
 
@@ -1583,6 +1593,7 @@ async function runHandleOcr(input) {
   const file = input.files?.[0];
   if (!file) return;
   input.value = '';
+  input.value = '';
   document.getElementById('runOcrZoneText').textContent = t('run.ocr_scanning');
   document.getElementById('runOcrError').style.display = 'none';
 
@@ -1599,7 +1610,7 @@ async function runHandleOcr(input) {
     const prefill = parseOcrText(text);
     runShowStep3(prefill);
   } catch {
-    document.getElementById('runOcrZoneText').textContent = t('run.ocr_btn');
+    document.getElementById('runOcrZoneText').textContent = '';
     document.getElementById('runOcrError').textContent = t('run.ocr_error');
     document.getElementById('runOcrError').style.display = '';
   }
@@ -1674,7 +1685,8 @@ function renderRunHistory() {
     return;
   }
   list.innerHTML = runWorkouts.map(w => {
-    const typeName = escHtml(runWorkoutTypes.find(tp => tp.id === w.workoutTypeId)?.name ?? '');
+    const rawHistType = runWorkoutTypes.find(tp => tp.id === w.workoutTypeId)?.name ?? '';
+    const typeName = escHtml(translateTypeName(rawHistType));
     const pace     = w.paceMinPerKm ? formatPace(w.paceMinPerKm) : '--';
     const tired    = w.feltTired ? '😴' : '';
     return `
