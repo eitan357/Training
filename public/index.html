@@ -953,6 +953,7 @@
       <div id="run-add-step3" style="display:none;">
         <div class="run-card">
           <div class="run-card-title" data-i18n="run.step3_title">פרטי האימון</div>
+          <div id="run-step3-type" style="font-size:13px;color:var(--sub);margin-bottom:10px;"></div>
           <div class="run-form-field">
             <label class="run-form-label" data-i18n="run.date_label">תאריך *</label>
             <input type="date" id="run-f-date" class="run-form-input">
@@ -1575,6 +1576,9 @@ function runShowStep3(prefill) {
   document.getElementById('run-add-step1').style.display = 'none';
   document.getElementById('run-add-step2').style.display = 'none';
   document.getElementById('run-add-step3').style.display = '';
+
+  const selectedType = runWorkoutTypes.find(tp => tp.id === _runSelectedTypeId);
+  document.getElementById('run-step3-type').textContent = selectedType ? translateTypeName(selectedType.name) : '';
 
   document.getElementById('run-f-date').value  = prefill.date              ?? new Date().toISOString().slice(0, 10);
   document.getElementById('run-f-dist').value  = prefill.distanceKm        ?? '';
