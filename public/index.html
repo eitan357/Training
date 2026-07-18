@@ -901,7 +901,7 @@
 <!-- ══ RUNNING ══ -->
 <div id="sec-running" class="section">
   <div class="topbar">
-    <div><div class="topbar-title">ריצה 🏃</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.running">ריצה 🏃</div><div class="topbar-sub topbar-email"></div></div>
     <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
   </div>
   <div style="padding:16px;">
@@ -909,18 +909,18 @@
     <!-- Dashboard sub-view -->
     <div id="run-view-dashboard" class="run-sub-view active">
       <div style="display:flex;gap:10px;margin-bottom:14px;">
-        <button class="run-btn run-btn-primary" style="flex:1;" onclick="runShowAdd()">+ הוסף אימון</button>
-        <button class="run-btn run-btn-secondary" style="flex:1;" onclick="runShowHistory()">היסטוריה</button>
+        <button class="run-btn run-btn-primary" style="flex:1;" onclick="runShowAdd()" data-i18n="run.add_btn">+ הוסף אימון</button>
+        <button class="run-btn run-btn-secondary" style="flex:1;" onclick="runShowHistory()" data-i18n="run.history_btn">היסטוריה</button>
       </div>
       <div id="run-streak-card" class="run-card"></div>
       <div id="run-prs-card" class="run-card"></div>
       <div id="run-last-card" class="run-card"></div>
       <div id="run-charts-card" class="run-card">
-        <div class="run-card-title">גרפים</div>
+        <div class="run-card-title" data-i18n="run.charts_title">גרפים</div>
         <div class="run-range-row">
-          <button class="run-range-btn" onclick="runSetRange('month')">חודש</button>
-          <button class="run-range-btn active" onclick="runSetRange('year')">שנה</button>
-          <button class="run-range-btn" onclick="runSetRange('all')">הכל</button>
+          <button class="run-range-btn" data-range="month" onclick="runSetRange('month')" data-i18n="run.range_month">חודש</button>
+          <button class="run-range-btn active" data-range="year" onclick="runSetRange('year')" data-i18n="run.range_year">שנה</button>
+          <button class="run-range-btn" data-range="all" onclick="runSetRange('all')" data-i18n="run.range_all">הכל</button>
         </div>
         <div id="run-charts-list"></div>
       </div>
@@ -928,55 +928,55 @@
 
     <!-- Add workout sub-view -->
     <div id="run-view-add" class="run-sub-view">
-      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runShowDashboard()">← חזרה</button>
+      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runGoBack()" data-i18n="btn.back">← חזרה</button>
       <!-- Step 1: Type -->
       <div id="run-add-step1">
-        <div class="run-card"><div class="run-card-title">בחר סוג אימון</div><div id="run-type-list"></div></div>
+        <div class="run-card"><div class="run-card-title" data-i18n="run.step1_title">בחר סוג אימון</div><div id="run-type-list"></div></div>
       </div>
       <!-- Step 2: OCR -->
       <div id="run-add-step2" style="display:none;">
         <div class="run-card">
-          <div class="run-card-title">תמונה מהמסך</div>
+          <div class="run-card-title" data-i18n="run.step2_title">תמונה מהמסך</div>
           <div class="run-ocr-zone" id="runOcrZone" onclick="document.getElementById('runFileInput').click()">
-            <span id="runOcrZoneText">📷 צלם או בחר תמונה</span>
+            <span id="runOcrZoneText" data-i18n="run.ocr_btn">📷 צלם או בחר תמונה</span>
           </div>
-          <input type="file" id="runFileInput" accept="image/*" capture="environment" style="display:none;" onchange="runHandleOcr(this)">
+          <input type="file" id="runFileInput" accept="image/*" style="display:none;" onchange="runHandleOcr(this)">
           <p id="runOcrError" style="color:var(--red);font-size:13px;display:none;"></p>
-          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep3({})">הכנס ידנית</button>
-          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep1()">← חזרה</button>
+          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep3({})" data-i18n="run.manual_btn">הכנס ידנית</button>
+          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep1()" data-i18n="btn.back">← חזרה</button>
         </div>
       </div>
       <!-- Step 3: Review form -->
       <div id="run-add-step3" style="display:none;">
         <div class="run-card">
-          <div class="run-card-title">פרטי האימון</div>
+          <div class="run-card-title" data-i18n="run.step3_title">פרטי האימון</div>
           <div class="run-form-field">
-            <label class="run-form-label">תאריך *</label>
+            <label class="run-form-label" data-i18n="run.date_label">תאריך *</label>
             <input type="date" id="run-f-date" class="run-form-input">
           </div>
           <div class="run-form-field">
-            <label class="run-form-label">מרחק (ק"מ) *</label>
+            <label class="run-form-label" data-i18n="run.dist_label">מרחק (ק"מ) *</label>
             <input type="number" id="run-f-dist" class="run-form-input" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="run-form-field">
-            <label class="run-form-label">משך (דקות) *</label>
+            <label class="run-form-label" data-i18n="run.dur_label">משך (דקות) *</label>
             <input type="number" id="run-f-dur" class="run-form-input" min="0" placeholder="30">
           </div>
           <div class="run-form-field">
-            <label class="run-form-label">קלוריות</label>
+            <label class="run-form-label" data-i18n="run.cal_label">קלוריות</label>
             <input type="number" id="run-f-cal" class="run-form-input" min="0" placeholder="--">
           </div>
           <div class="run-form-field">
-            <label class="run-form-label">צעדים/דקה</label>
+            <label class="run-form-label" data-i18n="run.spm_label">צעדים/דקה</label>
             <input type="number" id="run-f-spm" class="run-form-input" min="0" placeholder="--">
           </div>
           <div class="run-form-field">
-            <label class="run-form-label">דופק ממוצע</label>
+            <label class="run-form-label" data-i18n="run.hr_label">דופק ממוצע</label>
             <input type="number" id="run-f-hr" class="run-form-input" min="0" placeholder="--">
           </div>
           <div class="run-form-field">
             <div class="run-toggle-row">
-              <span class="run-form-label" style="margin:0;">הרגשתי עייפות</span>
+              <span class="run-form-label" style="margin:0;" data-i18n="run.tired_label">הרגשתי עייפות</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="run-f-tired">
                 <span class="toggle-slider"></span>
@@ -984,10 +984,11 @@
             </div>
           </div>
           <div class="run-form-field">
-            <label class="run-form-label">הערות</label>
-            <textarea id="run-f-notes" class="run-form-input" rows="3" placeholder="הערות אופציונליות..."></textarea>
+            <label class="run-form-label" data-i18n="run.notes_label">הערות</label>
+            <textarea id="run-f-notes" class="run-form-input" rows="3" placeholder="הערות אופציונליות..." data-i18n-ph="run.notes_ph"></textarea>
           </div>
-          <button class="run-btn run-btn-primary" style="width:100%;margin-top:4px;" id="runSaveBtn" onclick="runSaveWorkout()">שמור אימון</button>
+          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:4px;" onclick="runBackFromForm()" data-i18n="btn.back">← חזרה</button>
+          <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="runSaveBtn" onclick="runSaveWorkout()" data-i18n="run.save_btn">שמור אימון</button>
           <p id="runFormError" style="color:var(--red);font-size:13px;margin-top:8px;display:none;"></p>
         </div>
       </div>
@@ -995,9 +996,9 @@
 
     <!-- History sub-view -->
     <div id="run-view-history" class="run-sub-view">
-      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runShowDashboard()">← חזרה</button>
+      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runGoBack()" data-i18n="btn.back">← חזרה</button>
       <div class="run-card">
-        <div class="run-card-title">היסטוריית אימונים</div>
+        <div class="run-card-title" data-i18n="run.history_title">היסטוריית אימונים</div>
         <div id="run-history-list"></div>
       </div>
     </div>
@@ -1058,6 +1059,16 @@
           <!-- populated by renderLangSelector() -->
         </div>
       </div>
+      <div class="settings-row" id="runningGateRow" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:none;">
+        <div class="settings-item-text">
+          <div class="settings-row-label" data-i18n="settings.running_show">הצג עמוד ריצה</div>
+          <div class="settings-item-sub" data-i18n="settings.running_show_sub">מחליף את עמוד המדידות בנב-בר</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="runningEnabledToggle" onchange="saveRunningEnabled(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <div class="settings-group-label" style="margin-top:8px;" data-i18n="settings.section.timer">טיימר</div>
@@ -1071,23 +1082,6 @@
           <input type="checkbox" id="tv2SoundToggle" onchange="tv2ToggleSound(this.checked)">
           <span class="toggle-slider"></span>
         </label>
-      </div>
-    </div>
-
-    <!-- RUNNING GATE (eitan357 only) -->
-    <div class="settings-running-gate" id="runningGateBlock" style="margin-top:8px;">
-      <div class="settings-group-label">ריצה</div>
-      <div class="settings-card">
-        <div class="settings-row">
-          <div class="settings-item-text">
-            <div class="settings-row-label">הצג עמוד ריצה</div>
-            <div class="settings-item-sub">מחליף את עמוד המדידות בנב-בר</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="runningEnabledToggle" onchange="saveRunningEnabled(this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
       </div>
     </div>
 
@@ -1110,7 +1104,7 @@
     <span class="nav-icon">📏</span><span data-i18n="nav.measurements">מדידות</span>
   </button>
   <button class="nav-item"        id="nav-running"      onclick="showSection('running')" style="display:none;">
-    <span class="nav-icon">🏃</span><span>ריצה</span>
+    <span class="nav-icon">🏃</span><span data-i18n="run.nav">ריצה</span>
   </button>
   <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
     <span class="nav-icon">📊</span><span data-i18n="nav.history">היסטוריה</span>
@@ -1118,7 +1112,7 @@
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=10';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=11';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -1215,9 +1209,9 @@ function initSettingsUI() {
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName_' + (currentUser?.uid || '')) || '';
 
   // Running gate — only for eitan357@gmail.com
-  const gateBlock = document.getElementById('runningGateBlock');
-  if (gateBlock) {
-    gateBlock.style.display = currentUser?.email === 'eitan357@gmail.com' ? 'block' : 'none';
+  const gateRow = document.getElementById('runningGateRow');
+  if (gateRow) {
+    gateRow.style.display = currentUser?.email === 'eitan357@gmail.com' ? 'flex' : 'none';
     const tog = document.getElementById('runningEnabledToggle');
     if (tog) tog.checked = runningEnabled;
   }
@@ -1399,6 +1393,7 @@ function runShowDashboard() {
 }
 
 function runShowAdd() {
+  history.pushState({ runSubView: 'add' }, '');
   document.getElementById('run-view-dashboard').classList.remove('active');
   document.getElementById('run-view-add').classList.add('active');
   document.getElementById('run-view-history').classList.remove('active');
@@ -1406,10 +1401,28 @@ function runShowAdd() {
 }
 
 function runShowHistory() {
+  history.pushState({ runSubView: 'history' }, '');
   document.getElementById('run-view-dashboard').classList.remove('active');
   document.getElementById('run-view-add').classList.remove('active');
   document.getElementById('run-view-history').classList.add('active');
   renderRunHistory();
+}
+
+function runGoBack() {
+  if (history.state?.runSubView) {
+    history.back();
+  } else {
+    runShowDashboard();
+  }
+}
+
+function runBackFromForm() {
+  const type = runWorkoutTypes.find(tp => tp.id === _runSelectedTypeId);
+  if (type?.name === 'Elliptical') {
+    runShowStep2();
+  } else {
+    runShowStep1();
+  }
 }
 
 function renderRunDashboard() {
@@ -1417,49 +1430,48 @@ function renderRunDashboard() {
   document.getElementById('run-streak-card').innerHTML = `
     <div class="run-streak-badge">
       <div class="run-streak-num">${streak}</div>
-      <div class="run-streak-lbl">שבועות רצופים</div>
+      <div class="run-streak-lbl">${t('run.streak_label')}</div>
     </div>`;
 
   const prs = calcRunPRs(runWorkouts);
   document.getElementById('run-prs-card').innerHTML = `
-    <div class="run-card-title">שיאים אישיים</div>
+    <div class="run-card-title">${t('run.prs_title')}</div>
     <div class="run-stat-row">
-      <div class="run-stat"><div class="run-stat-val">${prs.bestDistanceKm > 0 ? prs.bestDistanceKm.toFixed(1) : '--'}</div><div class="run-stat-lbl">מרחק מירבי (ק"מ)</div></div>
-      <div class="run-stat"><div class="run-stat-val">${prs.bestPaceMinPerKm > 0 ? formatPace(prs.bestPaceMinPerKm) : '--'}</div><div class="run-stat-lbl">קצב מהיר</div></div>
-      <div class="run-stat"><div class="run-stat-val">${prs.lowestHeartRate > 0 ? prs.lowestHeartRate : '--'}</div><div class="run-stat-lbl">דופק נמוך</div></div>
+      <div class="run-stat"><div class="run-stat-val">${prs.bestDistanceKm > 0 ? prs.bestDistanceKm.toFixed(1) : '--'}</div><div class="run-stat-lbl">${t('run.best_distance')}</div></div>
+      <div class="run-stat"><div class="run-stat-val">${prs.bestPaceMinPerKm > 0 ? formatPace(prs.bestPaceMinPerKm) : '--'}</div><div class="run-stat-lbl">${t('run.best_pace')}</div></div>
+      <div class="run-stat"><div class="run-stat-val">${prs.lowestHeartRate > 0 ? prs.lowestHeartRate : '--'}</div><div class="run-stat-lbl">${t('run.lowest_hr')}</div></div>
     </div>`;
 
   const last = runWorkouts[0];
   if (last) {
-    const typeName = escHtml(runWorkoutTypes.find(t => t.id === last.workoutTypeId)?.name ?? 'אימון');
+    const typeName = escHtml(runWorkoutTypes.find(tp => tp.id === last.workoutTypeId)?.name ?? t('run.default_type'));
     document.getElementById('run-last-card').innerHTML = `
-      <div class="run-card-title">אימון אחרון</div>
+      <div class="run-card-title">${t('run.last_title')}</div>
       <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">${last.date} — ${typeName}</div>
       <div class="run-stat-row">
-        <div class="run-stat"><div class="run-stat-val">${(last.distanceKm ?? 0).toFixed(1)}</div><div class="run-stat-lbl">ק"מ</div></div>
-        <div class="run-stat"><div class="run-stat-val">${last.durationMinutes ?? '--'}</div><div class="run-stat-lbl">דקות</div></div>
-        <div class="run-stat"><div class="run-stat-val">${last.paceMinPerKm ? formatPace(last.paceMinPerKm) : '--'}</div><div class="run-stat-lbl">קצב</div></div>
+        <div class="run-stat"><div class="run-stat-val">${(last.distanceKm ?? 0).toFixed(1)}</div><div class="run-stat-lbl">${t('run.km')}</div></div>
+        <div class="run-stat"><div class="run-stat-val">${last.durationMinutes ?? '--'}</div><div class="run-stat-lbl">${t('run.minutes')}</div></div>
+        <div class="run-stat"><div class="run-stat-val">${last.paceMinPerKm ? formatPace(last.paceMinPerKm) : '--'}</div><div class="run-stat-lbl">${t('run.pace')}</div></div>
       </div>`;
   } else {
     document.getElementById('run-last-card').innerHTML = `
-      <div class="run-card-title">אימון אחרון</div>
-      <div style="text-align:center;color:var(--sub);padding:12px;">עוד לא נרשמו אימונים</div>`;
+      <div class="run-card-title">${t('run.last_title')}</div>
+      <div style="text-align:center;color:var(--sub);padding:12px;">${t('run.no_workouts')}</div>`;
   }
 }
 
 const RUN_CHARTS_CONFIG = [
-  { key: 'distanceKm',       label: 'מרחק (ק"מ)',      color: '#2563eb', fmt: v => v.toFixed(1) },
-  { key: 'avgHeartRate',     label: 'דופק ממוצע',      color: '#dc2626', fmt: v => Math.round(v) },
-  { key: 'paceMinPerKm',     label: 'קצב (דק/ק"מ)',     color: '#16a34a', fmt: formatPace },
-  { key: 'calories',         label: 'קלוריות',          color: '#d97706', fmt: v => Math.round(v) },
-  { key: 'avgStridesPerMin', label: 'צעדים/דקה',        color: '#7c3aed', fmt: v => Math.round(v) },
+  { key: 'distanceKm',       tKey: 'run.chart.distance', color: '#2563eb', fmt: v => v.toFixed(1) },
+  { key: 'avgHeartRate',     tKey: 'run.chart.hr',       color: '#dc2626', fmt: v => Math.round(v) },
+  { key: 'paceMinPerKm',     tKey: 'run.chart.pace',     color: '#16a34a', fmt: formatPace },
+  { key: 'calories',         tKey: 'run.chart.calories', color: '#d97706', fmt: v => Math.round(v) },
+  { key: 'avgStridesPerMin', tKey: 'run.chart.spm',      color: '#7c3aed', fmt: v => Math.round(v) },
 ];
 
 function runSetRange(range) {
   _runCurrentRange = range;
-  const labels = { month: 'חודש', year: 'שנה', all: 'הכל' };
   document.querySelectorAll('.run-range-btn').forEach(b => {
-    b.classList.toggle('active', b.textContent.trim() === labels[range]);
+    b.classList.toggle('active', b.dataset.range === range);
   });
   renderRunCharts();
 }
@@ -1482,7 +1494,7 @@ function renderRunCharts() {
     const data   = rows.map(w => w[cfg.key]);
 
     const wrap = document.createElement('div');
-    wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px;">${cfg.label}</div>
+    wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px;">${t(cfg.tKey)}</div>
       <div class="run-chart-wrap"><canvas id="rChart-${cfg.key}"></canvas></div>`;
     container.appendChild(wrap);
 
@@ -1514,7 +1526,7 @@ function renderRunCharts() {
   }
 
   if (container.innerHTML === '') {
-    container.innerHTML = '<div style="text-align:center;color:var(--sub);padding:20px;">אין נתונים לטווח הנבחר</div>';
+    container.innerHTML = `<div style="text-align:center;color:var(--sub);padding:20px;">${t('run.no_data')}</div>`;
   }
 }
 
@@ -1544,7 +1556,7 @@ function runShowStep2() {
   document.getElementById('run-add-step1').style.display = 'none';
   document.getElementById('run-add-step2').style.display = '';
   document.getElementById('run-add-step3').style.display = 'none';
-  document.getElementById('runOcrZoneText').textContent = '📷 צלם או בחר תמונה';
+  document.getElementById('runOcrZoneText').textContent = t('run.ocr_btn');
   document.getElementById('runOcrError').style.display = 'none';
 }
 
@@ -1564,14 +1576,14 @@ function runShowStep3(prefill) {
   document.getElementById('run-f-notes').value = prefill.notes ?? '';
   document.getElementById('runFormError').style.display = 'none';
   document.getElementById('runSaveBtn').disabled = false;
-  document.getElementById('runSaveBtn').textContent = 'שמור אימון';
+  document.getElementById('runSaveBtn').textContent = t('run.save_btn');
 }
 
 async function runHandleOcr(input) {
   const file = input.files?.[0];
   if (!file) return;
   input.value = '';
-  document.getElementById('runOcrZoneText').textContent = 'מפענח תמונה...';
+  document.getElementById('runOcrZoneText').textContent = t('run.ocr_scanning');
   document.getElementById('runOcrError').style.display = 'none';
 
   try {
@@ -1587,8 +1599,8 @@ async function runHandleOcr(input) {
     const prefill = parseOcrText(text);
     runShowStep3(prefill);
   } catch {
-    document.getElementById('runOcrZoneText').textContent = '📷 צלם או בחר תמונה';
-    document.getElementById('runOcrError').textContent = 'לא הצלחתי לקרוא את התמונה. נסה שוב או הכנס ידנית.';
+    document.getElementById('runOcrZoneText').textContent = t('run.ocr_btn');
+    document.getElementById('runOcrError').textContent = t('run.ocr_error');
     document.getElementById('runOcrError').style.display = '';
   }
 }
@@ -1611,7 +1623,7 @@ async function runSaveWorkout() {
   const errEl   = document.getElementById('runFormError');
 
   if (!date || !distStr || !durStr) {
-    errEl.textContent = 'יש למלא תאריך, מרחק ומשך';
+    errEl.textContent = t('run.fill_required');
     errEl.style.display = '';
     return;
   }
@@ -1619,14 +1631,14 @@ async function runSaveWorkout() {
   const distanceKm      = parseFloat(distStr);
   const durationMinutes = parseFloat(durStr);
   if (!(distanceKm > 0) || !(durationMinutes > 0)) {
-    errEl.textContent = 'מרחק ומשך חייבים להיות גדולים מ-0';
+    errEl.textContent = t('run.positive_values');
     errEl.style.display = '';
     return;
   }
 
   const btn = document.getElementById('runSaveBtn');
   btn.disabled = true;
-  btn.textContent = 'שומר...';
+  btn.textContent = t('run.save_btn');
 
   const workout = {
     date,
@@ -1643,12 +1655,12 @@ async function runSaveWorkout() {
 
   try {
     await addRunWorkout(workout);
-    toast('האימון נשמר בהצלחה! 🏃');
-    runShowDashboard();
+    toast(t('run.saved_ok'));
+    history.back();
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'שמור אימון';
-    errEl.textContent = 'שגיאה בשמירה: ' + err.message;
+    btn.textContent = t('run.save_btn');
+    errEl.textContent = t('run.save_error') + err.message;
     errEl.style.display = '';
   }
 }
@@ -1658,27 +1670,27 @@ function renderRunHistory() {
   const list = document.getElementById('run-history-list');
   if (!list) return;
   if (runWorkouts.length === 0) {
-    list.innerHTML = '<div style="text-align:center;color:var(--sub);padding:20px;">עוד לא נרשמו אימונים</div>';
+    list.innerHTML = `<div style="text-align:center;color:var(--sub);padding:20px;">${t('run.no_workouts')}</div>`;
     return;
   }
   list.innerHTML = runWorkouts.map(w => {
-    const typeName = escHtml(runWorkoutTypes.find(t => t.id === w.workoutTypeId)?.name ?? '');
+    const typeName = escHtml(runWorkoutTypes.find(tp => tp.id === w.workoutTypeId)?.name ?? '');
     const pace     = w.paceMinPerKm ? formatPace(w.paceMinPerKm) : '--';
     const tired    = w.feltTired ? '😴' : '';
     return `
       <div class="run-history-row" onclick="runToggleHistoryRow('${w.id}')">
         <div>
           <div class="run-history-date">${w.date} ${tired}</div>
-          <div class="run-history-meta">${typeName} · ${(w.distanceKm ?? 0).toFixed(1)} ק"מ · ${pace} דק/ק"מ</div>
+          <div class="run-history-meta">${typeName} · ${(w.distanceKm ?? 0).toFixed(1)} ${t('run.km')} · ${pace} ${t('run.pace')}</div>
         </div>
         <span style="color:var(--sub);">›</span>
       </div>
       <div class="run-history-detail" id="rhd-${w.id}">
-        ${w.durationMinutes != null ? `<div>משך: ${w.durationMinutes} דקות</div>` : ''}
-        ${w.calories        != null ? `<div>קלוריות: ${w.calories}</div>` : ''}
-        ${w.avgHeartRate    != null ? `<div>דופק ממוצע: ${w.avgHeartRate} bpm</div>` : ''}
-        ${w.avgStridesPerMin!= null ? `<div>צעדים/דקה: ${w.avgStridesPerMin}</div>` : ''}
-        ${w.notes           ? `<div>הערות: ${escHtml(w.notes)}</div>` : ''}
+        ${w.durationMinutes != null ? `<div>${t('run.dur_label')}: ${w.durationMinutes}</div>` : ''}
+        ${w.calories        != null ? `<div>${t('run.cal_label')}: ${w.calories}</div>` : ''}
+        ${w.avgHeartRate    != null ? `<div>${t('run.hr_label')}: ${w.avgHeartRate} bpm</div>` : ''}
+        ${w.avgStridesPerMin!= null ? `<div>${t('run.spm_label')}: ${w.avgStridesPerMin}</div>` : ''}
+        ${w.notes           ? `<div>${t('run.notes_label')}: ${escHtml(w.notes)}</div>` : ''}
       </div>`;
   }).join('');
 }
@@ -3440,8 +3452,13 @@ Object.assign(window, {
   runShowDashboard, runShowAdd, runShowHistory,
   runShowStep1, runSelectType, runShowStep2, runShowStep3,
   runHandleOcr, runSaveWorkout,
+  runGoBack, runBackFromForm,
   runSetRange, runToggleHistoryRow,
   saveRunningEnabled,
+});
+
+window.addEventListener('popstate', () => {
+  if (currentSection === 'running') runShowDashboard();
 });
 </script>
 
