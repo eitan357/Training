@@ -1597,7 +1597,6 @@ async function runHandleOcr(input) {
   const file = input.files?.[0];
   if (!file) return;
   input.value = '';
-  input.value = '';
   document.getElementById('runOcrZoneText').textContent = t('run.ocr_scanning');
   document.getElementById('runOcrError').style.display = 'none';
 
@@ -1620,15 +1619,79 @@ async function runHandleOcr(input) {
   }
 }
 
-function parseOcrText(text) {
-  const num = (pattern) => { const m = text.match(pattern); return m ? parseFloat(m[1]) : undefined; };
-  return {
-    distanceKm:       num(/(\d+\.?\d*)\s*(?:km|ק"מ)/i),
-    durationMinutes:  num(/(\d+)\s*(?:min|דק)/i),
-    calories:         num(/(\d+)\s*(?:cal|kcal|קל)/i),
-    avgStridesPerMin: num(/(\d+)\s*(?:spm|strides)/i),
-    avgHeartRate:     num(/(\d+)\s*(?:bpm|דופק)/i),
+function parseOcrText(rawText) {
+  console.log('[OCR raw]', rawText);
+
+  // Normalize decimal commas (European format: 5,32 → 5.32)
+  const text = rawText.replace(/(\d),(\d)/g, '$1.$2');
+  const lines = text.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
+
+  // Try multiple regex patterns, return first match
+  function tryPatterns(patterns) {
+    for (const p of patterns) {
+      const m = text.match(p);
+      if (m) return parseFloat(m[1]);
+    }
+    return undefined;
+  }
+
+  // Search for a number on the same line or ±radius lines from a keyword match
+  function nearKeyword(keywords, radius = 1) {
+    const kws = Array.isArray(keywords) ? keywords : [keywords];
+    for (let i = 0; i < lines.length; i++) {
+      const lc = lines[i].toLowerCase();
+      if (kws.some(k => lc.includes(k.toLowerCase()))) {
+        for (let j = Math.max(0, i - radius); j <= Math.min(lines.length - 1, i + radius); j++) {
+          const m = lines[j].match(/(\d+\.?\d*)/);
+          if (m && parseFloat(m[1]) > 0) return parseFloat(m[1]);
+        }
+      }
+    }
+    return undefined;
+  }
+
+  // Duration: hh:mm:ss or mm:ss → decimal minutes
+  function parseDuration() {
+    let m = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
+    if (m) return Math.round((+m[1] * 60 + +m[2] + +m[3] / 60) * 10) / 10;
+    m = text.match(/\b(\d{1,2}):(\d{2})\b/);
+    if (m && +m[1] < 99 && +m[2] < 60) return Math.round((+m[1] + +m[2] / 60) * 10) / 10;
+    m = text.match(/(\d+\.?\d*)\s*min/i);
+    if (m) return parseFloat(m[1]);
+    return nearKeyword(['time', 'duration', 'elapsed', 'moving', 'זמן', 'משך']);
+  }
+
+  const result = {
+    distanceKm: tryPatterns([
+      /(\d+\.?\d*)\s*km/i,
+      /(\d+\.?\d*)\s*ק"מ/,
+      /dist(?:ance)?[:\s]+(\d+\.?\d*)/i,
+    ]) ?? nearKeyword(['km', 'distance', 'dist', 'מרחק']),
+
+    durationMinutes: parseDuration(),
+
+    calories: tryPatterns([
+      /(\d+)\s*(?:kcal|cal\b)/i,
+      /(?:calories?|energy)[:\s]+(\d+)/i,
+      /(\d+)\s*קל/,
+    ]) ?? nearKeyword(['cal', 'kcal', 'calories', 'energy', 'קלוריות']),
+
+    avgStridesPerMin: tryPatterns([
+      /(\d+)\s*spm/i,
+      /cadence[:\s]+(\d+)/i,
+      /(\d+)\s*strides?\s*\/\s*min/i,
+    ]) ?? nearKeyword(['cadence', 'spm', 'strides', 'stride', 'steps']),
+
+    avgHeartRate: tryPatterns([
+      /(\d{2,3})\s*bpm/i,
+      /(?:avg\s*)?h\.?r\.?[:\s]+(\d{2,3})/i,
+      /(?:heart\s*rate)[:\s]+(\d{2,3})/i,
+      /(\d{2,3})\s*דופק/,
+    ]) ?? nearKeyword(['bpm', 'heart', 'hr', 'pulse', 'דופק']),
   };
+
+  console.log('[OCR parsed]', result);
+  return result;
 }
 
 async function runSaveWorkout() {
