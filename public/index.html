@@ -1212,10 +1212,11 @@ function initSettingsUI() {
   renderLangSelector();
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName_' + (currentUser?.uid || '')) || '';
 
-  // Running gate — only for eitan357@gmail.com
+  // Running gate
+  const RUN_ALLOWED = ['eitan357@gmail.com', 'test@gmail.com'];
   const gateRow = document.getElementById('runningGateRow');
   if (gateRow) {
-    gateRow.style.display = currentUser?.email === 'eitan357@gmail.com' ? 'flex' : 'none';
+    gateRow.style.display = RUN_ALLOWED.includes(currentUser?.email) ? 'flex' : 'none';
     const tog = document.getElementById('runningEnabledToggle');
     if (tog) tog.checked = runningEnabled;
   }
