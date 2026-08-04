@@ -269,12 +269,14 @@ export const TRANSLATIONS = {
     'settings.running_show_sub': 'מחליף את עמוד המדידות בנב-בר',
 
     // ── Target copy/bump ──────────────────────────────────────────
-    'target.copy_hint':       'לחץ להעתיק ערכי יעד לטופס',
+    'target.copy_hint':       'לחץ להשלים את שדות האימון מהיעד',
     'target.overwrite_confirm':'שדות מלאים יידרסו. להמשיך?',
     'target.parse_error':     'לא הצלחתי לפענח את היעד',
     'target.no_target':       'אין יעד להעתקה',
     'target.no_weight':       'היעד לא מכיל משקל',
     'target.bump_btn':        '+0.5',
+    'target.copied':          'ערכי היעד הועתקו לטופס',
+    'target.not_set':         'יש להגדיר יעד בהגדרות',
   },
 
   // ────────────────────────────────────────────────────────────────
@@ -525,12 +527,14 @@ export const TRANSLATIONS = {
     'settings.running_show_sub': 'Replaces the Measurements tab in the nav bar',
 
     // ── Target copy/bump ──────────────────────────────────────────
-    'target.copy_hint':       'Tap to copy target values to form',
+    'target.copy_hint':       'Tap to fill workout fields from target',
     'target.overwrite_confirm':'Form fields have data. Overwrite?',
     'target.parse_error':     'Could not parse the target',
     'target.no_target':       'No target to copy',
     'target.no_weight':       'Target has no weight value',
     'target.bump_btn':        '+0.5',
+    'target.copied':          'Target values copied to form',
+    'target.not_set':         'Set target fields in settings first',
   },
 
   // ────────────────────────────────────────────────────────────────
