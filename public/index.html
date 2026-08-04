@@ -405,8 +405,9 @@
       text-align: start; border-bottom: 1px solid var(--border);
     }
     .hist-table th:first-child { width: auto; }
-    .hist-table th.col-num { width: 46px; text-align: center; }
-    .hist-table td { padding: 9px 6px 9px 0; border-bottom: 1px solid var(--bg); vertical-align: middle; }
+    .hist-table th.col-num  { width: 52px; text-align: center; }
+    .hist-table th.col-reps { width: 82px; text-align: center; }
+    .hist-table td { padding: 9px 6px 9px 0; border-bottom: 1px solid var(--bg); vertical-align: middle; word-break: break-all; }
     .hist-table tr:last-child td { border-bottom: none; }
     .td-name { font-weight: 600; }
     .td-note { color: var(--sub); font-size: 11px; margin-top: 2px; font-style: italic; }
@@ -762,8 +763,8 @@
         <table class="hist-table" style="margin-top:8px;">
           <thead><tr>
             <th data-i18n="col.exercise">תרגיל</th>
-            <th class="col-num" data-i18n="col.weight">משקל</th>
-            <th class="col-num" data-i18n="col.reps">חזרות</th>
+            <th class="col-num"  data-i18n="col.weight">משקל</th>
+            <th class="col-reps" data-i18n="col.reps">חזרות</th>
           </tr></thead>
           <tbody id="histPreviewRows"></tbody>
         </table>
@@ -2486,7 +2487,7 @@ function buildSessionCard(s, i) {
       <table class="hist-table">
         <thead><tr>
           <th data-i18n="col.exercise">${t('col.exercise')}</th><th class="col-num" data-i18n="col.weight">${t('col.weight')}</th>
-          <th class="col-num" data-i18n="col.reps">${t('col.reps')}</th>
+          <th class="col-reps" data-i18n="col.reps">${t('col.reps')}</th>
         </tr></thead>
         <tbody>
           ${(s.exercises||[]).map(e => `<tr>
