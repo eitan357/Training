@@ -3334,7 +3334,7 @@ function copyTargetToCard(cardEl) {
   if (parsed.weight !== null) weightInput.value = parsed.weight;
   if (parsed.reps   !== null) repsInput.value   = parsed.reps;
 
-  if (!parsed.weight && !parsed.reps) {
+  if (parsed.weight === null && parsed.reps === null) {
     toast(t('target.parse_error'), 'error');
   }
 }
