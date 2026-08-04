@@ -1949,6 +1949,88 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 
+function minOfRange(str) {
+  if (!str) return null;
+  str = str.trim();
+  const m = str.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
+  if (m) return Math.min(parseFloat(m[1]), parseFloat(m[2]));
+  const n = parseFloat(str);
+  return isNaN(n) ? null : n;
+}
+
+function parseTargetString(targetStr) {
+  if (!targetStr || !targetStr.trim()) return null;
+  let t = targetStr.trim();
+
+  let weight = null;
+  const wm = t.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|קילו)\b/i);
+  if (wm) {
+    weight = String(parseFloat(wm[1].replace(',', '.')));
+    t = t.replace(wm[0], '').trim();
+  }
+
+  t = t.replace(/\d+\s*(?:sec|שניות|שניה|min|דקות|\bs\b)/gi, '').trim();
+
+  let repsArr = null;
+
+  const setsLabelM = t.match(/(?:סטים|sets)\s*:\s*([\d,\s]+)/i);
+  const repsLabelM = t.match(/(?:חזרות|reps)\s*:\s*([\d,\-\s]+)/i);
+  if (repsLabelM) {
+    const repsParts = repsLabelM[1].split(',').map(s => s.trim()).filter(Boolean);
+    if (setsLabelM) {
+      const setsCounts = setsLabelM[1].split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+      if (setsCounts.length > 0 && repsParts.length > 0) {
+        repsArr = [];
+        if (repsParts.length === 1) {
+          const total = setsCounts.reduce((a, b) => a + b, 0);
+          const rv = minOfRange(repsParts[0]);
+          if (rv !== null) for (let i = 0; i < total; i++) repsArr.push(rv);
+        } else {
+          setsCounts.forEach((cnt, i) => {
+            const rp = repsParts[i] ?? repsParts[repsParts.length - 1];
+            const rv = minOfRange(rp);
+            if (rv !== null) for (let j = 0; j < cnt; j++) repsArr.push(rv);
+          });
+        }
+        if (repsArr.length === 0) repsArr = null;
+      }
+    } else {
+      const arr = repsParts.map(p => minOfRange(p)).filter(v => v !== null);
+      if (arr.length === repsParts.length && arr.length > 0) repsArr = arr;
+    }
+  }
+
+  if (!repsArr) {
+    const groups = t.split('+').map(s => s.trim());
+    const allReps = [];
+    let matched = false;
+    for (const grp of groups) {
+      const gm = grp.match(/^(\d+)\s*[xX×]\s*([\d\-.]+)/);
+      if (gm) {
+        matched = true;
+        const numSets = parseInt(gm[1]);
+        const rv = minOfRange(gm[2]);
+        if (rv !== null && numSets > 0 && numSets <= 20) {
+          for (let i = 0; i < numSets; i++) allReps.push(rv);
+        }
+      }
+    }
+    if (matched && allReps.length > 0) repsArr = allReps;
+  }
+
+  if (!repsArr) {
+    const cleaned = t.replace(/[a-zא-ת]+/gi, '').trim();
+    const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      const arr = parts.map(p => minOfRange(p)).filter(v => v !== null);
+      if (arr.length === parts.length && arr.length > 0) repsArr = arr;
+    }
+  }
+
+  if (!weight && !repsArr) return null;
+  return { weight, reps: repsArr ? repsArr.join(',') : null };
+}
+
 const MONTHS = {
   he: ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'],
   en: ['January','February','March','April','May','June','July','August','September','October','November','December']
