@@ -449,7 +449,7 @@
       display: flex; align-items: flex-start; gap: 10px; padding: 12px;
     }
     .drag-handle { color: #cbd5e1; font-size: 20px; cursor: grab; padding-top: 6px; flex-shrink: 0; touch-action: none; user-select: none; }
-    .edit-fields { flex: 1; }
+    .edit-fields { flex: 1; min-width: 0; }
     .edit-remove { background: none; border: none; color: #cbd5e1; font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; line-height: 1; padding-top: 6px; }
     .edit-remove:hover { color: var(--red); }
     .edit-tabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
@@ -2153,13 +2153,16 @@ function applyAppData(data) {
   workoutTypes    = (tmpl.types && tmpl.types.length) ? tmpl.types : ['A','B'];
   editTemplates   = {};
   workoutTypes.forEach(wtype => {
-    editTemplates[wtype] = (tmpl[wtype] || []).map(ex => ({
-      id:           ex.id           || '',
-      name:         ex.name         || '',
-      targetWeight: ex.targetWeight || '',
-      targetSets:   ex.targetSets   || '',
-      targetReps:   ex.targetReps   || '',
-    }));
+    editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
+      const hasNew = ex.targetWeight || ex.targetSets || ex.targetReps;
+      return {
+        id:           ex.id           || '',
+        name:         ex.name         || '',
+        targetWeight: ex.targetWeight || (!hasNew ? (ex.target || '') : ''),
+        targetSets:   ex.targetSets   || '',
+        targetReps:   ex.targetReps   || '',
+      };
+    });
   });
   allSessions     = safeArr(data.allWorkouts);
   measureTypes    = safeArr(data.measureTypes);
