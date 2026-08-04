@@ -1984,7 +1984,7 @@ function parseTargetString(targetStr) {
   let t = targetStr.trim();
 
   let weight = null;
-  const wm = t.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|קילו)\b/i);
+  const wm = t.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|קילו)(?=\s|$)/i);
   if (wm) {
     weight = String(parseFloat(wm[1].replace(',', '.')));
     t = t.replace(wm[0], '').trim();
