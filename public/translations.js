@@ -267,6 +267,14 @@ export const TRANSLATIONS = {
     'run.chart.spm':        'צעדים/דקה',
     'settings.running_show':     'הצג עמוד ריצה',
     'settings.running_show_sub': 'מחליף את עמוד המדידות בנב-בר',
+
+    // ── Target copy/bump ──────────────────────────────────────────
+    'target.copy_hint':       'לחץ להעתיק ערכי יעד לטופס',
+    'target.overwrite_confirm':'שדות מלאים יידרסו. להמשיך?',
+    'target.parse_error':     'לא הצלחתי לפענח את היעד',
+    'target.no_target':       'אין יעד להעתקה',
+    'target.no_weight':       'היעד לא מכיל משקל',
+    'target.bump_btn':        '+0.5',
   },
 
   // ────────────────────────────────────────────────────────────────
@@ -515,6 +523,14 @@ export const TRANSLATIONS = {
     'run.chart.spm':        'Steps/min',
     'settings.running_show':     'Show Running Page',
     'settings.running_show_sub': 'Replaces the Measurements tab in the nav bar',
+
+    // ── Target copy/bump ──────────────────────────────────────────
+    'target.copy_hint':       'Tap to copy target values to form',
+    'target.overwrite_confirm':'Form fields have data. Overwrite?',
+    'target.parse_error':     'Could not parse the target',
+    'target.no_target':       'No target to copy',
+    'target.no_weight':       'Target has no weight value',
+    'target.bump_btn':        '+0.5',
   },
 
   // ────────────────────────────────────────────────────────────────
