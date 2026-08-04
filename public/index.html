@@ -377,29 +377,27 @@
     }
     .ex-name-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .ex-target-input {
-      padding: 7px 10px;
+      width: 100%; padding: 7px 10px;
       border: 1.5px solid var(--border); border-radius: 8px;
       font-size: 13px; color: var(--primary);
       background: var(--bg); direction: ltr; text-align: left;
     }
     .ex-target-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
-    .target-fields {
-      display: flex; gap: 6px; margin-top: 2px;
+    .target-row {
+      display: flex; align-items: center; gap: 6px;
     }
-    .target-fields .ex-target-input { flex: 1; min-width: 0; width: auto; }
-    .weight-input-row { display: flex; align-items: center; gap: 4px; }
-    .weight-input-row .ex-weight { flex: 1; min-width: 0; width: auto; }
-    .weight-bump-btn {
+    .target-row .ex-target-input { flex: 1; }
+    .target-bump-btn {
       flex-shrink: 0;
-      padding: 6px 8px;
+      padding: 6px 10px;
       border: 1.5px solid var(--primary);
       border-radius: 8px;
       background: var(--bg);
       color: var(--primary);
-      font-size: 12px; font-weight: 700;
+      font-size: 13px; font-weight: 700;
       cursor: pointer; white-space: nowrap;
     }
-    .weight-bump-btn:active { opacity: 0.7; }
+    .target-bump-btn:active { opacity: 0.7; }
 
     /* ── HISTORY ── */
     .session-card {
@@ -1143,7 +1141,7 @@
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=15';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=14';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -2148,15 +2146,7 @@ function applyAppData(data) {
 
   workoutTypes    = (tmpl.types && tmpl.types.length) ? tmpl.types : ['A','B'];
   editTemplates   = {};
-  workoutTypes.forEach(wtype => {
-    editTemplates[wtype] = (tmpl[wtype] || []).map(ex => ({
-      id:           ex.id           || '',
-      name:         ex.name         || '',
-      targetWeight: ex.targetWeight || '',
-      targetSets:   ex.targetSets   || '',
-      targetReps:   ex.targetReps   || ''
-    }));
-  });
+  workoutTypes.forEach(wtype => { editTemplates[wtype] = tmpl[wtype] || []; });
   allSessions     = safeArr(data.allWorkouts);
   measureTypes    = safeArr(data.measureTypes);
   allMeasurements = safeArr(data.measurements);
@@ -2428,7 +2418,7 @@ function clearWorkoutForm() {
   }
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
-    (editTemplates[selectedType] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps)).join('');
+    (editTemplates[selectedType] || []).map(ex => makeExCard(ex.name, ex.target)).join('');
   _draftAttachListeners();
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
@@ -2482,7 +2472,7 @@ function selectType(type) {
 
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
-    (editTemplates[type] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps)).join('');
+    (editTemplates[type] || []).map(ex => makeExCard(ex.name, ex.target)).join('');
   document.getElementById('saveBtn').style.display = 'block';
   document.getElementById('addBtn').style.display  = 'block';
 
@@ -2493,40 +2483,22 @@ function toggleHistPreview() {
   document.getElementById('histPreviewBody').classList.toggle('open');
 }
 
-function makeExCard(name, targetWeight = '', targetSets = '', targetReps = '') {
+function makeExCard(name, target) {
   const id = exerciseCount++;
-  const tw = (targetWeight || '').trim();
-  const ts = (targetSets   || '').trim();
-  const tr = (targetReps   || '').trim();
-  const hasTarget = tw || ts || tr;
-  const pillParts = [];
-  if (tw) pillParts.push(tw + ' kg');
-  if (ts && tr) pillParts.push(ts + ' × ' + tr);
-  else if (ts)  pillParts.push(ts + ' sets');
-  else if (tr)  pillParts.push(tr);
-  const pillText = pillParts.join(' | ');
   return `
   <div class="card" id="card_${id}">
     <div class="card-body">
       <div class="ex-name-row">
         <div>
           <div class="ex-name-text">${escHtml(name)}</div>
-          ${hasTarget
-  ? `<div class="ex-target-text ex-target-clickable"
-       data-tw="${escHtml(tw)}" data-ts="${escHtml(ts)}" data-tr="${escHtml(tr)}"
-       onclick="copyTargetToCard(this.closest('.card'))"
-       title="${t('target.copy_hint')}">${escHtml(pillText)}</div>`
+          ${target && target.trim()
+  ? `<div class="ex-target-text ex-target-clickable" onclick="copyTargetToCard(this.closest('.card'))" title="${t('target.copy_hint')}">${escHtml(target)}</div>`
   : ''}
         </div>
         <button class="remove-btn" onclick="document.getElementById('card_${id}').remove()">✕</button>
       </div>
       <div class="field-group">
-        <div class="field"><label data-i18n="col.weight">${t('col.weight')}</label>
-          <div class="weight-input-row">
-            <input type="text" class="ex-weight" placeholder="—" autocomplete="off">
-            <button class="weight-bump-btn" type="button" onclick="bumpWeightField(this.previousElementSibling)">+0.5</button>
-          </div>
-        </div>
+        <div class="field"><label data-i18n="col.weight">${t('col.weight')}</label><input type="text" class="ex-weight" placeholder="—" autocomplete="off"></div>
         <div class="field"><label data-i18n="col.sets">${t('col.sets')}</label><input type="text" class="ex-sets"   placeholder="—" autocomplete="off"></div>
         <div class="field"><label data-i18n="col.reps">${t('col.reps')}</label><input type="text" class="ex-reps"  placeholder="—" autocomplete="off"></div>
       </div>
@@ -2538,7 +2510,7 @@ function makeExCard(name, targetWeight = '', targetSets = '', targetReps = '') {
 }
 
 function addCustomExercise() {
-  document.getElementById('exerciseList').insertAdjacentHTML('beforeend', makeExCard('', '', '', ''));
+  document.getElementById('exerciseList').insertAdjacentHTML('beforeend', makeExCard('', ''));
   window.scrollTo(0, document.body.scrollHeight);
 }
 
@@ -2863,11 +2835,10 @@ function renderEditList(type) {
     card.innerHTML  = `
       <span class="drag-handle">⠿</span>
       <div class="edit-fields">
-        <input class="ex-name-input" value="${escHtml(ex.name)}" placeholder="${t('edit.ex_name_ph')}">
-        <div class="target-fields">
-          <input class="ex-target-input ex-target-weight-input" value="${escHtml(ex.targetWeight || '')}" placeholder="${t('col.weight')}">
-          <input class="ex-target-input ex-target-sets-input"   value="${escHtml(ex.targetSets   || '')}" placeholder="${t('col.sets')}">
-          <input class="ex-target-input ex-target-reps-input"   value="${escHtml(ex.targetReps   || '')}" placeholder="${t('col.reps')}">
+        <input class="ex-name-input"   value="${escHtml(ex.name)}"   placeholder="${t('edit.ex_name_ph')}">
+        <div class="target-row">
+          <input class="ex-target-input" value="${escHtml(ex.target)}" placeholder="${t('edit.ex_target_ph')}">
+          <button class="target-bump-btn" type="button" onclick="bumpTargetWeight(this.previousElementSibling, 0.5)">${t('target.bump_btn')}</button>
         </div>
       </div>
       <button class="edit-remove" onclick="removeEditEx(${idx})">✕</button>`;
@@ -2881,7 +2852,7 @@ function switchEditTab(type) { collectEdits(); editTab = type; renderEditTabs();
 function addEditExercise() {
   collectEdits();
   if (!editTemplates[editTab]) editTemplates[editTab] = [];
-  editTemplates[editTab].push({ name: '', targetWeight: '', targetSets: '', targetReps: '', id: '' });
+  editTemplates[editTab].push({ name: '', target: '', id: '' });
   renderEditTabs();
   renderEditList(editTab);
   window.scrollTo(0, document.body.scrollHeight);
@@ -2898,11 +2869,9 @@ function collectEdits() {
   const cards = document.getElementById('editListContainer').querySelectorAll('.edit-card');
   if (!cards.length) return;
   editTemplates[editTab] = [...cards].map(c => ({
-    name:         c.querySelector('.ex-name-input').value,
-    targetWeight: c.querySelector('.ex-target-weight-input').value,
-    targetSets:   c.querySelector('.ex-target-sets-input').value,
-    targetReps:   c.querySelector('.ex-target-reps-input').value,
-    id:           c.dataset.id || ''
+    name:   c.querySelector('.ex-name-input').value,
+    target: c.querySelector('.ex-target-input').value,
+    id:     c.dataset.id || ''
   }));
 }
 
@@ -2943,7 +2912,7 @@ async function saveTemplates() {
   workoutTypes.forEach(wtype => {
     templateData[wtype] = (editTemplates[wtype]||[])
       .filter(ex => ex.name.trim())
-      .map(ex => ({ id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight||'').trim(), targetSets: (ex.targetSets||'').trim(), targetReps: (ex.targetReps||'').trim() }));
+      .map(ex => ({ id: ex.id || genId(), name: ex.name.trim(), target: ex.target.trim() }));
   });
   const total = workoutTypes.reduce((n, wtype) => n + (templateData[wtype]||[]).length, 0);
   if (!total) { toast(t('edit.no_items'), 'error'); return; }
@@ -2987,11 +2956,9 @@ function startDrag(e, card, container) {
     document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
     document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
     editTemplates[editTab] = [...container.querySelectorAll('.edit-card')].map(c => ({
-      name:         c.querySelector('.ex-name-input').value,
-      targetWeight: c.querySelector('.ex-target-weight-input').value,
-      targetSets:   c.querySelector('.ex-target-sets-input').value,
-      targetReps:   c.querySelector('.ex-target-reps-input').value,
-      id:           c.dataset.id || ''
+      name:   c.querySelector('.ex-name-input').value,
+      target: c.querySelector('.ex-target-input').value,
+      id:     c.dataset.id || ''
     }));
   };
   document.addEventListener('mousemove', move);
@@ -3370,30 +3337,32 @@ function closeMeasurementsEdit() {
 
 // ─── COPY TARGET TO CARD ──────────────────────────────────────
 function copyTargetToCard(cardEl) {
-  const tEl = cardEl.querySelector('.ex-target-text');
-  const tw  = tEl?.dataset.tw || '';
-  const ts  = tEl?.dataset.ts || '';
-  const tr  = tEl?.dataset.tr || '';
+  const target = cardEl.querySelector('.ex-target-text')?.innerText?.trim();
+  if (!target) { toast(t('target.no_target'), 'error'); return; }
 
-  if (!tw && !ts && !tr) { toast(t('target.not_set'), 'error'); return; }
+  const parsed = parseTargetString(target);
+  if (!parsed) { toast(t('target.parse_error'), 'error'); return; }
 
   const weightInput = cardEl.querySelector('.ex-weight');
-  const setsInput   = cardEl.querySelector('.ex-sets');
   const repsInput   = cardEl.querySelector('.ex-reps');
-  const hasData     = weightInput.value.trim() || setsInput.value.trim() || repsInput.value.trim();
+  const hasData     = weightInput.value.trim() || repsInput.value.trim();
 
   if (hasData && !confirm(t('target.overwrite_confirm'))) return;
 
-  if (tw) weightInput.value = tw;
-  if (ts) setsInput.value   = ts;
-  if (tr) repsInput.value   = tr;
+  if (parsed.weight !== null) weightInput.value = parsed.weight;
+  if (parsed.reps   !== null) repsInput.value   = parsed.reps;
 
-  toast(t('target.copied'), 'success');
+  if (parsed.weight === null && parsed.reps === null) {
+    toast(t('target.parse_error'), 'error');
+  }
 }
 
-function bumpWeightField(inputEl) {
-  const val = parseFloat(inputEl.value) || 0;
-  inputEl.value = Math.round((val + 0.5) * 10) / 10;
+function bumpTargetWeight(inputEl, delta) {
+  const wm = inputEl.value.match(/(\d+(?:[.,]\d+)?)\s*(kg|קילו)(?=\s|$)/i);
+  if (!wm) { toast(t('target.no_weight'), 'error'); return; }
+  const current  = parseFloat(wm[1].replace(',', '.'));
+  const newVal   = Math.round((current + delta) * 10) / 10;
+  inputEl.value  = inputEl.value.replace(wm[0], `${newVal} ${wm[2]}`);
 }
 
 // ─── COPY LAST WORKOUT ────────────────────────────────────────
@@ -3705,7 +3674,7 @@ function editSelectedMeasure()  { editMeasurement([...selectedMeasures][0]); }
 Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
-  selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm, bumpWeightField,
+  selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm, bumpTargetWeight,
   _draftModalResume, _draftModalDiscard,
   goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
