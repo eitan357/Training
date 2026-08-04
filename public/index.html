@@ -3358,7 +3358,7 @@ function copyTargetToCard(cardEl) {
 }
 
 function bumpTargetWeight(inputEl, delta) {
-  const wm = inputEl.value.match(/(\d+(?:[.,]\d+)?)\s*(kg|קילו)\b/i);
+  const wm = inputEl.value.match(/(\d+(?:[.,]\d+)?)\s*(kg|קילו)(?=\s|$)/i);
   if (!wm) { toast(t('target.no_weight'), 'error'); return; }
   const current  = parseFloat(wm[1].replace(',', '.'));
   const newVal   = Math.round((current + delta) * 10) / 10;
