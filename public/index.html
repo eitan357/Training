@@ -350,6 +350,12 @@
       font-size: 12px; color: var(--primary); font-weight: 600;
       background: #ede9fe; padding: 2px 8px; border-radius: 20px; direction: ltr; line-height: 1.3;
     }
+    .ex-target-clickable {
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.15s;
+    }
+    .ex-target-clickable:active { opacity: 0.65; }
     .remove-btn { background: none; border: none; color: var(--sub); font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; }
     .remove-btn:hover { color: var(--red); }
     .field-group { display: flex; gap: 8px; margin-top: 8px; }
@@ -2470,7 +2476,9 @@ function makeExCard(name, target) {
       <div class="ex-name-row">
         <div>
           <div class="ex-name-text">${escHtml(name)}</div>
-          <div class="ex-target-text">${escHtml(target)}</div>
+          ${target && target.trim()
+  ? `<div class="ex-target-text ex-target-clickable" onclick="copyTargetToCard(this.closest('.card'))" title="${t('target.copy_hint')}">${escHtml(target)}</div>`
+  : ''}
         </div>
         <button class="remove-btn" onclick="document.getElementById('card_${id}').remove()">✕</button>
       </div>
@@ -3309,6 +3317,28 @@ function closeMeasurementsEdit() {
   showSection('settings');
 }
 
+// ─── COPY TARGET TO CARD ──────────────────────────────────────
+function copyTargetToCard(cardEl) {
+  const target = cardEl.querySelector('.ex-target-text')?.innerText?.trim();
+  if (!target) { toast(t('target.no_target'), 'error'); return; }
+
+  const parsed = parseTargetString(target);
+  if (!parsed) { toast(t('target.parse_error'), 'error'); return; }
+
+  const weightInput = cardEl.querySelector('.ex-weight');
+  const repsInput   = cardEl.querySelector('.ex-reps');
+  const hasData     = weightInput.value.trim() || repsInput.value.trim();
+
+  if (hasData && !confirm(t('target.overwrite_confirm'))) return;
+
+  if (parsed.weight !== null) weightInput.value = parsed.weight;
+  if (parsed.reps   !== null) repsInput.value   = parsed.reps;
+
+  if (!parsed.weight && !parsed.reps) {
+    toast(t('target.parse_error'), 'error');
+  }
+}
+
 // ─── COPY LAST WORKOUT ────────────────────────────────────────
 function copyLastWorkout() {
   const last = lastWorkouts[selectedType];
@@ -3618,7 +3648,7 @@ function editSelectedMeasure()  { editMeasurement([...selectedMeasures][0]); }
 Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
-  selectType, addCustomExercise, submitData, copyLastWorkout, clearWorkoutForm,
+  selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm,
   _draftModalResume, _draftModalDiscard,
   goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
