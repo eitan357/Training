@@ -245,8 +245,11 @@
                      padding: 7px 14px; background: none;
                      border: 1.5px solid var(--primary); border-radius: 20px;
                      color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer;
-                     margin-bottom: 10px; transition: all .15s; }
+                     transition: all .15s; }
     .copy-last-btn:active { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+    .clear-form-btn { border-color: var(--red); color: var(--red); }
+    .clear-form-btn:active { background: color-mix(in srgb, var(--red) 10%, transparent); }
+    #topActionRow { display: none; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
     /* ── DRAFT AUTO-SAVE ── */
     .auto-save-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; color: var(--sub); background: var(--border); direction: ltr; line-height: 1.3; }
     @keyframes draftFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -768,9 +771,10 @@
       </div>
     </div>
 
-    <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()" data-i18n="btn.copy_last">
-      📋 העתקת אימון אחרון
-    </button>
+    <div id="topActionRow">
+      <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()" data-i18n="btn.copy_last">📋 העתקת אימון אחרון</button>
+      <button id="clearFormBtn" class="copy-last-btn clear-form-btn" style="display:none;" onclick="clearWorkoutForm()" data-i18n="btn.clear_form">🗑 נקה טופס</button>
+    </div>
 
     <div id="sessionNameWrap" style="display:none; margin-bottom:16px;">
       <label class="session-name-label-title" data-i18n="workout.name_label">שם האימון</label>
@@ -778,11 +782,8 @@
     </div>
 
     <div id="exerciseList"></div>
-    <button id="addBtn"      class="btn-ghost"        style="display:none;" onclick="addCustomExercise()" data-i18n="btn.add_exercise">+ הוסף תרגיל</button>
-    <div style="display:none;gap:8px;" id="workoutActionRow">
-      <button class="btn-ghost"         style="flex:1;" onclick="clearWorkoutForm()" data-i18n="btn.clear_form">נקה טופס</button>
-      <button id="saveBtn" class="btn-primary green" style="flex:2;" onclick="submitData()" data-i18n="btn.save_workout">שמור אימון</button>
-    </div>
+    <button id="addBtn"  class="btn-ghost"        style="display:none;" onclick="addCustomExercise()" data-i18n="btn.add_exercise">+ הוסף תרגיל</button>
+    <button id="saveBtn" class="btn-primary green" style="display:none;" onclick="submitData()" data-i18n="btn.save_workout">שמור אימון</button>
   </div>
 
   <!-- edit panel (hidden by default) -->
@@ -2335,7 +2336,9 @@ function selectType(type) {
 
   const h   = lastWorkouts[type];
   const box = document.getElementById('historyPreview');
-  const copyBtn = document.getElementById('copyLastBtn');
+  const copyBtn    = document.getElementById('copyLastBtn');
+  const clearBtn   = document.getElementById('clearFormBtn');
+  const topRow     = document.getElementById('topActionRow');
   if (h) {
     document.getElementById('histPreviewDate').innerText = sessionDisplayDate(h);
     const nameEl = document.getElementById('histPreviewName');
@@ -2354,6 +2357,8 @@ function selectType(type) {
     box.style.display = 'none';
     if (copyBtn) copyBtn.style.display = 'none';
   }
+  if (clearBtn) clearBtn.style.display = 'flex';
+  if (topRow)   topRow.style.display   = 'flex';
 
   const nameWrap  = document.getElementById('sessionNameWrap');
   const nameInput = document.getElementById('sessionNameInput');
@@ -2366,8 +2371,8 @@ function selectType(type) {
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
     (editTemplates[type] || []).map(ex => makeExCard(ex.name, ex.target)).join('');
-  document.getElementById('workoutActionRow').style.display = 'flex';
-  document.getElementById('addBtn').style.display           = 'block';
+  document.getElementById('saveBtn').style.display = 'block';
+  document.getElementById('addBtn').style.display  = 'block';
 
   _tabRestoreOrDraft(type);
 }
