@@ -383,6 +383,21 @@
       background: var(--bg); direction: ltr; text-align: left;
     }
     .ex-target-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+    .target-row {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .target-row .ex-target-input { flex: 1; }
+    .target-bump-btn {
+      flex-shrink: 0;
+      padding: 6px 10px;
+      border: 1.5px solid var(--primary);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--primary);
+      font-size: 13px; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+    }
+    .target-bump-btn:active { opacity: 0.7; }
 
     /* ── HISTORY ── */
     .session-card {
@@ -2821,7 +2836,10 @@ function renderEditList(type) {
       <span class="drag-handle">⠿</span>
       <div class="edit-fields">
         <input class="ex-name-input"   value="${escHtml(ex.name)}"   placeholder="${t('edit.ex_name_ph')}">
-        <input class="ex-target-input" value="${escHtml(ex.target)}" placeholder="${t('edit.ex_target_ph')}">
+        <div class="target-row">
+          <input class="ex-target-input" value="${escHtml(ex.target)}" placeholder="${t('edit.ex_target_ph')}">
+          <button class="target-bump-btn" type="button" onclick="bumpTargetWeight(this.previousElementSibling, 0.5)">${t('target.bump_btn')}</button>
+        </div>
       </div>
       <button class="edit-remove" onclick="removeEditEx(${idx})">✕</button>`;
     el.appendChild(card);
@@ -3339,6 +3357,14 @@ function copyTargetToCard(cardEl) {
   }
 }
 
+function bumpTargetWeight(inputEl, delta) {
+  const wm = inputEl.value.match(/(\d+(?:[.,]\d+)?)\s*(kg|קילו)\b/i);
+  if (!wm) { toast(t('target.no_weight'), 'error'); return; }
+  const current  = parseFloat(wm[1].replace(',', '.'));
+  const newVal   = Math.round((current + delta) * 10) / 10;
+  inputEl.value  = inputEl.value.replace(wm[0], `${newVal} ${wm[2]}`);
+}
+
 // ─── COPY LAST WORKOUT ────────────────────────────────────────
 function copyLastWorkout() {
   const last = lastWorkouts[selectedType];
@@ -3648,7 +3674,7 @@ function editSelectedMeasure()  { editMeasurement([...selectedMeasures][0]); }
 Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
-  selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm,
+  selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm, bumpTargetWeight,
   _draftModalResume, _draftModalDiscard,
   goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
