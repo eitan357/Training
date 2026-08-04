@@ -96,6 +96,7 @@ export const TRANSLATIONS = {
     'col.sets':     'סטים',
     'col.reps':     'חזרות',
     'col.notes':    'הערות',
+    'col.target':   'יעד',
     'ex.notes_ph':  'הוסף הערה...',
     'filter.all':   'הכל',
 
@@ -275,6 +276,10 @@ export const TRANSLATIONS = {
     'target.no_target':       'אין יעד להעתקה',
     'target.no_weight':       'היעד לא מכיל משקל',
     'target.bump_btn':        '+0.5',
+    'target.copied':          'יעד הועתק לטופס',
+    'target.not_set':         'לא הוגדר יעד לתרגיל זה',
+    'target.bumped':          'יעד עודכן ל-',
+    'target.bump_err':        'שגיאה בשמירת היעד',
   },
 
   // ────────────────────────────────────────────────────────────────
@@ -352,6 +357,7 @@ export const TRANSLATIONS = {
     'col.sets':     'Sets',
     'col.reps':     'Reps',
     'col.notes':    'Notes',
+    'col.target':   'Target',
     'ex.notes_ph':  'Add note...',
     'filter.all':   'All',
 
@@ -531,6 +537,10 @@ export const TRANSLATIONS = {
     'target.no_target':       'No target to copy',
     'target.no_weight':       'Target has no weight value',
     'target.bump_btn':        '+0.5',
+    'target.copied':          'Target auto-filled',
+    'target.not_set':         'No target set for this exercise',
+    'target.bumped':          'Target updated to',
+    'target.bump_err':        'Failed to save target',
   },
 
   // ────────────────────────────────────────────────────────────────
