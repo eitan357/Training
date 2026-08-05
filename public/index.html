@@ -362,6 +362,7 @@
     .target-fields { display: flex; gap: 6px; margin-top: 6px; }
     .target-fields .target-field-input { flex: 1; min-width: 0; padding: 7px 6px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px; color: var(--primary); background: var(--bg); text-align: center; direction: ltr; font-family: inherit; box-sizing: border-box; }
     .target-fields .target-field-input:focus { outline: none; border-color: var(--primary); }
+    .ex-target-legacy { border: none; border-radius: 20px; padding: 2px 8px; flex: none; line-height: 1.3; text-align: right; }
     .remove-btn { background: none; border: none; color: var(--sub); font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; }
     .remove-btn:hover { color: var(--red); }
     .field-group { display: flex; gap: 8px; margin-top: 8px; }
@@ -2156,11 +2157,12 @@ function applyAppData(data) {
     editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
       const hasNew = ex.targetWeight || ex.targetSets || ex.targetReps;
       return {
-        id:           ex.id           || '',
-        name:         ex.name         || '',
-        targetWeight: ex.targetWeight || (!hasNew ? (ex.target || '') : ''),
-        targetSets:   ex.targetSets   || '',
-        targetReps:   ex.targetReps   || '',
+        id:            ex.id           || '',
+        name:          ex.name         || '',
+        targetWeight:  ex.targetWeight || '',
+        targetSets:    ex.targetSets   || '',
+        targetReps:    ex.targetReps   || '',
+        _legacyTarget: hasNew ? '' : (ex.target || ''),
       };
     });
   });
@@ -2435,7 +2437,7 @@ function clearWorkoutForm() {
   }
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
-    (editTemplates[selectedType] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps)).join('');
+    (editTemplates[selectedType] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps, ex._legacyTarget)).join('');
   _draftAttachListeners();
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
@@ -2489,7 +2491,7 @@ function selectType(type) {
 
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
-    (editTemplates[type] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps)).join('');
+    (editTemplates[type] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps, ex._legacyTarget)).join('');
   document.getElementById('saveBtn').style.display = 'block';
   document.getElementById('addBtn').style.display  = 'block';
 
@@ -2509,11 +2511,12 @@ function buildTargetPillText(tw, ts, tr) {
   return parts.join(' | ');
 }
 
-function makeExCard(name, targetWeight, targetSets, targetReps) {
+function makeExCard(name, targetWeight, targetSets, targetReps, legacyTarget) {
   const id        = exerciseCount++;
-  const tw        = (targetWeight || '').trim();
-  const ts        = (targetSets   || '').trim();
-  const tr        = (targetReps   || '').trim();
+  const tw        = (targetWeight  || '').trim();
+  const ts        = (targetSets    || '').trim();
+  const tr        = (targetReps    || '').trim();
+  const lt        = (legacyTarget  || '').trim();
   const hasTarget = tw || ts || tr;
   const pillText  = hasTarget ? buildTargetPillText(tw, ts, tr) : '';
   return `
@@ -2531,6 +2534,12 @@ function makeExCard(name, targetWeight, targetSets, targetReps) {
              onclick="copyTargetToCard(this.closest('.card'))"
              title="${t('target.copy_hint')}">${escHtml(pillText)}</div>
         ${tw ? `<button class="target-bump-btn" type="button" onclick="bumpTargetWeight(this.closest('.card'))">${t('target.bump_btn')}</button>` : ''}
+      </div>` : lt ? `
+      <div class="ex-target-row">
+        <div class="ex-target-text ex-target-legacy ex-target-clickable"
+             data-legacy="${escHtml(lt)}"
+             onclick="copyTargetToCard(this.closest('.card'))"
+             title="${t('target.copy_hint')}">${escHtml(lt)}</div>
       </div>` : ''}
       <div class="field-group">
         <div class="field"><label data-i18n="col.weight">${t('col.weight')}</label><input type="text" class="ex-weight" placeholder="—" autocomplete="off"></div>
@@ -2545,7 +2554,7 @@ function makeExCard(name, targetWeight, targetSets, targetReps) {
 }
 
 function addCustomExercise() {
-  document.getElementById('exerciseList').insertAdjacentHTML('beforeend', makeExCard('', '', '', ''));
+  document.getElementById('exerciseList').insertAdjacentHTML('beforeend', makeExCard('', '', '', '', ''));
   window.scrollTo(0, document.body.scrollHeight);
 }
 
@@ -2865,8 +2874,9 @@ function renderEditList(type) {
   el.innerHTML = '';
   items.forEach((ex, idx) => {
     const card = document.createElement('div');
-    card.className  = 'edit-card';
-    card.dataset.id = ex.id || '';
+    card.className           = 'edit-card';
+    card.dataset.id          = ex.id           || '';
+    card.dataset.legacyTarget = ex._legacyTarget || '';
     card.innerHTML  = `
       <span class="drag-handle">⠿</span>
       <div class="edit-fields">
@@ -2905,11 +2915,12 @@ function collectEdits() {
   const cards = document.getElementById('editListContainer').querySelectorAll('.edit-card');
   if (!cards.length) return;
   editTemplates[editTab] = [...cards].map(c => ({
-    name:         c.querySelector('.ex-name-input').value,
-    targetWeight: c.querySelector('.target-weight-input')?.value || '',
-    targetSets:   c.querySelector('.target-sets-input')?.value   || '',
-    targetReps:   c.querySelector('.target-reps-input')?.value   || '',
-    id:           c.dataset.id || ''
+    name:          c.querySelector('.ex-name-input').value,
+    targetWeight:  c.querySelector('.target-weight-input')?.value || '',
+    targetSets:    c.querySelector('.target-sets-input')?.value   || '',
+    targetReps:    c.querySelector('.target-reps-input')?.value   || '',
+    id:            c.dataset.id           || '',
+    _legacyTarget: c.dataset.legacyTarget || '',
   }));
 }
 
@@ -2950,7 +2961,12 @@ async function saveTemplates() {
   workoutTypes.forEach(wtype => {
     templateData[wtype] = (editTemplates[wtype]||[])
       .filter(ex => ex.name.trim())
-      .map(ex => ({ id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight || '').trim(), targetSets: (ex.targetSets || '').trim(), targetReps: (ex.targetReps || '').trim() }));
+      .map(ex => {
+        const hasNew = (ex.targetWeight || '').trim() || (ex.targetSets || '').trim() || (ex.targetReps || '').trim();
+        const r = { id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight || '').trim(), targetSets: (ex.targetSets || '').trim(), targetReps: (ex.targetReps || '').trim() };
+        if (!hasNew && ex._legacyTarget) r.target = ex._legacyTarget;
+        return r;
+      });
   });
   const total = workoutTypes.reduce((n, wtype) => n + (templateData[wtype]||[]).length, 0);
   if (!total) { toast(t('edit.no_items'), 'error'); return; }
@@ -2994,11 +3010,12 @@ function startDrag(e, card, container) {
     document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
     document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
     editTemplates[editTab] = [...container.querySelectorAll('.edit-card')].map(c => ({
-      name:         c.querySelector('.ex-name-input').value,
-      targetWeight: c.querySelector('.target-weight-input')?.value || '',
-      targetSets:   c.querySelector('.target-sets-input')?.value   || '',
-      targetReps:   c.querySelector('.target-reps-input')?.value   || '',
-      id:           c.dataset.id || ''
+      name:          c.querySelector('.ex-name-input').value,
+      targetWeight:  c.querySelector('.target-weight-input')?.value || '',
+      targetSets:    c.querySelector('.target-sets-input')?.value   || '',
+      targetReps:    c.querySelector('.target-reps-input')?.value   || '',
+      id:            c.dataset.id           || '',
+      _legacyTarget: c.dataset.legacyTarget || '',
     }));
   };
   document.addEventListener('mousemove', move);
@@ -3381,18 +3398,30 @@ function copyTargetToCard(cardEl) {
   const tw  = tEl?.dataset.tw?.trim() || '';
   const ts  = tEl?.dataset.ts?.trim() || '';
   const tr  = tEl?.dataset.tr?.trim() || '';
-  if (!tw && !ts && !tr) { toast(t('target.not_set'), 'error'); return; }
 
-  const wInput = cardEl.querySelector('.ex-weight');
-  const sInput = cardEl.querySelector('.ex-sets');
-  const rInput = cardEl.querySelector('.ex-reps');
-  const hasData = wInput.value.trim() || sInput.value.trim() || rInput.value.trim();
-  if (hasData && !confirm(t('target.overwrite_confirm'))) return;
-
-  if (tw) wInput.value = tw;
-  if (ts) sInput.value = ts;
-  if (tr) rInput.value = tr;
-  toast(t('target.copied'), 'success');
+  if (tw || ts || tr) {
+    const wInput  = cardEl.querySelector('.ex-weight');
+    const sInput  = cardEl.querySelector('.ex-sets');
+    const rInput  = cardEl.querySelector('.ex-reps');
+    const hasData = wInput.value.trim() || sInput.value.trim() || rInput.value.trim();
+    if (hasData && !confirm(t('target.overwrite_confirm'))) return;
+    if (tw) wInput.value = tw;
+    if (ts) sInput.value = ts;
+    if (tr) rInput.value = tr;
+    toast(t('target.copied'), 'success');
+  } else {
+    const lt = tEl?.dataset.legacy?.trim();
+    if (!lt) { toast(t('target.not_set'), 'error'); return; }
+    const parsed = parseTargetString(lt);
+    if (!parsed) { toast(t('target.parse_error'), 'error'); return; }
+    const weightInput = cardEl.querySelector('.ex-weight');
+    const repsInput   = cardEl.querySelector('.ex-reps');
+    const hasData     = weightInput.value.trim() || repsInput.value.trim();
+    if (hasData && !confirm(t('target.overwrite_confirm'))) return;
+    if (parsed.weight !== null) weightInput.value = parsed.weight;
+    if (parsed.reps   !== null) repsInput.value   = parsed.reps;
+    if (parsed.weight === null && parsed.reps === null) toast(t('target.parse_error'), 'error');
+  }
 }
 
 async function bumpTargetWeight(cardEl) {
