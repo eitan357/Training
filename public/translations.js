@@ -282,6 +282,8 @@ export const TRANSLATIONS = {
     'target.not_set':         'לא הוגדר יעד לתרגיל זה',
     'target.bumped':          'יעד עודכן ל-',
     'target.bump_err':        'שגיאה בשמירת היעד',
+    'target.exceeded_hdr':    'הגעת למשקל גבוה מהיעד:',
+    'target.exceeded_q':      'לעדכן את המשקלים?',
   },
 
   // ────────────────────────────────────────────────────────────────
@@ -545,6 +547,8 @@ export const TRANSLATIONS = {
     'target.not_set':         'No target set for this exercise',
     'target.bumped':          'Target updated to',
     'target.bump_err':        'Failed to save target',
+    'target.exceeded_hdr':    'You exceeded the target weight:',
+    'target.exceeded_q':      'Update target weights?',
   },
 
   // ────────────────────────────────────────────────────────────────

@@ -1147,7 +1147,7 @@
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=17';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=18';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -2586,6 +2586,51 @@ async function submitData() {
     });
   });
   if (!exercises.length) { toast(t('workout.fill_first'), 'error'); return; }
+
+  // Check if any exercise exceeded its target weight → offer to update
+  const exceeded = [];
+  document.querySelectorAll('#exerciseList .card').forEach(card => {
+    const tEl = card.querySelector('.ex-target-text[data-tw]');
+    if (!tEl) return;
+    const rawTw  = (tEl.dataset.tw || '').trim();
+    if (!rawTw) return;
+    const twNum  = parseFloat((rawTw.match(/\d+(?:[.,]\d+)?/) || [])[0]?.replace(',', '.'));
+    if (isNaN(twNum)) return;
+    const actual = parseFloat((card.querySelector('.ex-weight')?.value || '').trim().replace(',', '.'));
+    if (isNaN(actual) || actual <= twNum) return;
+    exceeded.push({
+      name: card.querySelector('.ex-name-text')?.innerText?.trim() || '',
+      actual,
+      target: twNum,
+      tEl,
+    });
+  });
+
+  if (exceeded.length) {
+    const lines = exceeded.map(e => `• ${e.name}: ${e.actual} (${t('col.target')}: ${e.target})`).join('\n');
+    if (confirm(`${t('target.exceeded_hdr')}\n${lines}\n\n${t('target.exceeded_q')}`)) {
+      exceeded.forEach(({ name, actual, tEl }) => {
+        const tmplEx = (editTemplates[selectedType] || []).find(e => e.name.trim() === name);
+        if (!tmplEx) return;
+        const newTwRaw = (tEl.dataset.tw || '').replace(/\d+(?:[.,]\d+)?/, String(actual));
+        tmplEx.targetWeight = newTwRaw;
+        tEl.dataset.tw      = newTwRaw;
+        tEl.textContent     = buildTargetPillText(newTwRaw, tEl.dataset.ts || '', tEl.dataset.tr || '');
+      });
+      const templateData = { types: workoutTypes };
+      workoutTypes.forEach(wtype => {
+        templateData[wtype] = (editTemplates[wtype] || [])
+          .filter(ex => ex.name.trim())
+          .map(ex => {
+            const hasNew = (ex.targetWeight || '').trim() || (ex.targetSets || '').trim() || (ex.targetReps || '').trim();
+            const r = { id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight || '').trim(), targetSets: (ex.targetSets || '').trim(), targetReps: (ex.targetReps || '').trim() };
+            if (!hasNew && ex._legacyTarget) r.target = ex._legacyTarget;
+            return r;
+          });
+      });
+      setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData).catch(() => {});
+    }
+  }
 
   const sessionName = document.getElementById('sessionNameInput')?.value.trim() || '';
   const now  = new Date();
