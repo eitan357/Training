@@ -346,8 +346,8 @@
     .ex-name-text   { font-size: 15px; font-weight: 700; color: var(--text); }
     .ex-target-text {
       font-size: 12px; color: var(--primary); font-weight: 600;
-      background: #ede9fe; padding: 5px 10px; border-radius: 8px; direction: ltr; line-height: 1.4;
-      border: 1.5px solid var(--primary); flex: 1; text-align: center; display: block;
+      background: #ede9fe; padding: 4px 10px; border-radius: 8px; direction: ltr; line-height: 1.4;
+      border: 1.5px solid var(--primary); flex: 0 0 auto;
     }
     .ex-target-clickable {
       cursor: pointer;
@@ -1147,7 +1147,7 @@
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=16';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=17';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -2440,6 +2440,7 @@ function clearWorkoutForm() {
   _draftAttachListeners();
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
+  toast(t('clear.success'), 'success');
 }
 
 function selectType(type) {
@@ -3456,6 +3457,12 @@ function copyLastWorkout() {
   if (existingDraft && _draftHasBannerData(existingDraft)) {
     if (!confirm(t('draft.overwrite_confirm'))) return;
   }
+  const hasData = [...document.querySelectorAll('#exerciseList .card')].some(card =>
+    card.querySelector('.ex-weight')?.value.trim() ||
+    card.querySelector('.ex-sets')?.value.trim()   ||
+    card.querySelector('.ex-reps')?.value.trim()
+  );
+  if (hasData && !confirm(t('target.overwrite_confirm'))) return;
   let copied = 0;
   document.querySelectorAll('#exerciseList .card').forEach(card => {
     const name   = card.querySelector('.ex-name-text')?.innerText?.trim();
