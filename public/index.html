@@ -1986,6 +1986,47 @@ function minOfRange(str) {
   return isNaN(n) ? null : n;
 }
 
+// Sum parts joined by '+' (e.g. "14+14" → 28, "80" → 80). Returns NaN if unparseable.
+function evalWeight(str) {
+  if (!str) return NaN;
+  return str.trim().split('+').reduce((sum, part) => {
+    const n = parseFloat(part.trim().replace(',', '.'));
+    return isNaN(n) ? NaN : sum + n;
+  }, 0);
+}
+
+// Expand target reps based on target sets, e.g. ts="3", tr="8" → "8,8,8"
+function expandReps(ts, tr) {
+  if (!tr || !ts) return tr || '';
+  const repsParts = tr.split(',').map(s => s.trim()).filter(Boolean);
+  const setCounts = ts.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+  if (setCounts.length === 0) return tr;
+
+  if (setCounts.length === 1) {
+    const N = setCounts[0];
+    if (repsParts.length >= N) return tr;
+    const expanded = [];
+    for (let i = 0; i < N; i++) {
+      const rp = repsParts[i] ?? repsParts[repsParts.length - 1];
+      const rv = minOfRange(rp);
+      expanded.push(rv !== null ? String(rv) : rp);
+    }
+    return expanded.join(',');
+  }
+
+  // Multiple set groups: ts="2,3" means group A has 2 sets, group B has 3 sets
+  const total = setCounts.reduce((a, b) => a + b, 0);
+  if (repsParts.length >= total) return tr;
+  const expanded = [];
+  setCounts.forEach((cnt, i) => {
+    const rp = repsParts[i] ?? repsParts[repsParts.length - 1];
+    const rv = minOfRange(rp);
+    const val = rv !== null ? String(rv) : rp;
+    for (let j = 0; j < cnt; j++) expanded.push(val);
+  });
+  return expanded.join(',');
+}
+
 function parseTargetString(targetStr) {
   if (!targetStr || !targetStr.trim()) return null;
   let t = targetStr.trim();
@@ -2594,28 +2635,28 @@ async function submitData() {
     if (!tEl) return;
     const rawTw  = (tEl.dataset.tw || '').trim();
     if (!rawTw) return;
-    const twNum  = parseFloat((rawTw.match(/\d+(?:[.,]\d+)?/) || [])[0]?.replace(',', '.'));
-    if (isNaN(twNum)) return;
-    const actual = parseFloat((card.querySelector('.ex-weight')?.value || '').trim().replace(',', '.'));
-    if (isNaN(actual) || actual <= twNum) return;
+    const twTotal = evalWeight(rawTw);
+    if (isNaN(twTotal)) return;
+    const actualText  = (card.querySelector('.ex-weight')?.value || '').trim();
+    const actualTotal = evalWeight(actualText);
+    if (isNaN(actualTotal) || actualTotal <= twTotal) return;
     exceeded.push({
       name: card.querySelector('.ex-name-text')?.innerText?.trim() || '',
-      actual,
-      target: twNum,
+      actualText,
+      targetText: rawTw,
       tEl,
     });
   });
 
   if (exceeded.length) {
-    const lines = exceeded.map(e => `• ${e.name}: ${e.actual} (${t('col.target')}: ${e.target})`).join('\n');
+    const lines = exceeded.map(e => `• ${e.name}: ${e.actualText} (${t('col.target')}: ${e.targetText})`).join('\n');
     if (confirm(`${t('target.exceeded_hdr')}\n${lines}\n\n${t('target.exceeded_q')}`)) {
-      exceeded.forEach(({ name, actual, tEl }) => {
+      exceeded.forEach(({ name, actualText, tEl }) => {
         const tmplEx = (editTemplates[selectedType] || []).find(e => e.name.trim() === name);
         if (!tmplEx) return;
-        const newTwRaw = (tEl.dataset.tw || '').replace(/\d+(?:[.,]\d+)?/, String(actual));
-        tmplEx.targetWeight = newTwRaw;
-        tEl.dataset.tw      = newTwRaw;
-        tEl.textContent     = buildTargetPillText(newTwRaw, tEl.dataset.ts || '', tEl.dataset.tr || '');
+        tmplEx.targetWeight = actualText;
+        tEl.dataset.tw      = actualText;
+        tEl.textContent     = buildTargetPillText(actualText, tEl.dataset.ts || '', tEl.dataset.tr || '');
       });
       const templateData = { types: workoutTypes };
       workoutTypes.forEach(wtype => {
@@ -3444,7 +3485,7 @@ function copyTargetToCard(cardEl) {
     if (hasData && !confirm(t('target.overwrite_confirm'))) return;
     if (tw) wInput.value = tw;
     if (ts) sInput.value = ts;
-    if (tr) rInput.value = tr;
+    if (tr) rInput.value = expandReps(ts, tr);
     toast(t('target.copied'), 'success');
   } else {
     const lt = tEl?.dataset.legacy?.trim();
