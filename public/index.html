@@ -1211,6 +1211,7 @@ function setLang(lang) {
   renderFilterButtons();
   renderHistory();
   renderMeasurements();
+  refreshExercisePills();
 
   // Update session name placeholder (preserves typed input)
   const nameInput = document.getElementById('sessionNameInput');
@@ -2503,12 +2504,23 @@ function toggleHistPreview() {
 }
 
 function buildTargetPillText(tw, ts, tr) {
-  const parts = [];
-  if (tw?.trim()) parts.push(tw.trim());
-  if (ts?.trim() && tr?.trim()) parts.push(ts.trim() + '×' + tr.trim());
-  else if (ts?.trim()) parts.push(ts.trim());
-  else if (tr?.trim()) parts.push(tr.trim());
+  const weightPart = tw?.trim() || '';
+  const setsPart   = ts?.trim() && tr?.trim() ? ts.trim() + '×' + tr.trim()
+                   : ts?.trim() ? ts.trim()
+                   : tr?.trim() ? tr.trim()
+                   : '';
+  const parts = [weightPart, setsPart].filter(Boolean);
+  if (currentLang === 'he') parts.reverse();
   return parts.join(' | ');
+}
+
+function refreshExercisePills() {
+  document.querySelectorAll('#exerciseList .ex-target-text[data-tw]').forEach(el => {
+    const tw = el.dataset.tw || '';
+    const ts = el.dataset.ts || '';
+    const tr = el.dataset.tr || '';
+    if (tw || ts || tr) el.textContent = buildTargetPillText(tw, ts, tr);
+  });
 }
 
 function makeExCard(name, targetWeight, targetSets, targetReps, legacyTarget) {
@@ -2528,12 +2540,12 @@ function makeExCard(name, targetWeight, targetSets, targetReps, legacyTarget) {
       </div>
       ${hasTarget ? `
       <div class="ex-target-row">
-        <span class="ex-target-label">${t('col.target')}</span>
+        <span class="ex-target-label" data-i18n="col.target">${t('col.target')}</span>
         <div class="ex-target-text ex-target-clickable"
              data-tw="${escHtml(tw)}" data-ts="${escHtml(ts)}" data-tr="${escHtml(tr)}"
              onclick="copyTargetToCard(this.closest('.card'))"
              title="${t('target.copy_hint')}">${escHtml(pillText)}</div>
-        ${tw ? `<button class="target-bump-btn" type="button" onclick="bumpTargetWeight(this.closest('.card'))">${t('target.bump_btn')}</button>` : ''}
+        ${tw ? `<button class="target-bump-btn" data-i18n="target.bump_btn" type="button" onclick="bumpTargetWeight(this.closest('.card'))">${t('target.bump_btn')}</button>` : ''}
       </div>` : lt ? `
       <div class="ex-target-row">
         <div class="ex-target-text ex-target-legacy ex-target-clickable"
