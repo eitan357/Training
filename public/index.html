@@ -280,9 +280,7 @@
     .topbar-edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px;
       padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--sub); cursor: pointer; transition: all .15s; }
     .topbar-edit-btn:hover { border-color: var(--primary); color: var(--primary); }
-    .topbar-icon-btn { background: none; border: none; font-size: 20px; cursor: pointer;
-      padding: 6px 4px; line-height: 1; color: var(--sub); transition: color .15s; }
-    .topbar-icon-btn:hover { color: var(--text); }
+    /* .topbar-icon-btn defined later — see "TOPBAR ICON BUTTON" block */
     /* ── SETTINGS ── */
     .settings-item { display: flex; align-items: center; gap: 14px; width: 100%;
       padding: 16px; background: var(--surface); border: 1px solid var(--border);
@@ -600,10 +598,11 @@
 
     /* ── TOPBAR ICON BUTTON ── */
     .topbar-icon-btn {
-      background: none; border: none; font-size: 20px;
+      background: none; border: none; font-size: 20px; line-height: 1;
       cursor: pointer; padding: 6px 8px; border-radius: 8px;
       color: var(--sub); transition: background .15s, color .15s;
     }
+    .topbar-icon-btn:hover  { color: var(--text); }
     .topbar-icon-btn:active { background: var(--bg); }
     .topbar-icon-btn.active { color: var(--primary); }
 
@@ -1148,7 +1147,7 @@
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=15';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=16';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -2400,7 +2399,7 @@ function _draftShowModal(type, draft) {
     : '';
   const nameStr = draft.workoutName ? `"${escHtml(draft.workoutName)}" · ` : '';
   const modal = document.getElementById('draftModal');
-  modal.querySelector('.draft-modal-title').textContent = `נמצאה טיוטה לאימון ${escHtml(type)}`;
+  modal.querySelector('.draft-modal-title').textContent = `${t('draft.found_title')} ${escHtml(type)}`;
   modal.querySelector('.draft-modal-details').innerHTML =
     `${nameStr}${exCount} ${t('workout.exercises')}<br><span style="font-size:11px;">${t('draft.found_today')} ${timeStr}</span>`;
   modal.querySelector('.draft-modal-btn-resume').textContent  = t('draft.resume');
@@ -2697,12 +2696,13 @@ function renderHistory() {
   if (first) { first.classList.add('open'); document.querySelector('.session-header .chevron')?.classList.add('open'); }
 }
 
-function toggleSess(i, header) {
-  const body = document.getElementById('sess_' + i);
+function _toggleBody(prefix, i, header) {
+  const body = document.getElementById(prefix + i);
   if (!body) return;
   body.classList.toggle('open');
   header?.querySelector('.chevron')?.classList.toggle('open', body.classList.contains('open'));
 }
+function toggleSess(i, header) { _toggleBody('sess_', i, header); }
 
 function toggleMonthGroup(id, header) {
   const body = document.getElementById(id);
@@ -2984,14 +2984,17 @@ async function saveTemplates() {
 }
 
 // ─── DRAG & DROP ──────────────────────────────────────────────
-function initDragSort(container, type) {
+function initDragSort(container, startFn) {
+  const fn = startFn || startDrag;
   container.querySelectorAll('.drag-handle').forEach(h => {
-    h.addEventListener('mousedown', e => startDrag(e, h.closest('.edit-card'), container, type));
-    h.addEventListener('touchstart', e => startDrag(e, h.closest('.edit-card'), container, type), { passive: true });
+    h.addEventListener('mousedown', e => fn(e, h.closest('.edit-card'), container));
+    h.addEventListener('touchstart', e => fn(e, h.closest('.edit-card'), container), { passive: true });
   });
 }
-function startDrag(e, card, container) {
-  collectEdits(); card.style.opacity = '.5';
+
+function startGenericDrag(e, card, container, collectAtStart, onDrop) {
+  collectAtStart();
+  card.style.opacity = '.5';
   let last = null;
   const move = ev => {
     const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
@@ -3009,7 +3012,17 @@ function startDrag(e, card, container) {
     card.style.opacity = '';
     document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
     document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
-    editTemplates[editTab] = [...container.querySelectorAll('.edit-card')].map(c => ({
+    onDrop(container);
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup',   up);
+  document.addEventListener('touchmove', move, { passive: true });
+  document.addEventListener('touchend',  up);
+}
+
+function startDrag(e, card, container) {
+  startGenericDrag(e, card, container, collectEdits, cnt => {
+    editTemplates[editTab] = [...cnt.querySelectorAll('.edit-card')].map(c => ({
       name:          c.querySelector('.ex-name-input').value,
       targetWeight:  c.querySelector('.target-weight-input')?.value || '',
       targetSets:    c.querySelector('.target-sets-input')?.value   || '',
@@ -3017,11 +3030,7 @@ function startDrag(e, card, container) {
       id:            c.dataset.id           || '',
       _legacyTarget: c.dataset.legacyTarget || '',
     }));
-  };
-  document.addEventListener('mousemove', move);
-  document.addEventListener('mouseup',   up);
-  document.addEventListener('touchmove', move, { passive: true });
-  document.addEventListener('touchend',  up);
+  });
 }
 
 // ─── MEASUREMENTS ─────────────────────────────────────────────
@@ -3141,12 +3150,7 @@ function renderMeasurements() {
   if (first) { first.classList.add('open'); document.querySelector('.measure-header .chevron')?.classList.add('open'); }
 }
 
-function toggleMeasure(i, header) {
-  const body = document.getElementById('measure_' + i);
-  if (!body) return;
-  body.classList.toggle('open');
-  header?.querySelector('.chevron')?.classList.toggle('open', body.classList.contains('open'));
-}
+function toggleMeasure(i, header) { _toggleBody('measure_', i, header); }
 
 function setDefaultDate() {
   const el = document.getElementById('m-date');
@@ -3277,7 +3281,7 @@ function renderTypesList() {
       <button class="edit-remove" onclick="removeMeasureType(${idx})">✕</button>`;
     el.appendChild(card);
   });
-  initMeasureTypeDrag(el);
+  initDragSort(el, startMeasureTypeDrag);
 }
 
 function collectTypeEdits() {
@@ -3322,39 +3326,14 @@ async function saveTypesEditor() {
   btn.disabled = false; btn.innerText = t('types.save');
 }
 
-function initMeasureTypeDrag(container) {
-  container.querySelectorAll('.drag-handle').forEach(h => {
-    h.addEventListener('mousedown', e => startMeasureTypeDrag(e, h.closest('.edit-card'), container));
-    h.addEventListener('touchstart', e => startMeasureTypeDrag(e, h.closest('.edit-card'), container), { passive: true });
-  });
-}
 function startMeasureTypeDrag(e, card, container) {
-  collectTypeEdits(); card.style.opacity = '.5';
-  let last = null;
-  const move = ev => {
-    const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
-    [...container.querySelectorAll('.edit-card')].forEach(c => {
-      if (c === card) return;
-      const r = c.getBoundingClientRect();
-      if (y > r.top && y < r.bottom && last !== c) {
-        last = c;
-        [...container.querySelectorAll('.edit-card')].indexOf(card) <
-        [...container.querySelectorAll('.edit-card')].indexOf(c) ? c.after(card) : c.before(card);
-      }
-    });
-  };
-  const up = () => {
-    card.style.opacity = '';
-    document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
-    document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
-    editMeasureTypes = [...container.querySelectorAll('.edit-card')].map(c => ({
+  startGenericDrag(e, card, container, collectTypeEdits, cnt => {
+    editMeasureTypes = [...cnt.querySelectorAll('.edit-card')].map(c => ({
       name: c.querySelector('.type-name-input').value,
       unit: c.querySelector('.type-unit-input').value,
       id:   c.dataset.id || ''
     }));
-  };
-  document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
-  document.addEventListener('touchmove', move, { passive: true }); document.addEventListener('touchend', up);
+  });
 }
 
 // ─── EDIT PANEL TOGGLE ────────────────────────────────────────
@@ -3533,9 +3512,6 @@ function tv2Stop() {
   _tv2ShowView('setting');
 }
 
-function resetTimer() {
-  tv2Stop();
-}
 
 function toggleTimer() {
   if (!_timerRunning && _timerSecs === _timerTotal) { tv2Start(); }
@@ -3665,8 +3641,6 @@ function setTimerPreset(secs) {
   _tv2InitPickers();
 }
 
-function applyCustomTimer() { tv2Start(); }
-
 // ─── TOAST ────────────────────────────────────────────────────
 let _toastTimer;
 function toast(msg, type = 'success') {
@@ -3690,25 +3664,27 @@ document.getElementById('m-date').addEventListener('input', function () {
 
 // ─── EXPOSE TO WINDOW (for inline onclick handlers) ───────────
 // ─── BULK SELECT / DELETE ─────────────────────────────────────
-function toggleSessionSelect(id) {
-  if (selectedSessions.has(id)) selectedSessions.delete(id);
-  else selectedSessions.add(id);
-  const card = document.querySelector(`.session-card[data-sid="${id}"]`);
+function _toggleSelect(id, set, cardSel, dataAttr, updateFn) {
+  if (set.has(id)) set.delete(id);
+  else set.add(id);
+  const card = document.querySelector(`${cardSel}[${dataAttr}="${id}"]`);
   if (card) {
-    card.querySelector('.sel-check')?.classList.toggle('checked', selectedSessions.has(id));
-    card.classList.toggle('sel-active', selectedSessions.has(id));
+    card.querySelector('.sel-check')?.classList.toggle('checked', set.has(id));
+    card.classList.toggle('sel-active', set.has(id));
   }
-  updateHistBulkBar();
+  updateFn();
 }
+function toggleSessionSelect(id) { _toggleSelect(id, selectedSessions, '.session-card', 'data-sid', updateHistBulkBar); }
+function toggleMeasureSelect(id)  { _toggleSelect(id, selectedMeasures,  '.measure-card', 'data-mid', updateMeasBulkBar); }
 
-function updateHistBulkBar() {
-  const bar = document.getElementById('histBulkBar');
+function _updateBulkBar(barId, countId, editBtnId, set, section) {
+  const bar = document.getElementById(barId);
   const mc  = document.getElementById('main-content');
   if (!bar) return;
-  if (selectedSessions.size && currentSection === 'history') {
-    document.getElementById('histBulkCount').textContent = selectedSessions.size + ' ' + t('bulk.selected');
-    const editBtn = document.getElementById('histBulkEditBtn');
-    if (editBtn) editBtn.style.display = selectedSessions.size === 1 ? '' : 'none';
+  if (set.size && currentSection === section) {
+    document.getElementById(countId).textContent = set.size + ' ' + t('bulk.selected');
+    const editBtn = document.getElementById(editBtnId);
+    if (editBtn) editBtn.style.display = set.size === 1 ? '' : 'none';
     bar.style.display = 'flex';
     mc?.classList.add('bulk-open');
   } else {
@@ -3716,61 +3692,24 @@ function updateHistBulkBar() {
     mc?.classList.remove('bulk-open');
   }
 }
+function updateHistBulkBar() { _updateBulkBar('histBulkBar', 'histBulkCount', 'histBulkEditBtn', selectedSessions, 'history'); }
+function updateMeasBulkBar() { _updateBulkBar('measBulkBar', 'measBulkCount', 'measBulkEditBtn', selectedMeasures,  'measurements'); }
 
-async function bulkDeleteSessions() {
-  if (!selectedSessions.size) return;
-  const ids = [...selectedSessions];
-  document.getElementById('histBulkBar').style.display = 'none';
+async function _bulkDelete(set, barId, collection) {
+  if (!set.size) return;
+  const ids = [...set];
+  document.getElementById(barId).style.display = 'none';
   try {
-    await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, 'workouts', id))));
-    selectedSessions.clear();
+    await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, collection, id))));
+    set.clear();
     toast(ids.length + ' ' + t('bulk.deleted'), 'success');
     await reloadAppData();
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
   }
 }
-
-function toggleMeasureSelect(id) {
-  if (selectedMeasures.has(id)) selectedMeasures.delete(id);
-  else selectedMeasures.add(id);
-  const card = document.querySelector(`.measure-card[data-mid="${id}"]`);
-  if (card) {
-    card.querySelector('.sel-check')?.classList.toggle('checked', selectedMeasures.has(id));
-    card.classList.toggle('sel-active', selectedMeasures.has(id));
-  }
-  updateMeasBulkBar();
-}
-
-function updateMeasBulkBar() {
-  const bar = document.getElementById('measBulkBar');
-  const mc  = document.getElementById('main-content');
-  if (!bar) return;
-  if (selectedMeasures.size && currentSection === 'measurements') {
-    document.getElementById('measBulkCount').textContent = selectedMeasures.size + ' ' + t('bulk.selected');
-    const editBtn = document.getElementById('measBulkEditBtn');
-    if (editBtn) editBtn.style.display = selectedMeasures.size === 1 ? '' : 'none';
-    bar.style.display = 'flex';
-    mc?.classList.add('bulk-open');
-  } else {
-    bar.style.display = 'none';
-    mc?.classList.remove('bulk-open');
-  }
-}
-
-async function bulkDeleteMeasures() {
-  if (!selectedMeasures.size) return;
-  const ids = [...selectedMeasures];
-  document.getElementById('measBulkBar').style.display = 'none';
-  try {
-    await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, 'measurements', id))));
-    selectedMeasures.clear();
-    toast(ids.length + ' ' + t('bulk.deleted'), 'success');
-    await reloadAppData();
-  } catch (err) {
-    toast(t('error.save') + err.message, 'error');
-  }
-}
+async function bulkDeleteSessions() { await _bulkDelete(selectedSessions, 'histBulkBar', 'workouts'); }
+async function bulkDeleteMeasures() { await _bulkDelete(selectedMeasures,  'measBulkBar', 'measurements'); }
 
 function editSelectedSession()  { editSession([...selectedSessions][0]); }
 function editSelectedMeasure()  { editMeasurement([...selectedMeasures][0]); }
@@ -3782,7 +3721,7 @@ Object.assign(window, {
   _draftModalResume, _draftModalDiscard,
   goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
-  toggleTimer, resetTimer, setTimerPreset, applyCustomTimer, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
+  toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
   filterHistory, toggleSess, toggleMonthGroup,
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
