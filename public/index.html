@@ -349,6 +349,9 @@
       background: #ede9fe; padding: 4px 10px; border-radius: 8px; direction: ltr; line-height: 1.4;
       border: 1.5px solid var(--primary); flex: 0 0 auto;
     }
+    .ex-target-text[data-label]::before {
+      content: attr(data-label) ': ';
+    }
     .ex-target-clickable {
       cursor: pointer;
       user-select: none;
@@ -2548,7 +2551,10 @@ function refreshExercisePills() {
     const tw = el.dataset.tw || '';
     const ts = el.dataset.ts || '';
     const tr = el.dataset.tr || '';
-    if (tw || ts || tr) el.textContent = t('col.target') + ': ' + buildTargetPillText(tw, ts, tr);
+    if (tw || ts || tr) {
+      el.setAttribute('data-label', t('col.target'));
+      el.textContent = buildTargetPillText(tw, ts, tr);
+    }
   });
 }
 
@@ -2570,9 +2576,10 @@ function makeExCard(name, targetWeight, targetSets, targetReps, legacyTarget) {
       ${hasTarget ? `
       <div class="ex-target-row">
         <div class="ex-target-text ex-target-clickable"
+             data-label="${escHtml(t('col.target'))}"
              data-tw="${escHtml(tw)}" data-ts="${escHtml(ts)}" data-tr="${escHtml(tr)}"
              onclick="copyTargetToCard(this.closest('.card'))"
-             title="${t('target.copy_hint')}">${escHtml(t('col.target') + ': ' + pillText)}</div>
+             title="${t('target.copy_hint')}">${escHtml(pillText)}</div>
       </div>` : lt ? `
       <div class="ex-target-row">
         <div class="ex-target-text ex-target-legacy ex-target-clickable"
