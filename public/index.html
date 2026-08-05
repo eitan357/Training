@@ -356,7 +356,6 @@
     }
     .ex-target-clickable:active { opacity: 0.65; }
     .ex-target-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .ex-target-label { font-size: 11px; color: var(--sub); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; flex-shrink: 0; }
     .target-fields { display: flex; gap: 6px; margin-top: 6px; }
     .target-fields .target-field-input { flex: 1; min-width: 0; padding: 7px 6px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px; color: var(--primary); background: var(--bg); text-align: center; direction: ltr; font-family: inherit; box-sizing: border-box; }
     .target-fields .target-field-input:focus { outline: none; border-color: var(--primary); }
@@ -392,17 +391,6 @@
       display: flex; align-items: center; gap: 6px;
     }
     .target-row .ex-target-input { flex: 1; }
-    .target-bump-btn {
-      flex-shrink: 0;
-      padding: 6px 10px;
-      border: 1.5px solid var(--primary);
-      border-radius: 8px;
-      background: var(--bg);
-      color: var(--primary);
-      font-size: 13px; font-weight: 700;
-      cursor: pointer; white-space: nowrap;
-    }
-    .target-bump-btn:active { opacity: 0.7; }
 
     /* ── HISTORY ── */
     .session-card {
@@ -2560,7 +2548,7 @@ function refreshExercisePills() {
     const tw = el.dataset.tw || '';
     const ts = el.dataset.ts || '';
     const tr = el.dataset.tr || '';
-    if (tw || ts || tr) el.textContent = buildTargetPillText(tw, ts, tr);
+    if (tw || ts || tr) el.textContent = t('col.target') + ': ' + buildTargetPillText(tw, ts, tr);
   });
 }
 
@@ -2581,12 +2569,10 @@ function makeExCard(name, targetWeight, targetSets, targetReps, legacyTarget) {
       </div>
       ${hasTarget ? `
       <div class="ex-target-row">
-        <span class="ex-target-label" data-i18n="col.target">${t('col.target')}</span>
         <div class="ex-target-text ex-target-clickable"
              data-tw="${escHtml(tw)}" data-ts="${escHtml(ts)}" data-tr="${escHtml(tr)}"
              onclick="copyTargetToCard(this.closest('.card'))"
-             title="${t('target.copy_hint')}">${escHtml(pillText)}</div>
-        ${tw ? `<button class="target-bump-btn" data-i18n="target.bump_btn" type="button" onclick="bumpTargetWeight(this.closest('.card'))">${t('target.bump_btn')}</button>` : ''}
+             title="${t('target.copy_hint')}">${escHtml(t('col.target') + ': ' + pillText)}</div>
       </div>` : lt ? `
       <div class="ex-target-row">
         <div class="ex-target-text ex-target-legacy ex-target-clickable"
@@ -3502,50 +3488,6 @@ function copyTargetToCard(cardEl) {
   }
 }
 
-async function bumpTargetWeight(cardEl) {
-  const tEl   = cardEl.querySelector('.ex-target-text');
-  const rawTw = (tEl?.dataset.tw || '').trim();
-  const numM  = rawTw.match(/(\d+(?:[.,]\d+)?)/);
-  if (!numM) { toast(t('target.no_weight'), 'error'); return; }
-
-  const current = parseFloat(numM[1].replace(',', '.'));
-  const newVal  = Math.round((current + 0.5) * 10) / 10;
-  const newTwRaw = rawTw.replace(/\d+(?:[.,]\d+)?/, String(newVal));
-
-  const exName = cardEl.querySelector('.ex-name-text')?.innerText?.trim() || '';
-  const tmplEx = (editTemplates[selectedType] || []).find(e => e.name.trim() === exName);
-  if (!tmplEx) { toast(t('target.bump_err'), 'error'); return; }
-
-  const oldTw = tmplEx.targetWeight;
-  tmplEx.targetWeight = newTwRaw;
-
-  const ts = tEl.dataset.ts || '';
-  const tr = tEl.dataset.tr || '';
-  tEl.dataset.tw  = newTwRaw;
-  tEl.textContent = buildTargetPillText(newTwRaw, ts, tr);
-
-  const templateData = { types: workoutTypes };
-  workoutTypes.forEach(wtype => {
-    templateData[wtype] = (editTemplates[wtype] || [])
-      .filter(ex => ex.name.trim())
-      .map(ex => ({
-        id:           ex.id || genId(),
-        name:         ex.name.trim(),
-        targetWeight: (ex.targetWeight || '').trim(),
-        targetSets:   (ex.targetSets   || '').trim(),
-        targetReps:   (ex.targetReps   || '').trim(),
-      }));
-  });
-  try {
-    await setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData);
-    toast(t('target.bumped') + ' ' + newVal, 'success');
-  } catch (err) {
-    tmplEx.targetWeight = oldTw;
-    tEl.dataset.tw      = oldTw;
-    tEl.textContent     = buildTargetPillText(oldTw, ts, tr);
-    toast(t('target.bump_err'), 'error');
-  }
-}
 
 // ─── COPY LAST WORKOUT ────────────────────────────────────────
 function copyLastWorkout() {
@@ -3822,7 +3764,7 @@ function editSelectedMeasure()  { editMeasurement([...selectedMeasures][0]); }
 Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
-  selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm, bumpTargetWeight,
+  selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm,
   _draftModalResume, _draftModalDiscard,
   goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
