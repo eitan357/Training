@@ -2480,7 +2480,7 @@ function clearWorkoutForm() {
   _draftAttachListeners();
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
-  toast(t('clear.success'), 'success');
+  toast(t('clear.success'), 'error');
 }
 
 function selectType(type) {
