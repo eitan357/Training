@@ -3643,31 +3643,73 @@ function _tv2ShowView(view) {
   document.getElementById('tv2RunningView').style.display  = view === 'running' ? '' : 'none';
 }
 
-function _tv2BuildPicker(innerId, maxVal, initVal) {
+const _TV2_ITEM_H = 64;
+const _TV2_REPS   = 5;   // repetitions of 0-59 for infinite-wheel effect
+
+function _tv2BuildPicker(innerId, initVal) {
   const inner = document.getElementById(innerId);
   if (!inner) return;
   inner.innerHTML = '';
-  const padT = document.createElement('div'); padT.style.height = '64px'; inner.appendChild(padT);
-  for (let i = 0; i <= maxVal; i++) {
-    const item = document.createElement('div');
-    item.className = 'tv2-scroll-item';
-    item.textContent = String(i).padStart(2, '0');
-    inner.appendChild(item);
+
+  const padT = document.createElement('div');
+  padT.style.height = _TV2_ITEM_H + 'px';
+  inner.appendChild(padT);
+
+  for (let rep = 0; rep < _TV2_REPS; rep++) {
+    for (let i = 0; i < 60; i++) {
+      const item = document.createElement('div');
+      item.className = 'tv2-scroll-item';
+      item.textContent = String(i).padStart(2, '0');
+      inner.appendChild(item);
+    }
   }
-  const padB = document.createElement('div'); padB.style.height = '64px'; inner.appendChild(padB);
-  requestAnimationFrame(() => { inner.scrollTop = initVal * 64; });
+
+  const padB = document.createElement('div');
+  padB.style.height = _TV2_ITEM_H + 'px';
+  inner.appendChild(padB);
+
+  // Start at middle repetition so the user can scroll freely in both directions
+  const midRep = Math.floor(_TV2_REPS / 2);  // 2
+  requestAnimationFrame(() => {
+    inner.scrollTop = (midRep * 60 + initVal) * _TV2_ITEM_H;
+  });
+
+  // When scroll reaches outer repetitions, silently teleport back to the middle.
+  // The content is visually identical so the jump is invisible to the user.
+  const repH = 60 * _TV2_ITEM_H;
+  let _wrapPending = false;
+  let _wrapDebounce;
+
+  function _doWrap() {
+    if (_wrapPending) return;
+    if (inner.scrollTop < repH || inner.scrollTop > 3 * repH) {
+      _wrapPending = true;
+      inner.scrollTop += inner.scrollTop < repH ? 2 * repH : -2 * repH;
+      setTimeout(() => { _wrapPending = false; }, 100);
+    }
+  }
+
+  // scrollend fires after momentum/snap settle (modern browsers)
+  inner.addEventListener('scrollend', () => { if (!_wrapPending) _doWrap(); }, { passive: true });
+  // debounced scroll as fallback
+  inner.addEventListener('scroll', () => {
+    clearTimeout(_wrapDebounce);
+    if (_wrapPending) return;
+    _wrapDebounce = setTimeout(_doWrap, 150);
+  }, { passive: true });
 }
 
 function _tv2GetVal(innerId) {
   const el = document.getElementById(innerId);
-  return el ? Math.min(Math.round(el.scrollTop / 64), 59) : 0;
+  if (!el) return 0;
+  return Math.round(el.scrollTop / _TV2_ITEM_H) % 60;
 }
 
 function _tv2InitPickers() {
   const m = Math.floor(_timerTotal / 60);
   const s = _timerTotal % 60;
-  _tv2BuildPicker('tv2MinInner', 59, m);
-  _tv2BuildPicker('tv2SecInner', 59, s);
+  _tv2BuildPicker('tv2MinInner', m);
+  _tv2BuildPicker('tv2SecInner', s);
 }
 
 function _tv2PlayBeep() {
