@@ -2214,11 +2214,16 @@ function applyAppData(data) {
 const SECTION_ORDER = { main: 0, timer: 1, running: 2, measurements: 2, history: 3, settings: 4 };
 let currentSection = 'main';
 let prevSection    = 'main';
+const _sectionScrollPos = {};
 
 function showSection(name) {
   if (editPanelOpen) toggleEditPanel();
   if (typesEditorOpen) toggleTypesEditor();
   if (name === currentSection) return;
+
+  const mc = document.getElementById('main-content');
+  _sectionScrollPos[currentSection] = mc.scrollTop;
+
   prevSection = currentSection;
   const fromIdx = SECTION_ORDER[currentSection] ?? 0;
   const toIdx   = SECTION_ORDER[name] ?? 0;
@@ -2234,6 +2239,8 @@ function showSection(name) {
   const next = document.getElementById('sec-' + name);
   next.classList.add('active', animCls);
   next.addEventListener('animationend', () => next.classList.remove('anim-left', 'anim-right'), { once: true });
+
+  mc.scrollTop = _sectionScrollPos[name] ?? 0;
 
   const navEl = document.getElementById('nav-' + name);
   if (navEl) navEl.classList.add('active');
