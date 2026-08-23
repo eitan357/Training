@@ -193,11 +193,12 @@
     .tv2-picker-row { display:flex; align-items:center; gap:8px; direction:ltr; }
     .tv2-picker-col { display:flex; flex-direction:column; align-items:center; gap:10px; }
     .tv2-col-label  { font-size:11px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:.6px; }
-    .tv2-scroller   { position:relative; width:100px; height:192px; overflow:hidden; border-radius:16px; }
-    .tv2-scroll-inner { height:100%; overflow-y:scroll; scroll-snap-type:y mandatory; scrollbar-width:none; }
-    .tv2-scroll-inner::-webkit-scrollbar { display:none; }
+    .tv2-scroller   { position:relative; width:100px; height:192px; overflow:hidden; border-radius:16px;
+                      touch-action:none; user-select:none; cursor:grab; }
+    .tv2-scroller.dragging { cursor:grabbing; }
+    .tv2-scroll-inner { position:absolute; top:0; left:0; width:100%; will-change:transform; }
     .tv2-scroll-item  { height:64px; display:flex; align-items:center; justify-content:center;
-                        font-size:42px; font-weight:300; color:var(--sub); scroll-snap-align:center;
+                        font-size:42px; font-weight:300; color:var(--sub); pointer-events:none;
                         font-variant-numeric:tabular-nums; }
     .tv2-scroller::before,.tv2-scroller::after { content:''; position:absolute; left:0; right:0; z-index:2; height:64px; pointer-events:none; }
     .tv2-scroller::before { top:0;    background:linear-gradient(to bottom,var(--bg) 10%,transparent); }
@@ -3643,23 +3644,25 @@ function _tv2ShowView(view) {
   document.getElementById('tv2RunningView').style.display  = view === 'running' ? '' : 'none';
 }
 
-const _TV2_ITEM_H = 64;
-// 21 repetitions = 10 full revolutions of runway from center in each direction.
-// The farthest reachable point via momentum scroll is ~5,000px; the edge is at
-// 10 × 60 × 64 = 38,400px — unreachable in practice, so no mid-session
-// teleportation is ever needed, eliminating the "stuck" glitch entirely.
-const _TV2_REPS   = 21;
+const _TV2_ITEM_H  = 64;
+const _TV2_SENS    = 0.75;  // drag-to-scroll ratio (lower = slower/more precise)
+const _TV2_FRIC    = 0.88;  // per-frame velocity decay for momentum
+const _TV2_SNAP_MS = 180;   // snap-to-item animation ms
 
-function _tv2BuildPicker(innerId, initVal) {
-  const inner = document.getElementById(innerId);
-  if (!inner) return;
+function _tv2BuildPicker(scrollerId, innerId, initVal) {
+  const scroller = document.getElementById(scrollerId);
+  const inner    = document.getElementById(innerId);
+  if (!scroller || !inner) return;
+
+  if (inner._tv2Cancel)  inner._tv2Cancel();
+  if (scroller._tv2AC)   scroller._tv2AC.abort();
+
   inner.innerHTML = '';
+  inner.style.transition = '';
 
-  const padT = document.createElement('div');
-  padT.style.height = _TV2_ITEM_H + 'px';
-  inner.appendChild(padT);
+  const REP_H = 60 * _TV2_ITEM_H;  // 3840px per repetition
 
-  for (let rep = 0; rep < _TV2_REPS; rep++) {
+  for (let rep = 0; rep < 3; rep++) {
     for (let i = 0; i < 60; i++) {
       const item = document.createElement('div');
       item.className = 'tv2-scroll-item';
@@ -3668,27 +3671,102 @@ function _tv2BuildPicker(innerId, initVal) {
     }
   }
 
-  const padB = document.createElement('div');
-  padB.style.height = _TV2_ITEM_H + 'px';
-  inner.appendChild(padB);
+  // offset = px from inner-top that sits at viewport center.
+  // translateY = -offset + _TV2_ITEM_H centres that row in the 192px viewport.
+  let offset = (60 + initVal) * _TV2_ITEM_H;  // start at middle rep
 
-  const midRep = Math.floor(_TV2_REPS / 2);  // 10
-  requestAnimationFrame(() => {
-    inner.scrollTop = (midRep * 60 + initVal) * _TV2_ITEM_H;
-  });
+  function _wrap() {
+    if (offset < 0.5 * REP_H) offset += REP_H;
+    if (offset > 2.5 * REP_H) offset -= REP_H;
+  }
+
+  function _render() {
+    _wrap();
+    inner.style.transform = `translateY(${-offset + _TV2_ITEM_H}px)`;
+  }
+
+  inner._tv2GetVal = () => ((Math.round(offset / _TV2_ITEM_H) % 60) + 60) % 60;
+
+  function _snap() {
+    _wrap();
+    offset = Math.round(offset / _TV2_ITEM_H) * _TV2_ITEM_H;
+    inner.style.transition = `transform ${_TV2_SNAP_MS}ms cubic-bezier(.25,.46,.45,.94)`;
+    inner.style.transform  = `translateY(${-offset + _TV2_ITEM_H}px)`;
+    setTimeout(() => { if (inner) inner.style.transition = ''; }, _TV2_SNAP_MS + 10);
+  }
+
+  let _startY = null, _lastY = null, _velY = 0, _rafId = null, _wheelTimer = null;
+
+  function _momentum() {
+    _velY *= _TV2_FRIC;
+    if (Math.abs(_velY) < 0.5) { _snap(); return; }
+    offset -= _velY;
+    _render();
+    _rafId = requestAnimationFrame(_momentum);
+  }
+
+  const ac = new AbortController();
+  const sig = ac.signal;
+  scroller._tv2AC = ac;
+
+  scroller.addEventListener('pointerdown', e => {
+    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+    clearTimeout(_wheelTimer);
+    inner.style.transition = '';
+    scroller.setPointerCapture(e.pointerId);
+    scroller.classList.add('dragging');
+    _startY = _lastY = e.clientY;
+    _velY = 0;
+  }, { signal: sig });
+
+  scroller.addEventListener('pointermove', e => {
+    if (_startY === null) return;
+    e.preventDefault();
+    const dy = e.clientY - _lastY;
+    offset -= dy * _TV2_SENS;
+    _render();
+    _velY = dy * 0.7 + _velY * 0.3;
+    _lastY = e.clientY;
+  }, { passive: false, signal: sig });
+
+  function _endDrag() {
+    if (_startY === null) return;
+    _startY = null;
+    scroller.classList.remove('dragging');
+    _rafId = requestAnimationFrame(_momentum);
+  }
+
+  scroller.addEventListener('pointerup',     _endDrag, { signal: sig });
+  scroller.addEventListener('pointercancel', _endDrag, { signal: sig });
+
+  scroller.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+    inner.style.transition = '';
+    offset -= e.deltaY * 0.5;
+    _render();
+    clearTimeout(_wheelTimer);
+    _wheelTimer = setTimeout(_snap, 150);
+  }, { passive: false, signal: sig });
+
+  inner._tv2Cancel = () => {
+    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+    clearTimeout(_wheelTimer);
+  };
+
+  _render();
 }
 
 function _tv2GetVal(innerId) {
   const el = document.getElementById(innerId);
-  if (!el) return 0;
-  return Math.round(el.scrollTop / _TV2_ITEM_H) % 60;
+  return el && el._tv2GetVal ? el._tv2GetVal() : 0;
 }
 
 function _tv2InitPickers() {
   const m = Math.floor(_timerTotal / 60);
   const s = _timerTotal % 60;
-  _tv2BuildPicker('tv2MinInner', m);
-  _tv2BuildPicker('tv2SecInner', s);
+  _tv2BuildPicker('tv2Min', 'tv2MinInner', m);
+  _tv2BuildPicker('tv2Sec', 'tv2SecInner', s);
 }
 
 function _tv2PlayBeep() {
