@@ -3644,7 +3644,11 @@ function _tv2ShowView(view) {
 }
 
 const _TV2_ITEM_H = 64;
-const _TV2_REPS   = 5;   // repetitions of 0-59 for infinite-wheel effect
+// 21 repetitions = 10 full revolutions of runway from center in each direction.
+// The farthest reachable point via momentum scroll is ~5,000px; the edge is at
+// 10 × 60 × 64 = 38,400px — unreachable in practice, so no mid-session
+// teleportation is ever needed, eliminating the "stuck" glitch entirely.
+const _TV2_REPS   = 21;
 
 function _tv2BuildPicker(innerId, initVal) {
   const inner = document.getElementById(innerId);
@@ -3668,35 +3672,10 @@ function _tv2BuildPicker(innerId, initVal) {
   padB.style.height = _TV2_ITEM_H + 'px';
   inner.appendChild(padB);
 
-  // Start at middle repetition so the user can scroll freely in both directions
-  const midRep = Math.floor(_TV2_REPS / 2);  // 2
+  const midRep = Math.floor(_TV2_REPS / 2);  // 10
   requestAnimationFrame(() => {
     inner.scrollTop = (midRep * 60 + initVal) * _TV2_ITEM_H;
   });
-
-  // When scroll reaches outer repetitions, silently teleport back to the middle.
-  // The content is visually identical so the jump is invisible to the user.
-  const repH = 60 * _TV2_ITEM_H;
-  let _wrapPending = false;
-  let _wrapDebounce;
-
-  function _doWrap() {
-    if (_wrapPending) return;
-    if (inner.scrollTop < repH || inner.scrollTop > 3 * repH) {
-      _wrapPending = true;
-      inner.scrollTop += inner.scrollTop < repH ? 2 * repH : -2 * repH;
-      setTimeout(() => { _wrapPending = false; }, 100);
-    }
-  }
-
-  // scrollend fires after momentum/snap settle (modern browsers)
-  inner.addEventListener('scrollend', () => { if (!_wrapPending) _doWrap(); }, { passive: true });
-  // debounced scroll as fallback
-  inner.addEventListener('scroll', () => {
-    clearTimeout(_wrapDebounce);
-    if (_wrapPending) return;
-    _wrapDebounce = setTimeout(_doWrap, 150);
-  }, { passive: true });
 }
 
 function _tv2GetVal(innerId) {
