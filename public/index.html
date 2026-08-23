@@ -1307,14 +1307,15 @@ let editMeasureTypes = [];
 let lastWorkouts     = {};
 
 // ─── RUNNING STATE ────────────────────────────────────────────
-let runningEnabled    = false;
-let runWorkouts       = [];
-let runWorkoutTypes   = [];
-let _runCharts        = {};
-let _runCurrentRange  = 'year';
-let _runAddStep       = 1;
+let runningEnabled     = false;
+let runWorkouts        = [];
+let runWorkoutTypes    = [];
+let _runCharts         = {};
+let _runCurrentRange   = 'year';
+let _runAddStep        = 1;
 let _runSelectedTypeId = null;
-let _runPrefill       = {};
+let _runPrefill        = {};
+let _runDataPromise    = null;  // holds the in-flight or resolved prefetch promise
 
 // ─── RUNNING DATA LAYER ──────────────────────────────────────
 async function loadRunData() {
@@ -1338,6 +1339,13 @@ async function loadRunData() {
   } catch (err) {
     toast('שגיאה בטעינת נתוני ריצה: ' + err.message, 'error');
   }
+}
+
+// Starts loading run data in the background. Safe to call multiple times —
+// subsequent calls before the first resolves reuse the same promise.
+function prefetchRunData() {
+  if (!currentUser || _runDataPromise) return;
+  _runDataPromise = loadRunData();
 }
 
 async function addRunWorkout(workout) {
@@ -1409,7 +1417,8 @@ function filterRunByRange(workouts, range) {
 
 // ─── RUNNING UI ──────────────────────────────────────────────
 async function initRunSection() {
-  await loadRunData();
+  if (!_runDataPromise) _runDataPromise = loadRunData();  // fallback if prefetch didn't run
+  await _runDataPromise;
   runShowDashboard();
 }
 
@@ -2162,6 +2171,7 @@ async function initApp() {
   _draftAttachListeners();
   _draftStartFirestoreTimer();
   hideOverlay();
+  if (runningEnabled) prefetchRunData();  // background — does not delay app display
 }
 
 async function reloadAppData() {
