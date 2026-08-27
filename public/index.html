@@ -2657,7 +2657,7 @@ async function checkAndAutoSavePreviousDrafts() {
           type:        draft.type,
           sessionName: draft.workoutName || '',
           exercises:   (draft.exercises || [])
-            .filter(e => e.weight || e.sets || e.reps)
+            .filter(e => e.weight || e.sets || e.reps || e.notes)
             .map(e => ({ id: genId(), name: e.name, target: e.target || '', weight: e.weight, sets: e.sets, reps: e.reps, notes: e.notes || '' })),
           autoSaved:   true,
           createdAt:   serverTimestamp(),
@@ -2746,6 +2746,8 @@ function clearWorkoutForm(silent = false) {
   _draftAttachListeners();
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
+  localStorage.removeItem(_draftKey(selectedType));
+  if (currentUser) deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', selectedType)).catch(() => {});
   if (!silent) toast(t('clear.success'), 'error');
 }
 
