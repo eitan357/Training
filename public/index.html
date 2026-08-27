@@ -1152,7 +1152,7 @@
 
     <div class="settings-group-label" data-i18n="settings.section.edit">עריכה</div>
     <button class="settings-item" onclick="openWorkoutEdit()">
-      <span class="settings-item-icon"><svg class="icon" style="width:28px;height:28px" viewBox="5 1 14 19" aria-hidden="true"><use href="#icon-flame"/></svg></span>
+      <span class="settings-item-icon"><svg class="icon" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-flame"/></svg></span>
       <div class="settings-item-text">
         <div class="settings-item-title" data-i18n="settings.workout_edit">לעריכת תוכנית אימוני כוח</div>
         <div class="settings-item-sub" data-i18n="settings.workout_edit_sub">הוסף, הסר וערוך סוגי אימון ותרגילים</div>
@@ -2312,25 +2312,14 @@ async function loadAllData() {
 }
 
 async function initApp() {
-  try {
-    const data = await loadAllData();
-    applyAppData(data);
-    _updateTopbarName(); // refresh after Firestore profile loaded
-    const autoSaved = await checkAndAutoSavePreviousDrafts();
-    if (autoSaved > 0) {
-      const fresh = await loadAllData();
-      applyAppData(fresh);
-    }
-    selectType('A');
-  } catch (err) {
-    toast(t('error.load') + err.message, 'error');
-    selectType('A');
-  }
-  await loadRunningEnabled();
+  // Phase 1 — instant from localStorage (no Firestore)
+  const hadCache = _applyLocalCache();
+  selectType(workoutTypes[0] || 'A');
   _draftAttachListeners();
   _draftStartFirestoreTimer();
   hideOverlay();
-  if (runningEnabled) prefetchRunData();  // background — does not delay app display
+  // Phase 2 — background Firestore sync (non-blocking)
+  _backgroundSync(hadCache).catch(() => {});
 }
 
 async function reloadAppData() {
@@ -2450,7 +2439,8 @@ function _draftSerialize() {
 }
 
 function _draftQualifies(draft) {
-  return (draft.exercises || []).some(e => e.weight && e.sets && e.reps);
+  return !!(draft.workoutName?.trim()) ||
+    (draft.exercises || []).some(e => e.weight || e.sets || e.reps || e.notes);
 }
 
 function _draftHasBannerData(draft) {
@@ -2515,9 +2505,8 @@ function _draftOnInput() {
   clearTimeout(_draftSaveDebounce[selectedType]);
   _draftSaveDebounce[selectedType] = setTimeout(() => {
     _draftSaveLocal(selectedType);
-    _draftSaveFirestore(selectedType);
     _draftDirty[selectedType] = true;
-  }, 2000);
+  }, 300);
 }
 
 function _draftAttachListeners() {
@@ -2535,12 +2524,118 @@ function _draftStartFirestoreTimer() {
   }, 30000);
 }
 
+// ─── LOCAL CACHE HELPERS ────────────────────────────────────────
+function _cacheKeyTemplates()       { return `templates_${currentUser?.uid}`; }
+function _cacheKeyLastWorkout(type) { return `lastWorkout_${currentUser?.uid}_${type}`; }
+function _cacheKeyRunning()         { return `running_enabled_${currentUser?.uid}`; }
+
+function _applyLocalCache() {
+  if (!currentUser) return false;
+  const cached = JSON.parse(localStorage.getItem(_cacheKeyTemplates()) || 'null');
+  if (!cached) return false;
+  workoutTypes = (cached.types && cached.types.length) ? cached.types : ['A', 'B'];
+  editTemplates = {};
+  workoutTypes.forEach(wtype => {
+    editTemplates[wtype] = (cached[wtype] || []).map(ex => ({
+      id:            ex.id            || '',
+      name:          ex.name          || '',
+      targetWeight:  ex.targetWeight  || '',
+      targetSets:    ex.targetSets    || '',
+      targetReps:    ex.targetReps    || '',
+      _legacyTarget: ex._legacyTarget || ex.target || '',
+    }));
+  });
+  workoutTypes.forEach(type => {
+    const lw = JSON.parse(localStorage.getItem(_cacheKeyLastWorkout(type)) || 'null');
+    if (lw) lastWorkouts[type] = lw;
+  });
+  const r = localStorage.getItem(_cacheKeyRunning());
+  if (r !== null) { runningEnabled = r === 'true'; applyRunningGate(); }
+  return true;
+}
+
+function _saveCacheFromData(data) {
+  if (!currentUser) return;
+  if (data.templates && !data.templates.error) {
+    try { localStorage.setItem(_cacheKeyTemplates(), JSON.stringify(data.templates)); } catch(e) {}
+  }
+  if (data.lastWorkouts) {
+    Object.entries(data.lastWorkouts).forEach(([type, w]) => {
+      try { localStorage.setItem(_cacheKeyLastWorkout(type), JSON.stringify(w)); } catch(e) {}
+    });
+  }
+  try { localStorage.setItem(_cacheKeyRunning(), String(runningEnabled)); } catch(e) {}
+}
+
+function _backgroundApplyData(data) {
+  const safeArr = v => Array.isArray(v) ? v : [];
+  const tmpl = (data.templates && !data.templates.error) ? data.templates : null;
+  if (tmpl) {
+    workoutTypes = (tmpl.types && tmpl.types.length) ? tmpl.types : workoutTypes;
+    editTemplates = {};
+    workoutTypes.forEach(wtype => {
+      editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
+        const hasNew = ex.targetWeight || ex.targetSets || ex.targetReps;
+        return {
+          id:            ex.id           || '',
+          name:          ex.name         || '',
+          targetWeight:  ex.targetWeight || '',
+          targetSets:    ex.targetSets   || '',
+          targetReps:    ex.targetReps   || '',
+          _legacyTarget: hasNew ? '' : (ex.target || ''),
+        };
+      });
+    });
+  }
+  allSessions     = safeArr(data.allWorkouts);
+  measureTypes    = safeArr(data.measureTypes);
+  allMeasurements = safeArr(data.measurements);
+  if (data.lastWorkouts) lastWorkouts = data.lastWorkouts;
+  _updateTopbarName();
+  try { renderMeasureForm();  } catch(e) { console.error(e); }
+  try { renderEditAll();      } catch(e) { console.error(e); }
+  try { renderHistory();      } catch(e) { console.error(e); }
+  try { renderMeasurements(); } catch(e) { console.error(e); }
+  setDefaultDate();
+}
+
+async function _backgroundSync(hadCache) {
+  try {
+    await Promise.all([
+      checkAndAutoSavePreviousDrafts(),
+      loadRunningEnabled().then(() => {
+        try { localStorage.setItem(_cacheKeyRunning(), String(runningEnabled)); } catch(e) {}
+        if (runningEnabled) prefetchRunData();
+      }),
+    ]);
+    const data = await loadAllData();
+    _backgroundApplyData(data);
+    _saveCacheFromData(data);
+    if (!hadCache) selectType(selectedType || workoutTypes[0] || 'A');
+  } catch(e) { /* silent — Phase 1 data remains visible */ }
+}
+
 
 
 
 async function checkAndAutoSavePreviousDrafts() {
   if (!currentUser) return 0;
   const today = new Date().toISOString().slice(0, 10);
+  // Sync any previous-day localStorage drafts → Firestore before reading
+  const prefix = `draft_${currentUser.uid}_`;
+  const localKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(prefix)) localKeys.push(k);
+  }
+  for (const key of localKeys) {
+    const type  = key.slice(prefix.length);
+    const local = _draftLoadLocal(type);
+    if (!local) continue;
+    const draftDate = (local.createdAt || '').slice(0, 10);
+    if (!draftDate || draftDate >= today) continue;
+    try { await _draftSaveFirestore(type); } catch(e) {}
+  }
   let count = 0;
   try {
     const snap = await getDocs(collection(db, 'users', currentUser.uid, 'drafts'));
@@ -2841,6 +2936,7 @@ async function submitData() {
           });
       });
       setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData).catch(() => {});
+      try { localStorage.setItem(_cacheKeyTemplates(), JSON.stringify(templateData)); } catch(e) {}
     }
   }
 
@@ -2860,6 +2956,9 @@ async function submitData() {
       exercises,
       createdAt:   serverTimestamp()
     });
+    const cachedLW = { date: `${dd}/${mm}/${yyyy}`, dateISO: `${yyyy}-${mm}-${dd}`, type: selectedType, sessionName, exercises };
+    try { localStorage.setItem(_cacheKeyLastWorkout(selectedType), JSON.stringify(cachedLW)); } catch(e) {}
+    lastWorkouts[selectedType] = cachedLW;
     await _draftDelete(selectedType);
     toast(`${t('workout.saved_ok')} (${exercises.length} ${t('workout.exercises')})`, 'success');
     await reloadAppData();
@@ -3245,6 +3344,7 @@ async function saveTemplates() {
   if (btn) { btn.disabled = true; btn.innerText = t('saving'); }
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData);
+    try { localStorage.setItem(_cacheKeyTemplates(), JSON.stringify(templateData)); } catch(e) {}
     toast(t('edit.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
