@@ -2315,6 +2315,7 @@ async function initApp() {
   // Phase 1 — instant from localStorage (no Firestore)
   const hadCache = _applyLocalCache();
   selectType(workoutTypes[0] || 'A');
+  renderTypeButtons();
   _draftAttachListeners();
   _draftStartFirestoreTimer();
   hideOverlay();
