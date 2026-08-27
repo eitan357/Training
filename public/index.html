@@ -2531,6 +2531,16 @@ function _cacheKeyRunning()         { return `running_enabled_${currentUser?.uid
 
 function _applyLocalCache() {
   if (!currentUser) return false;
+  // Load lastWorkouts first — independent of templates cache so the preview
+  // shows instantly even before templates are cached (e.g. first run after update).
+  const lwPrefix = `lastWorkout_${currentUser.uid}_`;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(lwPrefix)) {
+      const type = k.slice(lwPrefix.length);
+      try { const lw = JSON.parse(localStorage.getItem(k)); if (lw) lastWorkouts[type] = lw; } catch(e) {}
+    }
+  }
   const cached = JSON.parse(localStorage.getItem(_cacheKeyTemplates()) || 'null');
   if (!cached) return false;
   workoutTypes = (cached.types && cached.types.length) ? cached.types : ['A', 'B'];
@@ -2544,10 +2554,6 @@ function _applyLocalCache() {
       targetReps:    ex.targetReps    || '',
       _legacyTarget: ex._legacyTarget || ex.target || '',
     }));
-  });
-  workoutTypes.forEach(type => {
-    const lw = JSON.parse(localStorage.getItem(_cacheKeyLastWorkout(type)) || 'null');
-    if (lw) lastWorkouts[type] = lw;
   });
   const r = localStorage.getItem(_cacheKeyRunning());
   if (r !== null) { runningEnabled = r === 'true'; applyRunningGate(); }
