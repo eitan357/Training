@@ -3760,6 +3760,7 @@ function copyTargetToCard(cardEl) {
     if (ts) sInput.value = ts;
     if (tr) rInput.value = expandReps(ts, tr);
     toast(t('target.copied'), 'success');
+    _draftOnInput();
   } else {
     const lt = tEl?.dataset.legacy?.trim();
     if (!lt) { toast(t('target.not_set'), 'error'); return; }
@@ -3771,7 +3772,11 @@ function copyTargetToCard(cardEl) {
     if (hasData && !confirm(t('target.overwrite_confirm'))) return;
     if (parsed.weight !== null) weightInput.value = parsed.weight;
     if (parsed.reps   !== null) repsInput.value   = parsed.reps;
-    if (parsed.weight === null && parsed.reps === null) toast(t('target.parse_error'), 'error');
+    if (parsed.weight === null && parsed.reps === null) {
+      toast(t('target.parse_error'), 'error');
+    } else {
+      _draftOnInput();
+    }
   }
 }
 
@@ -3802,6 +3807,7 @@ function copyLastWorkout() {
     }
   });
   toast(`✓ ${copied} ${t('copy.success')} ${t('copy.from')}${sessionDisplayDate(last)}`, 'success');
+  if (copied > 0) _draftOnInput();
 }
 
 // ─── TIMER ────────────────────────────────────────────────────
