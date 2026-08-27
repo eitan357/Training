@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Training Diary</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#6366f1">
+  <meta name="theme-color" content="#6d64a8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="יומן אימון">
   <link rel="apple-touch-icon" href="icon-bolt.svg">
-  <script>(function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'),l=localStorage.getItem('lang')||(navigator.language.startsWith('he')?'he':'en');document.documentElement.dataset.theme=t;document.documentElement.dir=l==='en'?'ltr':'rtl';document.documentElement.lang=l;})();</script>
+  <script>(function(){var s=localStorage.getItem('theme')||'auto',t=s==='auto'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):s,l=localStorage.getItem('lang')||(navigator.language.startsWith('he')?'he':'en');document.documentElement.dataset.theme=t;document.documentElement.dir=l==='en'?'ltr':'rtl';document.documentElement.lang=l;})();</script>
   <style>
     :root {
-      --primary:   #6366f1;
-      --primary-d: #4f46e5;
-      --green:     #22c55e;
-      --green-d:   #16a34a;
-      --red:       #ef4444;
+      --primary:   #6d64a8;
+      --primary-d: #574e8a;
+      --green:     #52a270;
+      --green-d:   #3c7a54;
+      --red:       #c07070;
       --bg:        #f1f5f9;
       --surface:   #ffffff;
       --border:    #e2e8f0;
@@ -40,7 +40,7 @@
       color: var(--text) !important;
       -webkit-text-fill-color: var(--text);
     }
-    [data-theme="dark"] .m-field.weight-field input { background: #2d1f5e !important; border-color: #6d4fc0 !important; }
+    [data-theme="dark"] .m-field.weight-field input { background: #1e1a38 !important; border-color: #574e8a !important; }
     [data-theme="dark"] .measure-header { background: #252f45; border-bottom-color: var(--border); }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -463,7 +463,7 @@
       background: transparent; color: #94a3b8;
       font-size: 13px; cursor: pointer; padding: 0 10px; transition: all .15s;
     }
-    .tab-remove:hover { color: var(--red); background: #fef2f2; }
+    .tab-remove:hover { color: var(--red); background: #f5eeee; }
     .tab-item.add-tab-item { border-style: dashed; flex: 0 0 auto; }
     .add-tab-btn { padding: 10px 16px; font-size: 20px; font-weight: 400; color: var(--sub); }
     .count-pill { background: var(--border); color: var(--sub); border-radius: 20px; font-size: 11px; padding: 1px 7px; font-weight: 700; }
@@ -507,7 +507,7 @@
       font-size: 16px; cursor: pointer; padding: 4px 6px;
       border-radius: 6px; float: left; transition: all .15s;
     }
-    .edit-ex-delete:hover { color: var(--red); background: #fef2f2; }
+    .edit-ex-delete:hover { color: var(--red); background: #f5eeee; }
 
     /* ── DELETE BUTTONS ── */
     .delete-btn {
@@ -515,8 +515,8 @@
       cursor: pointer; padding: 4px 6px; border-radius: 6px;
       font-size: 15px; line-height: 1; transition: all .15s; flex-shrink: 0;
     }
-    .delete-btn:hover { color: var(--red); background: #fef2f2; }
-    .delete-btn.armed { color: var(--red) !important; background: #fef2f2; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
+    .delete-btn:hover { color: var(--red); background: #f5eeee; }
+    .delete-btn.armed { color: var(--red) !important; background: #f5eeee; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
     .col-del { width: 32px; text-align: center; padding: 0 !important; }
 
     /* ── MULTI-SELECT ── */
@@ -703,15 +703,124 @@
       border-radius: var(--radius); text-align: center; cursor: pointer; color: var(--primary);
       font-weight: 700; font-size: 15px; margin-bottom: 12px; }
     .settings-running-gate { display: none; }
+
+    /* ── SVG ICONS ── */
+    .icon { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex-shrink: 0; display: inline-block; }
+    .nav-icon .icon { width: 22px; height: 22px; vertical-align: unset; }
+    .topbar-icon-btn .icon { width: 22px; height: 22px; }
+
+    /* ── THEME SWITCHER ── */
+    .theme-btns { display: flex; gap: 3px; background: var(--input-bg); border-radius: 10px; padding: 3px; }
+    .theme-btn { border: none; background: transparent; border-radius: 7px; padding: 6px 12px; cursor: pointer;
+      color: var(--sub); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 5px;
+      transition: background .15s, color .15s; white-space: nowrap; }
+    .theme-btn .icon { width: 15px; height: 15px; }
+    .theme-btn.active { background: var(--card); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.18); }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 <body>
+<svg id="icons" xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="icon-dumbbell" viewBox="0 0 24 24">
+    <rect x="2" y="9" width="3.5" height="6" rx="1.25" fill="currentColor"/>
+    <rect x="5.5" y="10.5" width="2" height="3" rx=".75" fill="currentColor"/>
+    <rect x="7.5" y="11" width="9" height="2" rx="1" fill="currentColor"/>
+    <rect x="16.5" y="10.5" width="2" height="3" rx=".75" fill="currentColor"/>
+    <rect x="18.5" y="9" width="3.5" height="6" rx="1.25" fill="currentColor"/>
+  </symbol>
+  <symbol id="icon-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </symbol>
+  <symbol id="icon-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="2" width="6" height="4" rx="1"/>
+    <path d="M6 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/>
+    <path d="M8 11h8M8 15h5"/>
+  </symbol>
+  <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    <line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+  </symbol>
+  <symbol id="icon-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+    <polyline points="17 21 17 13 7 13 7 21"/>
+    <polyline points="7 3 7 8 15 8"/>
+  </symbol>
+  <symbol id="icon-chart" viewBox="0 0 24 24">
+    <rect x="3" y="14" width="4" height="7" rx="1" fill="currentColor"/>
+    <rect x="10" y="9" width="4" height="12" rx="1" fill="currentColor"/>
+    <rect x="17" y="4" width="4" height="17" rx="1" fill="currentColor"/>
+  </symbol>
+  <symbol id="icon-stopwatch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="13" r="8"/>
+    <polyline points="12 9 12 13 14.5 15.5"/>
+    <line x1="10" y1="2" x2="14" y2="2"/>
+    <line x1="12" y1="2" x2="12" y2="5"/>
+  </symbol>
+  <symbol id="icon-ruler" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1" y="8.5" width="22" height="7" rx="2"/>
+    <line x1="5" y1="8.5" x2="5" y2="12.5"/>
+    <line x1="9" y1="8.5" x2="9" y2="11.5"/>
+    <line x1="13" y1="8.5" x2="13" y2="12.5"/>
+    <line x1="17" y1="8.5" x2="17" y2="11.5"/>
+    <line x1="21" y1="8.5" x2="21" y2="11.5"/>
+  </symbol>
+  <symbol id="icon-runner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="4" r="2"/>
+    <path d="M6 20l4-8 2.5 3 2-3.5 4-2.5"/>
+    <path d="M8 20h3M18 20l-2-8"/>
+    <path d="M10 12l-3-1.5"/>
+    <path d="M14.5 10.5l3-1.5"/>
+  </symbol>
+  <symbol id="icon-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="2,12 6,12 8,5 12,19 14,11 16,13.5 22,13.5"/>
+  </symbol>
+  <symbol id="icon-flame" viewBox="5 1 14 19">
+    <path fill="currentColor" d="M12 2S7 8 7 13a5 5 0 0010 0c0-3-1.5-5.5-2.5-7-1 2.5-1.5 4-3 4-.6 0-1-.5-1-1.5C10.5 7 12 2 12 2z"/>
+  </symbol>
+  <symbol id="icon-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </symbol>
+  <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </symbol>
+  <symbol id="icon-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </symbol>
+  <symbol id="icon-tired" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    <line x1="15" y1="10" x2="19" y2="10"/>
+    <line x1="16" y1="7" x2="18" y2="7"/>
+  </symbol>
+  <symbol id="icon-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+    <polyline points="22 4 12 14.01 9 11.01"/>
+  </symbol>
+  <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"/>
+    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </symbol>
+  <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </symbol>
+  <symbol id="icon-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="2" width="14" height="20" rx="2"/>
+    <line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/>
+  </symbol>
+</svg>
 
 <!-- ══ AUTH SCREEN ══ -->
 <div id="auth-screen" class="hidden">
   <div class="auth-card">
-    <div class="auth-title" data-i18n="auth.title">יומן האימון 💪</div>
+    <div class="auth-title" data-i18n="auth.title">יומן האימון <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="bolt-auth" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="50%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient></defs><path fill="url(#bolt-auth)" d="M13 2L3 14h9l-1 8L21 10h-9l1-8z"/></svg></div>
     <div class="auth-sub" data-i18n="auth.sub">התחבר כדי לגשת לנתונים שלך</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login"    onclick="switchAuthTab('login')"    data-i18n="auth.tab_login">התחברות</button>
@@ -741,7 +850,7 @@
 
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="loading-overlay" style="display:flex;">
-  <div class="lo-title" data-i18n="auth.title">יומן האימון 💪</div>
+  <div class="lo-title" data-i18n="auth.title">יומן האימון <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="bolt-lo" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="50%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient></defs><path fill="url(#bolt-lo)" d="M13 2L3 14h9l-1 8L21 10h-9l1-8z"/></svg></div>
   <div class="lo-spinner"></div>
   <div class="lo-sub" data-i18n="auth.loading">טוען נתונים...</div>
 </div>
@@ -750,10 +859,10 @@
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
-    <div><div class="topbar-title" data-i18n="title.workout">יומן האימון 💪</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.workout">כוח <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-flame"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()" data-i18n="btn.back">← חזרה</button>
-      <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
 
@@ -773,7 +882,7 @@
     <div id="historyPreview" style="display:none;" class="history-preview">
       <div class="history-preview-header" onclick="toggleHistPreview()">
         <div>
-          <span class="history-preview-title" data-i18n="preview.last">📋 אימון אחרון</span>
+          <span class="history-preview-title" data-i18n="preview.last"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> אימון אחרון</span>
           <span id="histPreviewName" class="hist-preview-session-name"></span>
         </div>
         <span id="histPreviewDate" class="history-preview-date"></span>
@@ -791,8 +900,8 @@
     </div>
 
     <div id="topActionRow">
-      <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()" data-i18n="btn.copy_last">📋 העתקת אימון אחרון</button>
-      <button id="clearFormBtn" class="copy-last-btn clear-form-btn" style="display:none;" onclick="clearWorkoutForm()" data-i18n="btn.clear_form">🗑 נקה טופס</button>
+      <button id="copyLastBtn" class="copy-last-btn" style="display:none;" onclick="copyLastWorkout()" data-i18n="btn.copy_last"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> העתקת אימון אחרון</button>
+      <button id="clearFormBtn" class="copy-last-btn clear-form-btn" style="display:none;" onclick="clearWorkoutForm()" data-i18n="btn.clear_form"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg> נקה טופס</button>
     </div>
 
     <div id="sessionNameWrap" style="display:none; margin-bottom:16px;">
@@ -817,16 +926,16 @@
     </div>
     <div id="editListContainer"></div>
     <button class="btn-ghost"   onclick="addEditExercise()" data-i18n="edit.add_exercise">+ הוסף תרגיל</button>
-    <button class="btn-primary" onclick="saveTemplates()" data-i18n="edit.save">💾 שמור שינויים</button>
+    <button class="btn-primary" onclick="saveTemplates()" data-i18n="edit.save"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-save"/></svg> שמור שינויים</button>
   </div>
 </div>
 
 <!-- ══════════ HISTORY ══════════ -->
 <div id="sec-history" class="section">
   <div class="topbar">
-    <div><div class="topbar-title" data-i18n="title.history">היסטוריה 📊</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.history">היסטוריה <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-chart"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
   <div style="padding:16px;">
@@ -838,9 +947,9 @@
 <!-- ══════════ TIMER ══════════ -->
 <div id="sec-timer" class="section">
   <div class="topbar">
-    <div><div class="topbar-title" data-i18n="title.timer">טיימר ⏱️</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.timer">טיימר <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
   <div class="tv2-wrap">
@@ -888,10 +997,10 @@
 <!-- ══════════ MEASUREMENTS ══════════ -->
 <div id="sec-measurements" class="section">
   <div class="topbar">
-    <div><div class="topbar-title" data-i18n="title.measurements">מדידות 📏</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.measurements">מדידות <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()" data-i18n="btn.back">← חזרה</button>
-      <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+      <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
 
@@ -899,7 +1008,7 @@
     <div class="section-label" data-i18n="meas.types_label">סוגי מדידות</div>
     <div id="typesList"></div>
     <button class="btn-ghost"   onclick="addMeasureType()" data-i18n="types.add">+ הוסף סוג מדידה</button>
-    <button class="btn-primary" onclick="saveTypesEditor()" data-i18n="types.save">💾 שמור סוגי מדידות</button>
+    <button class="btn-primary" onclick="saveTypesEditor()" data-i18n="types.save"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-save"/></svg> שמור סוגי מדידות</button>
   </div>
 
   <div id="measurementsContent" style="padding:16px;">
@@ -924,8 +1033,8 @@
 <!-- ══ RUNNING ══ -->
 <div id="sec-running" class="section">
   <div class="topbar">
-    <div><div class="topbar-title" data-i18n="title.running">ריצה 🏃</div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות">⚙️</button>
+    <div><div class="topbar-title" data-i18n="title.running">אירובי <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></div><div class="topbar-sub topbar-email"></div></div>
+    <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
   </div>
   <div style="padding:16px;">
 
@@ -961,8 +1070,8 @@
         <div class="run-card">
           <div class="run-card-title" data-i18n="run.step2_title">תמונה מהמסך</div>
           <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runCameraInput').click()">📷 <span data-i18n="run.camera_btn">צלם תמונה</span></button>
-            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runGalleryInput').click()">🖼️ <span data-i18n="run.gallery_btn">בחר מגלריה</span></button>
+            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runCameraInput').click()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-camera"/></svg> <span data-i18n="run.camera_btn">צלם תמונה</span></button>
+            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runGalleryInput').click()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-image"/></svg> <span data-i18n="run.gallery_btn">בחר מגלריה</span></button>
           </div>
           <input type="file" id="runCameraInput" accept="image/*" capture="environment" style="display:none;" onchange="runHandleOcr(this)">
           <input type="file" id="runGalleryInput" accept="image/*" style="display:none;" onchange="runHandleOcr(this)">
@@ -1036,22 +1145,22 @@
 <!-- ══════════ SETTINGS ══════════ -->
 <div id="sec-settings" class="section">
   <div class="topbar">
-    <div><div class="topbar-title" data-i18n="title.settings">הגדרות ⚙️</div><div class="topbar-sub topbar-email"></div></div>
+    <div><div class="topbar-title" data-i18n="title.settings">הגדרות <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <button class="topbar-back-btn" onclick="goBack()" data-i18n="btn.back">← חזרה</button>
   </div>
   <div style="padding:16px; display:flex; flex-direction:column; gap:8px;">
 
     <div class="settings-group-label" data-i18n="settings.section.edit">עריכה</div>
     <button class="settings-item" onclick="openWorkoutEdit()">
-      <span class="settings-item-icon">🏋️</span>
+      <span class="settings-item-icon"><svg class="icon" style="width:28px;height:28px" viewBox="5 1 14 19" aria-hidden="true"><use href="#icon-flame"/></svg></span>
       <div class="settings-item-text">
-        <div class="settings-item-title" data-i18n="settings.workout_edit">עריכת תוכנית אימונים</div>
+        <div class="settings-item-title" data-i18n="settings.workout_edit">לעריכת תוכנית אימוני כוח</div>
         <div class="settings-item-sub" data-i18n="settings.workout_edit_sub">הוסף, הסר וערוך סוגי אימון ותרגילים</div>
       </div>
       <span class="settings-item-arrow">›</span>
     </button>
     <button class="settings-item" onclick="openMeasurementsEdit()">
-      <span class="settings-item-icon">📏</span>
+      <span class="settings-item-icon"><svg class="icon" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></span>
       <div class="settings-item-text">
         <div class="settings-item-title" data-i18n="settings.meas_edit">עריכת סוגי מדידות</div>
         <div class="settings-item-sub" data-i18n="settings.meas_edit_sub">הוסף והסר סוגי מדידה</div>
@@ -1074,11 +1183,21 @@
     <div class="settings-group-label" style="margin-top:8px;" data-i18n="settings.section.appearance">מראה</div>
     <div class="settings-card">
       <div class="settings-row">
-        <span class="settings-row-label" data-i18n="settings.dark_mode">מצב לילה</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="darkModeToggle" onchange="setDarkMode(this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+        <span class="settings-row-label" data-i18n="settings.theme">ערכת נושא</span>
+        <div class="theme-btns" id="themeBtns">
+          <button class="theme-btn" data-theme="light" onclick="setTheme('light')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-sun"/></svg>
+            <span data-i18n="settings.theme.light">בהיר</span>
+          </button>
+          <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-moon"/></svg>
+            <span data-i18n="settings.theme.dark">כהה</span>
+          </button>
+          <button class="theme-btn" data-theme="auto" onclick="setTheme('auto')">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-auto"/></svg>
+            <span data-i18n="settings.theme.auto">אוטומטי</span>
+          </button>
+        </div>
       </div>
       <div class="settings-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
         <span class="settings-row-label" data-i18n="settings.language">שפה</span>
@@ -1088,7 +1207,7 @@
       </div>
       <div class="settings-row" id="runningGateRow" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:none;">
         <div class="settings-item-text">
-          <div class="settings-row-label" data-i18n="settings.running_show">הצג עמוד ריצה</div>
+          <div class="settings-row-label" data-i18n="settings.running_show">הצג עמוד אירובי</div>
           <div class="settings-item-sub" data-i18n="settings.running_show_sub">מחליף את עמוד המדידות בנב-בר</div>
         </div>
         <label class="toggle-switch">
@@ -1122,28 +1241,29 @@
 
 <nav class="bottomnav">
   <button class="nav-item active" id="nav-main"         onclick="showSection('main')">
-    <span class="nav-icon">🏋️</span><span data-i18n="nav.workout">אימון</span>
+    <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-flame"/></svg></span><span data-i18n="nav.workout">כוח</span>
   </button>
   <button class="nav-item"        id="nav-timer"        onclick="showSection('timer')">
-    <span class="nav-icon" id="timerNavIcon">⏱️</span><span id="timerNavLabel" data-i18n="nav.timer">טיימר</span>
+    <span class="nav-icon" id="timerNavIcon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg></span><span id="timerNavLabel" data-i18n="nav.timer">טיימר</span>
   </button>
   <button class="nav-item"        id="nav-measurements" onclick="showSection('measurements')">
-    <span class="nav-icon">📏</span><span data-i18n="nav.measurements">מדידות</span>
+    <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></span><span data-i18n="nav.measurements">מדידות</span>
   </button>
   <button class="nav-item"        id="nav-running"      onclick="showSection('running')" style="display:none;">
-    <span class="nav-icon">🏃</span><span data-i18n="run.nav">ריצה</span>
+    <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></span><span data-i18n="run.nav">אירובי</span>
   </button>
   <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
-    <span class="nav-icon">📊</span><span data-i18n="nav.history">היסטוריה</span>
+    <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-chart"/></svg></span><span data-i18n="nav.history">היסטוריה</span>
   </button>
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=18';
+import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=20';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
-         signInWithPopup, signOut, sendPasswordResetEmail }       from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
+         signInWithPopup, signInWithCredential,
+         signOut, sendPasswordResetEmail }                        from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
 import { getFirestore, initializeFirestore, persistentLocalCache,
          doc, getDoc, setDoc, addDoc, updateDoc,
          deleteDoc, collection, query, orderBy,
@@ -1164,7 +1284,7 @@ const firebaseConfig = {
 // TRANSLATIONS and LANGUAGES are imported from ./translations.js
 
 let currentLang  = (() => { const s = localStorage.getItem('lang'); return LANGUAGES[s] ? s : (navigator.language.startsWith('he') ? 'he' : 'en'); })();
-let currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+let currentTheme = localStorage.getItem('theme') || 'auto';
 
 function t(key) { return (TRANSLATIONS[currentLang] ?? TRANSLATIONS.he ?? {})[key] ?? key; }
 
@@ -1173,7 +1293,21 @@ function applyLang() {
   const tr   = TRANSLATIONS[currentLang] || TRANSLATIONS.he;
   document.documentElement.lang = meta.locale;
   document.documentElement.dir  = meta.dir;
-  document.querySelectorAll('[data-i18n]').forEach(el => { const v = tr[el.dataset.i18n]; if (v != null) el.textContent = v; });
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = tr[el.dataset.i18n];
+    if (v == null) return;
+    if (el.querySelector('svg')) {
+      // Preserve inline SVG icons — update only non-empty text nodes, keeping surrounding whitespace
+      [...el.childNodes].forEach(n => {
+        if (n.nodeType === Node.TEXT_NODE && n.data.trim()) {
+          const m = n.data.match(/^(\s*)([\s\S]*?)(\s*)$/);
+          n.data = (m[1] || '') + v + (m[3] || '');
+        }
+      });
+    } else {
+      el.textContent = v;
+    }
+  });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { const v = tr[el.dataset.i18nPh]; if (v != null) el.placeholder = v; });
 }
 
@@ -1185,10 +1319,20 @@ function renderLangSelector() {
     .join('');
 }
 
-function setDarkMode(on) {
-  currentTheme = on ? 'dark' : 'light';
-  document.documentElement.dataset.theme = currentTheme;
-  localStorage.setItem('theme', currentTheme);
+function setTheme(value) {
+  currentTheme = value;
+  const resolved = value === 'auto'
+    ? (window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light')
+    : value;
+  document.documentElement.dataset.theme = resolved;
+  localStorage.setItem('theme', value);
+  _updateThemeBtns();
+}
+
+function _updateThemeBtns() {
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+  });
 }
 
 function setLang(lang) {
@@ -1231,7 +1375,7 @@ function _updateTopbarName() {
 }
 
 function initSettingsUI() {
-  document.getElementById('darkModeToggle').checked = currentTheme === 'dark';
+  _updateThemeBtns();
   document.getElementById('tv2SoundToggle').checked = _timerSoundOn;
   renderLangSelector();
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName_' + (currentUser?.uid || '')) || '';
@@ -1501,8 +1645,8 @@ function renderRunDashboard() {
 
 const RUN_CHARTS_CONFIG = [
   { key: 'distanceKm',       tKey: 'run.chart.distance', color: '#2563eb', fmt: v => v.toFixed(1) },
-  { key: 'avgHeartRate',     tKey: 'run.chart.hr',       color: '#dc2626', fmt: v => Math.round(v) },
-  { key: 'paceMinPerKm',     tKey: 'run.chart.pace',     color: '#16a34a', fmt: formatPace },
+  { key: 'avgHeartRate',     tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
+  { key: 'paceMinPerKm',     tKey: 'run.chart.pace',     color: '#3c7a54', fmt: formatPace },
   { key: 'calories',         tKey: 'run.chart.calories', color: '#d97706', fmt: v => Math.round(v) },
   { key: 'avgStridesPerMin', tKey: 'run.chart.spm',      color: '#7c3aed', fmt: v => Math.round(v) },
 ];
@@ -1789,7 +1933,7 @@ function renderRunHistory() {
     const rawHistType = runWorkoutTypes.find(tp => tp.id === w.workoutTypeId)?.name ?? '';
     const typeName = escHtml(translateTypeName(rawHistType));
     const pace     = w.paceMinPerKm ? formatPace(w.paceMinPerKm) : '--';
-    const tired    = w.feltTired ? '😴' : '';
+    const tired    = w.feltTired ? '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-tired"/></svg>' : '';
     return `
       <div class="run-history-row" onclick="runToggleHistoryRow('${w.id}')">
         <div>
@@ -1884,10 +2028,25 @@ async function handleAuthSubmit() {
 
 async function handleGoogleLogin() {
   try {
-    const provider = new GoogleAuthProvider();
-    const result   = await signInWithPopup(auth, provider);
-    const snap     = await getDoc(doc(db, 'users', result.user.uid, 'config', 'templates'));
-    if (!snap.exists()) await initNewUser(result.user.uid);
+    let uid;
+
+    if (window.Capacitor?.isNativePlatform()) {
+      // Android app: Chrome Custom Tab (Google allows it, unlike WebView)
+      const { FirebaseAuthentication } = window.Capacitor.Plugins;
+      const result     = await FirebaseAuthentication.signInWithGoogle();
+      const idToken    = result.credential?.idToken;
+      const credential = GoogleAuthProvider.credential(idToken);
+      const fbResult   = await signInWithCredential(auth, credential);
+      uid = fbResult.user.uid;
+    } else {
+      // Web browser: standard popup flow
+      const provider = new GoogleAuthProvider();
+      const result   = await signInWithPopup(auth, provider);
+      uid = result.user.uid;
+    }
+
+    const snap = await getDoc(doc(db, 'users', uid, 'config', 'templates'));
+    if (!snap.exists()) await initNewUser(uid);
   } catch (e) {
     setAuthMsg(firebaseErrMsg(e.code));
   }
@@ -2356,6 +2515,7 @@ function _draftOnInput() {
   clearTimeout(_draftSaveDebounce[selectedType]);
   _draftSaveDebounce[selectedType] = setTimeout(() => {
     _draftSaveLocal(selectedType);
+    _draftSaveFirestore(selectedType);
     _draftDirty[selectedType] = true;
   }, 2000);
 }
@@ -2476,7 +2636,7 @@ async function _draftModalDiscard() {
 }
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
-function clearWorkoutForm() {
+function clearWorkoutForm(silent = false) {
   if (!selectedType) return;
   const nameInput = document.getElementById('sessionNameInput');
   if (nameInput) {
@@ -2491,7 +2651,7 @@ function clearWorkoutForm() {
   _draftAttachListeners();
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
-  toast(t('clear.success'), 'error');
+  if (!silent) toast(t('clear.success'), 'error');
 }
 
 function selectType(type) {
@@ -2703,7 +2863,7 @@ async function submitData() {
     await _draftDelete(selectedType);
     toast(`${t('workout.saved_ok')} (${exercises.length} ${t('workout.exercises')})`, 'success');
     await reloadAppData();
-    clearWorkoutForm();
+    clearWorkoutForm(true);
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
   }
@@ -2766,7 +2926,7 @@ function renderHistory() {
   const list = document.getElementById('historyList');
   const data = activeFilter === 'all' ? allSessions : allSessions.filter(s => s.type === activeFilter);
   if (!data.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon">🏃</div><div class="empty-text">${t('workout.no_results')}</div></div>`;
+    list.innerHTML = `<div class="empty"><div class="empty-icon"><svg class="icon" style="width:48px;height:48px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-runner"/></svg></div><div class="empty-text">${t('workout.no_results')}</div></div>`;
     return;
   }
 
@@ -2922,14 +3082,14 @@ function armDelete(btn, callback) {
   if (btn.classList.contains('armed')) {
     clearTimeout(_armTimer);
     btn.classList.remove('armed');
-    btn.innerHTML = '🗑';
+    btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg>';
     callback();
   } else {
     btn.classList.add('armed');
     btn.innerHTML = t('btn.delete_confirm');
     _armTimer = setTimeout(() => {
       btn.classList.remove('armed');
-      btn.innerHTML = '🗑';
+      btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg>';
     }, 3000);
   }
 }
@@ -3221,7 +3381,7 @@ function renderMeasurements() {
   updateMeasBulkBar();
   const el = document.getElementById('measureList');
   if (!allMeasurements.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">📏</div><div class="empty-text">${t('meas.empty')}</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon"><svg class="icon" style="width:48px;height:48px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></div><div class="empty-text">${t('meas.empty')}</div></div>`;
     return;
   }
   const groups = {}, order = [];
@@ -3579,7 +3739,7 @@ function tv2Stop() {
   _timerSecs = _timerTotal;
   const arc = document.getElementById('tv2Arc');
   if (arc) { arc.classList.remove('done'); arc.style.strokeDashoffset = '0'; }
-  document.getElementById('timerNavIcon').textContent  = '⏱️';
+  document.getElementById('timerNavIcon').innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg>';
   document.getElementById('timerNavLabel').textContent = t('nav.timer');
   _tv2ShowView('setting');
 }
@@ -3615,14 +3775,14 @@ function _timerTick() {
     const arc = document.getElementById('tv2Arc');
     if (arc) arc.classList.add('done');
     _tv2SetPauseIcon('play');
-    document.getElementById('timerNavIcon').textContent = '✅';
+    document.getElementById('timerNavIcon').innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-check-circle"/></svg>';
     if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400]);
     _tv2PlayBeep();
     setTimeout(() => {
       _timerSecs = _timerTotal;
       const arc2 = document.getElementById('tv2Arc');
       if (arc2) { arc2.classList.remove('done'); arc2.style.strokeDashoffset = '0'; }
-      document.getElementById('timerNavIcon').textContent  = '⏱️';
+      document.getElementById('timerNavIcon').innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg>';
       document.getElementById('timerNavLabel').textContent = t('nav.timer');
       _tv2ShowView('setting');
       _tv2InitPickers();
@@ -3872,7 +4032,7 @@ async function _bulkDelete(set, barId, collection) {
   try {
     await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, collection, id))));
     set.clear();
-    toast(ids.length + ' ' + t('bulk.deleted'), 'success');
+    toast(ids.length + ' ' + t('bulk.deleted'), 'error');
     await reloadAppData();
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
@@ -3889,7 +4049,7 @@ Object.assign(window, {
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm,
   _draftModalResume, _draftModalDiscard,
-  goBack, setDarkMode, setLang, renderLangSelector, saveDisplayName,
+  goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
   filterHistory, toggleSess, toggleMonthGroup,
@@ -3920,15 +4080,15 @@ window.addEventListener('popstate', () => {
 <div id="histBulkBar" class="bulk-bar" style="display:none;">
   <span class="bulk-bar-count" id="histBulkCount"></span>
   <div class="bulk-bar-actions">
-    <button id="histBulkEditBtn" class="bulk-bar-edit" onclick="editSelectedSession()">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
-    <button class="bulk-bar-del" onclick="bulkDeleteSessions()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+    <button id="histBulkEditBtn" class="bulk-bar-edit" onclick="editSelectedSession()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pencil"/></svg> <span data-i18n="bulk.edit_btn">ערוך</span></button>
+    <button class="bulk-bar-del" onclick="bulkDeleteSessions()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg> <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
   </div>
 </div>
 <div id="measBulkBar" class="bulk-bar" style="display:none;">
   <span class="bulk-bar-count" id="measBulkCount"></span>
   <div class="bulk-bar-actions">
-    <button id="measBulkEditBtn" class="bulk-bar-edit" onclick="editSelectedMeasure()">✏️ <span data-i18n="bulk.edit_btn">ערוך</span></button>
-    <button class="bulk-bar-del" onclick="bulkDeleteMeasures()">🗑 <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
+    <button id="measBulkEditBtn" class="bulk-bar-edit" onclick="editSelectedMeasure()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pencil"/></svg> <span data-i18n="bulk.edit_btn">ערוך</span></button>
+    <button class="bulk-bar-del" onclick="bulkDeleteMeasures()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg> <span data-i18n="bulk.delete_btn">מחק נבחרים</span></button>
   </div>
 </div>
 </body>

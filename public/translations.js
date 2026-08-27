@@ -27,17 +27,17 @@ export const TRANSLATIONS = {
   he: {
 
     // ── Navigation ────────────────────────────────────────────────
-    'nav.workout':        'אימון',
+    'nav.workout':        'כוח',
     'nav.timer':          'טיימר',
     'nav.measurements':   'מדידות',
     'nav.history':        'היסטוריה',
 
     // ── Page titles ───────────────────────────────────────────────
-    'title.workout':      'יומן האימון 💪',
-    'title.timer':        'טיימר ⏱️',
-    'title.measurements': 'מדידות 📏',
-    'title.history':      'היסטוריה 📊',
-    'title.settings':     'הגדרות ⚙️',
+    'title.workout':      'כוח',
+    'title.timer':        'טיימר',
+    'title.measurements': 'מדידות',
+    'title.history':      'היסטוריה',
+    'title.settings':     'הגדרות',
 
     // ── General buttons ───────────────────────────────────────────
     'btn.logout':         'יציאה',
@@ -65,7 +65,7 @@ export const TRANSLATIONS = {
     'btn.save_workout':        'שמור אימון',
     'btn.clear_form':          'נקה טופס',
     'btn.add_exercise':        '+ הוסף תרגיל',
-    'btn.copy_last':           '📋 העתקת אימון אחרון',
+    'btn.copy_last':           'העתקת אימון אחרון',
     'workout.name_label':      'שם האימון',
     'workout.name_ph':         'שם האימון',
     'workout.name_last_ph':    'אחרון: ',
@@ -102,7 +102,7 @@ export const TRANSLATIONS = {
     'filter.all':   'הכל',
 
     // ── History preview ───────────────────────────────────────────
-    'preview.last': '📋 אימון אחרון',
+    'preview.last': 'אימון אחרון',
 
     // ── Session inline edit ───────────────────────────────────────
     'sess.name_label': 'שם האימון',
@@ -114,7 +114,7 @@ export const TRANSLATIONS = {
     'sess.notes_ph':   'הערות...',
 
     // ── Workout template editor ───────────────────────────────────
-    'edit.save':         '💾 שמור שינויים',
+    'edit.save':         'שמור שינויים',
     'edit.add_exercise': '+ הוסף תרגיל',
     'edit.add_type_ph':  'שם האימון (C, D, כוח...)',
     'edit.no_exercises': 'אין תרגילים. לחץ "+ הוסף תרגיל".',
@@ -148,7 +148,7 @@ export const TRANSLATIONS = {
     'meas.default_unit':  'ס"מ',
 
     // ── Measurement types editor ──────────────────────────────────
-    'types.save':     '💾 שמור סוגי מדידות',
+    'types.save':     'שמור סוגי מדידות',
     'types.add':      '+ הוסף סוג מדידה',
     'types.min_one':  'הוסף לפחות סוג מדידה אחד.',
     'types.unique':   'שמות חייבים להיות ייחודיים.',
@@ -167,18 +167,21 @@ export const TRANSLATIONS = {
     'settings.section.timer':     'טיימר',
     'settings.timer_sound':       'צליל בסוף טיימר',
     'settings.timer_sound_sub':   'השמע צליל כאשר הטיימר מסתיים',
-    'settings.workout_edit':      'עריכת תוכנית אימונים',
+    'settings.workout_edit':      'לעריכת תוכנית אימוני כוח',
     'settings.workout_edit_sub':  'הוסף, הסר וערוך סוגי אימון ותרגילים',
     'settings.meas_edit':         'עריכת סוגי מדידות',
     'settings.meas_edit_sub':     'הוסף והסר סוגי מדידה',
     'settings.display_name':      'שם תצוגה',
     'settings.display_name_ph':   'יופיע בכותרת...',
-    'settings.dark_mode':         'מצב לילה',
+    'settings.theme':             'ערכת נושא',
+    'settings.theme.light':       'בהיר',
+    'settings.theme.dark':        'כהה',
+    'settings.theme.auto':        'אוטומטי',
     'settings.language':          'שפה',
     'display_name_saved':         'שם תצוגה עודכן',
 
     // ── Auth screen ───────────────────────────────────────────────
-    'auth.title':          'יומן האימון 💪',
+    'auth.title':          'יומן האימון',
     'auth.sub':            'התחבר כדי לגשת לנתונים שלך',
     'auth.tab_login':      'התחברות',
     'auth.tab_register':   'הרשמה',
@@ -216,8 +219,8 @@ export const TRANSLATIONS = {
     'error.save':   'שגיאה: ',
 
     // ── Running page ──────────────────────────────────────────────
-    'run.nav':              'ריצה',
-    'title.running':        'ריצה 🏃',
+    'run.nav':              'אירובי',
+    'title.running':        'אירובי',
     'run.add_btn':          '+ הוסף אימון',
     'run.history_btn':      'היסטוריה',
     'run.streak_label':     'שבועות רצופים',
@@ -267,7 +270,7 @@ export const TRANSLATIONS = {
     'run.chart.pace':       'קצב (דק/ק"מ)',
     'run.chart.calories':   'קלוריות',
     'run.chart.spm':        'צעדים/דקה',
-    'settings.running_show':     'הצג עמוד ריצה',
+    'settings.running_show':     'הצג עמוד אירובי',
     'settings.running_show_sub': 'מחליף את עמוד המדידות בנב-בר',
 
     // ── Target copy/bump ──────────────────────────────────────────
@@ -292,17 +295,17 @@ export const TRANSLATIONS = {
   en: {
 
     // ── Navigation ────────────────────────────────────────────────
-    'nav.workout':        'Workout',
+    'nav.workout':        'Strength',
     'nav.timer':          'Timer',
     'nav.measurements':   'Measures',
     'nav.history':        'History',
 
     // ── Page titles ───────────────────────────────────────────────
-    'title.workout':      'Training Diary 💪',
-    'title.timer':        'Timer ⏱️',
-    'title.measurements': 'Measurements 📏',
-    'title.history':      'History 📊',
-    'title.settings':     'Settings ⚙️',
+    'title.workout':      'Strength',
+    'title.timer':        'Timer',
+    'title.measurements': 'Measurements',
+    'title.history':      'History',
+    'title.settings':     'Settings',
 
     // ── General buttons ───────────────────────────────────────────
     'btn.logout':         'Sign out',
@@ -330,7 +333,7 @@ export const TRANSLATIONS = {
     'btn.save_workout':        'Save Workout',
     'btn.clear_form':          'Clear Form',
     'btn.add_exercise':        '+ Add Exercise',
-    'btn.copy_last':           '📋 Copy last workout',
+    'btn.copy_last':           'Copy last workout',
     'workout.name_label':      'Workout Name',
     'workout.name_ph':         'Workout Name',
     'workout.name_last_ph':    'Last: ',
@@ -367,7 +370,7 @@ export const TRANSLATIONS = {
     'filter.all':   'All',
 
     // ── History preview ───────────────────────────────────────────
-    'preview.last': '📋 Last Workout',
+    'preview.last': 'Last Workout',
 
     // ── Session inline edit ───────────────────────────────────────
     'sess.name_label': 'Workout Name',
@@ -379,7 +382,7 @@ export const TRANSLATIONS = {
     'sess.notes_ph':   'Notes...',
 
     // ── Workout template editor ───────────────────────────────────
-    'edit.save':         '💾 Save Changes',
+    'edit.save':         'Save Changes',
     'edit.add_exercise': '+ Add Exercise',
     'edit.add_type_ph':  'Workout name (C, D, Strength...)',
     'edit.no_exercises': 'No exercises. Tap "+ Add Exercise".',
@@ -413,7 +416,7 @@ export const TRANSLATIONS = {
     'meas.default_unit':  'cm',
 
     // ── Measurement types editor ──────────────────────────────────
-    'types.save':     '💾 Save Types',
+    'types.save':     'Save Types',
     'types.add':      '+ Add Measurement Type',
     'types.min_one':  'Add at least one measurement type.',
     'types.unique':   'Names must be unique.',
@@ -432,18 +435,21 @@ export const TRANSLATIONS = {
     'settings.section.timer':     'Timer',
     'settings.timer_sound':       'Sound at end of timer',
     'settings.timer_sound_sub':   'Play a sound when the timer finishes',
-    'settings.workout_edit':      'Edit Workout Plan',
+    'settings.workout_edit':      'Edit Strength Plan',
     'settings.workout_edit_sub':  'Add, remove and edit workout types and exercises',
     'settings.meas_edit':         'Edit Measurement Types',
     'settings.meas_edit_sub':     'Add and remove measurement types',
     'settings.display_name':      'Display Name',
     'settings.display_name_ph':   'Shown in header...',
-    'settings.dark_mode':         'Dark Mode',
+    'settings.theme':             'Theme',
+    'settings.theme.light':       'Light',
+    'settings.theme.dark':        'Dark',
+    'settings.theme.auto':        'Auto',
     'settings.language':          'Language',
     'display_name_saved':         'Display name updated',
 
     // ── Auth screen ───────────────────────────────────────────────
-    'auth.title':          'Training Diary 💪',
+    'auth.title':          'Training Diary',
     'auth.sub':            'Sign in to access your data',
     'auth.tab_login':      'Sign In',
     'auth.tab_register':   'Register',
@@ -481,8 +487,8 @@ export const TRANSLATIONS = {
     'error.save':   'Error: ',
 
     // ── Running page ──────────────────────────────────────────────
-    'run.nav':              'Running',
-    'title.running':        'Running 🏃',
+    'run.nav':              'Cardio',
+    'title.running':        'Cardio',
     'run.add_btn':          '+ Add Workout',
     'run.history_btn':      'History',
     'run.streak_label':     'Weekly Streak',
@@ -532,7 +538,7 @@ export const TRANSLATIONS = {
     'run.chart.pace':       'Pace (min/km)',
     'run.chart.calories':   'Calories',
     'run.chart.spm':        'Steps/min',
-    'settings.running_show':     'Show Running Page',
+    'settings.running_show':     'Show Cardio Page',
     'settings.running_show_sub': 'Replaces the Measurements tab in the nav bar',
 
     // ── Target copy/bump ──────────────────────────────────────────
