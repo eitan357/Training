@@ -46,6 +46,46 @@ test.describe('Navigation', () => {
     await expect(page.locator('#nav-history')).toHaveClass(/active/);
   });
 
+  test('navigating updates the URL for each top-level page', async ({ page }) => {
+    await page.locator('#nav-timer').click();
+    await expect(page).toHaveURL(/\/timer$/);
+
+    await page.locator('#nav-history').click();
+    await expect(page).toHaveURL(/\/history$/);
+
+    // #mainGearBtn only exists inside #sec-main's topbar; from #sec-history
+    // the gear icon is a different, unlabeled element, so it must be scoped
+    // to the currently active section.
+    await page.locator('#sec-history .topbar-icon-btn').click();
+    await page.locator('#nav-main').click(); // nav-main isn't visible from settings; navigate directly
+  });
+
+  test('regression: back from settings after visiting an edit panel returns to the ORIGINAL page, not the edit panel\'s section', async ({ page }) => {
+    // Reproduces the reported bug exactly: Timer -> Settings -> open an
+    // edit panel -> back (lands on Settings, correct) -> back again
+    // (used to land on the edit panel's own section instead of Timer).
+    await page.locator('#nav-timer').click();
+    await expect(page.locator('#sec-timer')).toHaveClass(/active/);
+
+    // #mainGearBtn only exists inside #sec-main's topbar; from #sec-timer
+    // the gear icon is a different, unlabeled element, so it must be scoped
+    // to the currently active section.
+    await page.locator('#sec-timer .topbar-icon-btn').click();
+    await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+
+    await page.locator('button.settings-item', { hasText: 'עריכת תוכנית' }).click();
+    await expect(page.locator('#mainEditPanel')).toBeVisible({ timeout: 8000 });
+
+    await page.locator('#mainBackBtn').click();
+    await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+
+    // Scoped to #sec-settings specifically — mainBackBtn (#sec-main) and
+    // measBackBtn (#sec-measurements) share the same .topbar-back-btn class
+    // and the same "חזרה" text, so an unscoped locator would be ambiguous.
+    await page.locator('#sec-settings .topbar-back-btn').click();
+    await expect(page.locator('#sec-timer')).toHaveClass(/active/);
+  });
+
   test('navigate back to main section', async ({ page }) => {
     await page.locator('#nav-timer').click();
     await page.locator('#nav-main').click();
