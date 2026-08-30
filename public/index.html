@@ -862,7 +862,7 @@
     <div><div class="topbar-title" data-i18n="title.workout">כוח <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-flame"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()" data-i18n="btn.back">← חזרה</button>
-      <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" id="mainGearBtn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
 
@@ -935,7 +935,7 @@
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.history">היסטוריה <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-chart"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
   <div style="padding:16px;">
@@ -949,7 +949,7 @@
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.timer">טיימר <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
   <div class="tv2-wrap">
@@ -1000,7 +1000,7 @@
     <div><div class="topbar-title" data-i18n="title.measurements">מדידות <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()" data-i18n="btn.back">← חזרה</button>
-      <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" id="measGearBtn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
 
@@ -1034,7 +1034,7 @@
 <div id="sec-running" class="section">
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.running">אירובי <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+    <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
   </div>
   <div style="padding:16px;">
 
@@ -1240,19 +1240,19 @@
 </div>
 
 <nav class="bottomnav">
-  <button class="nav-item active" id="nav-main"         onclick="showSection('main')">
+  <button class="nav-item active" id="nav-main"         onclick="navigateTo('/')">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-flame"/></svg></span><span data-i18n="nav.workout">כוח</span>
   </button>
-  <button class="nav-item"        id="nav-timer"        onclick="showSection('timer')">
+  <button class="nav-item"        id="nav-timer"        onclick="navigateTo('/timer')">
     <span class="nav-icon" id="timerNavIcon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg></span><span id="timerNavLabel" data-i18n="nav.timer">טיימר</span>
   </button>
-  <button class="nav-item"        id="nav-measurements" onclick="showSection('measurements')">
+  <button class="nav-item"        id="nav-measurements" onclick="navigateTo('/measurements')">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></span><span data-i18n="nav.measurements">מדידות</span>
   </button>
-  <button class="nav-item"        id="nav-running"      onclick="showSection('running')" style="display:none;">
+  <button class="nav-item"        id="nav-running"      onclick="navigateTo('/running')" style="display:none;">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></span><span data-i18n="run.nav">אירובי</span>
   </button>
-  <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
+  <button class="nav-item"        id="nav-history"      onclick="navigateTo('/history')">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-chart"/></svg></span><span data-i18n="nav.history">היסטוריה</span>
   </button>
 </nav>
@@ -2473,6 +2473,11 @@ function _renderRoute(state) {
 }
 
 function goBack() { history.back(); }
+
+// Expose router functions to global scope for inline event handlers
+window.navigateTo = navigateTo;
+window.goBack = goBack;
+window.showSection = showSection;
 
 window.addEventListener('popstate', e => {
   _renderRoute(e.state || ROUTES[location.pathname] || ROUTES['/']);
