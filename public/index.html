@@ -3695,8 +3695,16 @@ async function saveMeasureEdit(saveBtn, measureId) {
 function cancelMeasureEdit() { renderMeasurements(); }
 
 // ─── MEASUREMENT TYPES EDITOR ─────────────────────────────────
-function toggleTypesEditor() {
-  typesEditorOpen = !typesEditorOpen;
+// Pure DOM primitive, kept under its ORIGINAL name and toggle-style
+// signature on purpose: tests/measurements.spec.ts:90,94 calls
+// window.toggleTypesEditor() directly, twice, expecting a raw open/close
+// toggle independent of history. _renderRoute() (Task 1) calls the
+// explicit-boolean variant below instead.
+function toggleTypesEditor() { _setMeasurementTypesPanel(!typesEditorOpen); }
+
+function _setMeasurementTypesPanel(open) {
+  if (open === typesEditorOpen) return;
+  typesEditorOpen = open;
   document.getElementById('typesEditorPanel').style.display    = typesEditorOpen ? 'block' : 'none';
   document.getElementById('measurementsContent').style.display = typesEditorOpen ? 'none'  : 'block';
   document.getElementById('measBackBtn').style.display         = typesEditorOpen ? '' : 'none';
@@ -3803,15 +3811,8 @@ function toggleEditPanel() { _setWorkoutEditPanel(!editPanelOpen); }
 function openWorkoutEdit()  { navigateTo('/settings/workout-plan'); }
 function closeWorkoutEdit() { history.back(); }
 
-function openMeasurementsEdit() {
-  showSection('measurements');
-  if (!typesEditorOpen) toggleTypesEditor();
-}
-
-function closeMeasurementsEdit() {
-  if (typesEditorOpen) toggleTypesEditor();
-  showSection('settings');
-}
+function openMeasurementsEdit()  { navigateTo('/settings/measurement-types'); }
+function closeMeasurementsEdit() { history.back(); }
 
 // ─── COPY TARGET TO CARD ──────────────────────────────────────
 function copyTargetToCard(cardEl) {
