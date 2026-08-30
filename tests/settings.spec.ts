@@ -61,6 +61,11 @@ test.describe('Settings Section', () => {
     await expect(soundRow).toBeVisible();
   });
 
+  test('workout plan edit label has no stray leading ל', async ({ page }) => {
+    const label = page.locator('.settings-item-title', { hasText: 'עריכת תוכנית אימוני כוח' });
+    await expect(label).toHaveText('עריכת תוכנית אימוני כוח');
+  });
+
   test('logout button is present', async ({ page }) => {
     const logoutBtn = page.locator('.settings-logout-btn');
     await expect(logoutBtn).toBeVisible();

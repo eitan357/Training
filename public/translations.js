@@ -167,7 +167,7 @@ export const TRANSLATIONS = {
     'settings.section.timer':     'טיימר',
     'settings.timer_sound':       'צליל בסוף טיימר',
     'settings.timer_sound_sub':   'השמע צליל כאשר הטיימר מסתיים',
-    'settings.workout_edit':      'לעריכת תוכנית אימוני כוח',
+    'settings.workout_edit':      'עריכת תוכנית אימוני כוח',
     'settings.workout_edit_sub':  'הוסף, הסר וערוך סוגי אימון ותרגילים',
     'settings.meas_edit':         'עריכת סוגי מדידות',
     'settings.meas_edit_sub':     'הוסף והסר סוגי מדידה',
