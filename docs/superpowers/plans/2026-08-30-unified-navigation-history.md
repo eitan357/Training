@@ -793,11 +793,11 @@ Object.assign(window, {
 - [ ] **Step 6: Run the existing running-section tests**
 
 Run: `npx playwright test tests/running.spec.ts`
-Expected: all pass unchanged — every asserted onclick string (`runGoBack()`, `runShowAdd()`, `runShowHistory()`, `runShowStep3({})`) still exists verbatim; `#run-view-add`/`#run-add-step1`/`#run-add-step3` visibility assertions still hold because `_renderRunState`/`_renderRunStep` reproduce the same `style.display` logic.
+**Confirmed pre-existing, out-of-scope gap (verified in the SDD ledger by checking out the pre-Task-1 commit and reproducing identically): 13 of 15 tests in this file already fail before this task, and before this whole plan — every test that depends on the `enableRunningSection()` helper (its toggle-click step hangs until timeout). This is NOT something to investigate or fix as part of this task.** Only 2 tests are expected to pass and must keep passing: "running section is present in DOM" and "running toggle exists in settings" (neither uses the broken helper). Since the automated suite cannot exercise anything past the enable step, Step 7 below (manual browser verification) is this task's PRIMARY verification, not a supplement — do not skip it or treat a "13 failed, as expected" result as sufficient on its own.
 
 - [ ] **Step 7: Manual verification of the wizard-step back fix**
 
-In a browser: enable running (settings toggle) → Add workout → select "Elliptical" (step 2) → click browser back button → confirm you land on step 1 of the wizard (not the dashboard) — this is the mid-wizard regression fix described in the spec §3.3/§5.4. Then from step 1, click back again → confirm you land on the running dashboard.
+The normal settings-toggle UI path is blocked by the pre-existing bug from Step 6 (the toggle click hangs), so bypass it: `saveRunningEnabled` is directly exported to `window` (`public/index.html:4250` area) — write a small throwaway Playwright script (not part of the committed test suite) that logs in, then runs `page.evaluate(() => (window).saveRunningEnabled(true))` instead of clicking the toggle, then `page.goto('/running/add')` (or `page.evaluate(() => (window).runShowAdd())`), selects "Elliptical" to reach step 2, calls `page.goBack()`, and asserts `page.url()` ends in `/running/add` with step 1's DOM visible (`#run-add-step1` displayed, not step 2) — confirming you land on step 1 of the wizard, not the dashboard (the mid-wizard regression fix described in spec §3.3/§5.4). Then `page.goBack()` again and assert you land on `/running` with the dashboard visible. Delete the throwaway script when done — it is not part of this task's committed deliverable, just a verification aid for the pre-existing broken toggle helper.
 
 - [ ] **Step 8: Commit**
 
