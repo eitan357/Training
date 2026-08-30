@@ -2372,19 +2372,37 @@ function applyAppData(data) {
 
 // ─── NAVIGATION ───────────────────────────────────────────────
 const SECTION_ORDER = { main: 0, timer: 1, running: 2, measurements: 2, history: 3, settings: 4 };
+
+// Every top-level screen reachable by URL / bookmark / hardware back
+// button. Edit panels and running sub-views get real paths too, so the
+// address bar always matches what's on screen. The running wizard's
+// steps (1/2/3) stay OUT of this table on purpose — see pushSubState().
+const ROUTES = {
+  '/':                           { section: 'main' },
+  '/timer':                      { section: 'timer' },
+  '/measurements':               { section: 'measurements' },
+  '/running':                    { section: 'running', runSubView: null },
+  '/history':                    { section: 'history' },
+  '/settings':                   { section: 'settings' },
+  '/settings/workout-plan':      { section: 'main', editPanel: 'workout' },
+  '/settings/measurement-types': { section: 'measurements', editPanel: 'measurementTypes' },
+  '/running/add':                { section: 'running', runSubView: 'add', runStep: 1 },
+  '/running/history':            { section: 'running', runSubView: 'history' },
+};
+
 let currentSection = 'main';
-let prevSection    = 'main';
 const _sectionScrollPos = {};
 
+// Pure DOM primitive: makes the visible section match `name`. Never
+// touches history/URL — kept history-free on purpose because two
+// Playwright tests call window.showSection() directly and expect no
+// side effect beyond the DOM swap.
 function showSection(name) {
-  if (editPanelOpen) toggleEditPanel();
-  if (typesEditorOpen) toggleTypesEditor();
   if (name === currentSection) return;
 
   const mc = document.getElementById('main-content');
   _sectionScrollPos[currentSection] = mc.scrollTop;
 
-  prevSection = currentSection;
   const fromIdx = SECTION_ORDER[currentSection] ?? 0;
   const toIdx   = SECTION_ORDER[name] ?? 0;
   const isRTL = LANGUAGES[currentLang]?.dir === 'rtl';
@@ -2415,6 +2433,50 @@ function showSection(name) {
   updateHistBulkBar();
   updateMeasBulkBar();
 }
+
+// ─── ROUTER ────────────────────────────────────────────────────
+// navigateTo() is the ONLY place that pushes/replaces a history entry
+// with a NEW URL. Every nav-bar button, gear icon, and settings
+// shortcut calls this — never showSection() directly — so the browser
+// back button, the Android hardware back button, and in-app "← back"
+// buttons all walk the exact same stack.
+function navigateTo(path, opts = {}) {
+  const { replace = false, isRoot = false } = opts;
+  const route = ROUTES[path];
+  if (!route) { if (!replace) navigateTo('/', { replace: true, isRoot: true }); return; }
+  const state = { editPanel: null, runSubView: null, runStep: null, ...route, isRoot };
+  if (replace) history.replaceState(state, '', path);
+  else         history.pushState(state, '', path);
+  _renderRoute(state);
+}
+
+// Layers a sub-screen (edit panel state carried on /settings/*, running
+// wizard step) on top of the CURRENT url without changing the visible
+// path. Used only by the running wizard (Task 5) — the edit panels get
+// their own real paths instead (Tasks 3-4).
+function pushSubState(patch) {
+  const state = { ...(history.state || { section: currentSection }), ...patch, isRoot: false };
+  history.pushState(state, '', location.pathname);
+  _renderRoute(state);
+}
+
+// The single function that makes the DOM match ANY state object.
+// Called from navigateTo(), pushSubState(), the popstate listener
+// below, the Android hardware-back handler (Task 9), and app boot
+// (Task 6). This is what guarantees identical behavior across all of
+// those triggers — they all funnel through here.
+function _renderRoute(state) {
+  showSection(state.section);
+  _setWorkoutEditPanel(state.section === 'main' && state.editPanel === 'workout');
+  _setMeasurementTypesPanel(state.section === 'measurements' && state.editPanel === 'measurementTypes');
+  if (state.section === 'running') _renderRunState(state.runSubView, state.runStep);
+}
+
+function goBack() { history.back(); }
+
+window.addEventListener('popstate', e => {
+  _renderRoute(e.state || ROUTES[location.pathname] || ROUTES['/']);
+});
 
 // ─── DRAFT AUTO-SAVE ─────────────────────────────────────────
 function _draftKey(type) {
@@ -3727,8 +3789,6 @@ function toggleEditPanel() {
   else document.getElementById('nav-main')?.classList.add('active');
   if (editPanelOpen) renderEditAll();
 }
-
-function goBack() { showSection(prevSection); }
 
 function openWorkoutEdit() {
   showSection('main');
