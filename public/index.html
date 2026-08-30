@@ -3767,7 +3767,7 @@ async function saveTypesEditor() {
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'measurementTypes'), { types });
     toast(t('types.saved_ok'), 'success');
-    toggleTypesEditor();
+    closeMeasurementsEdit();
     await reloadAppData();
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
