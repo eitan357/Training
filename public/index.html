@@ -2320,6 +2320,23 @@ async function initApp() {
   hideOverlay();
   // Phase 2 — background Firestore sync (non-blocking)
   _backgroundSync(hadCache).catch(() => {});
+
+  // Boot-time route resolution: land on whatever URL the tab actually
+  // has (deep link, refresh, bookmark) instead of always defaulting to
+  // main. An unrecognized path falls back to '/' — see spec §3.5/§4 for
+  // why location.pathname is only ever used as an allowlist lookup key.
+  let bootPath = ROUTES[location.pathname] ? location.pathname : '/';
+  if (bootPath.startsWith('/running') && !_isRunningAllowed()) bootPath = '/';
+  navigateTo(bootPath, { replace: true, isRoot: true });
+}
+
+// Re-checks the exact same gate initSettingsUI already applies (hard-coded
+// email allow-list + the runningEnabled flag) so a direct/bookmarked
+// /running URL can't show the section to a user it isn't meant for. This
+// is UI convenience, not a security boundary — see docs/product/12-security-and-privacy.md.
+function _isRunningAllowed() {
+  const allowed = ['eitan357@gmail.com', 'test@gmail.com'];
+  return allowed.includes(currentUser?.email) && runningEnabled === true;
 }
 
 async function reloadAppData() {
@@ -2441,6 +2458,7 @@ function showSection(name) {
 // buttons all walk the exact same stack.
 function navigateTo(path, opts = {}) {
   const { replace = false, isRoot = false } = opts;
+  if (path.startsWith('/running') && typeof _isRunningAllowed === 'function' && !_isRunningAllowed()) path = '/';
   const route = ROUTES[path];
   if (!route) { if (!replace) navigateTo('/', { replace: true, isRoot: true }); return; }
   const state = { editPanel: null, runSubView: null, runStep: null, ...route, isRoot };
