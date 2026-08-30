@@ -261,9 +261,21 @@ Note: `_setWorkoutEditPanel`, `_setMeasurementTypesPanel`, and `_renderRunState`
 
 - [ ] **Step 4: Confirm the file still parses (no browser yet — full behavior lands after Task 5)**
 
-Run: `node --check public/index.html 2>&1 | head -5 || true`
+`public/index.html` is HTML, not pure JS, so `node --check` can't run on it directly — extract the module script's contents to a temp `.mjs` file and check that instead (this only parses, it does not execute or fetch the remote CDN imports, so it works offline):
 
-Expected: this specific command will report a syntax error because `index.html` is not pure JS (it's HTML) — that's fine, this step exists only to catch a gross typo by eye. Instead, visually diff the replaced block against the "before" and "after" shown above and confirm every brace balances. Do **not** attempt to load the app in a browser until Task 5 is complete — `_setWorkoutEditPanel`/`_setMeasurementTypesPanel`/`_renderRunState` don't exist yet and the app will throw on the first render.
+Run:
+```bash
+node -e "
+const fs = require('fs');
+const html = fs.readFileSync('public/index.html', 'utf8');
+const m = html.match(/<script type=\"module\">([\s\S]*?)<\/script>/);
+fs.writeFileSync('.worktrees-syntax-check.mjs', m[1]);
+"
+node --check .worktrees-syntax-check.mjs && echo "SYNTAX OK"
+rm .worktrees-syntax-check.mjs
+```
+
+Expected: `SYNTAX OK`. If this fails, the error message includes a line number into the extracted script — cross-reference against the block you just edited before doing anything else. Do **not** attempt to load the app in a browser until Task 5 is complete — `_setWorkoutEditPanel`/`_setMeasurementTypesPanel`/`_renderRunState` don't exist yet and the app will throw on the first render.
 
 - [ ] **Step 5: Commit**
 
@@ -1073,7 +1085,7 @@ and add immediately after it:
 
 - [ ] **Step 3: Add the hardware back button handler**
 
-In `public/index.html`, immediately before the final `Object.assign(window, { ... })` export block (currently starting at line 4162), add:
+In `public/index.html`, find the `// ─── RUNNING EXPORTS ─────────────────────────────────` `Object.assign(window, {...})` block (the one Task 5 last edited) and add the following code **immediately after its closing `});`**, i.e. exactly where Task 5 Step 4 deleted the old dedicated `popstate` listener, right before the closing `</script>` tag — this is genuinely the last statement in the module script, so anchor on "right after the RUNNING EXPORTS block's closing `});`", not on any line number (every earlier task in this plan shifts line numbers — match by the code shown, never by a cited line):
 
 ```js
 // ─── ANDROID HARDWARE BACK BUTTON ──────────────────────────────
@@ -1232,7 +1244,10 @@ Add this new test inside `test.describe('Navigation', ...)`:
     await page.locator('#mainBackBtn').click();
     await expect(page.locator('#sec-settings')).toHaveClass(/active/);
 
-    await page.locator('.topbar-back-btn', { hasText: 'חזרה' }).first().click();
+    // Scoped to #sec-settings specifically — mainBackBtn (#sec-main) and
+    // measBackBtn (#sec-measurements) share the same .topbar-back-btn class
+    // and the same "חזרה" text, so an unscoped locator would be ambiguous.
+    await page.locator('#sec-settings .topbar-back-btn').click();
     await expect(page.locator('#sec-timer')).toHaveClass(/active/);
   });
 ```
