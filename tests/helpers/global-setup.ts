@@ -2,7 +2,7 @@ import { chromium } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const BASE_URL = 'https://training-diary.web.app';
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'https://training-diary.web.app';
 
 export default async function globalSetup() {
   const email = process.env.TEST_EMAIL;

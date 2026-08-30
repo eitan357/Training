@@ -10,7 +10,7 @@ export default defineConfig({
   timeout: 30000,
 
   use: {
-    baseURL: 'https://training-diary.web.app',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'https://training-diary.web.app',
     storageState: 'tests/fixtures/auth-state.json',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
