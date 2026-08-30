@@ -446,7 +446,7 @@ function closeWorkoutEdit() { history.back(); }
 - [ ] **Step 2: Run the existing workout edit-panel tests**
 
 Run: `npx playwright test tests/workout.spec.ts`
-Expected: all pass, including `closing edit panel navigates back to settings` (verified against this exact design in the spec, §7) — the sequence `main → settings (navigateTo) → /settings/workout-plan (openWorkoutEdit → navigateTo) → history.back()` lands back on the `/settings` entry, which carries no `editPanel`, so `_renderRoute` closes the panel.
+Expected: **8 pre-existing failures unrelated to this plan** are known and out of scope (confirmed in the SDD ledger, `.superpowers/sdd/2026-08-30-unified-navigation-history/progress.md`) — all 7 "Workout — Log Session" tests that depend on `selectFirstWorkoutType()` (a workout-type-tab → exercise-card rendering issue, nowhere near navigation code) plus the unrelated dark-mode-toggle test in settings.spec.ts. Do not attempt to fix these. The test that actually matters for this task, `closing edit panel navigates back to settings`, passed in the confirmed clean baseline and **must still pass** here (verified against this exact design in the spec, §7) — the sequence `main → settings (navigateTo) → /settings/workout-plan (openWorkoutEdit → navigateTo) → history.back()` lands back on the `/settings` entry, which carries no `editPanel`, so `_renderRoute` closes the panel. If any test beyond the known 8 starts failing, that IS a regression from this task.
 
 - [ ] **Step 3: Commit**
 
@@ -1260,7 +1260,7 @@ Expected: all pass, including the two new tests. If the regression test fails, d
 - [ ] **Step 4: Run the full test suite once as a final cross-check**
 
 Run: `npx playwright test`
-Expected: all specs pass (this plan's tasks touched code paths exercised by `navigation.spec.ts`, `running.spec.ts`, `workout.spec.ts`, `measurements.spec.ts`, `settings.spec.ts`, `auth.spec.ts` — a full run catches any interaction this plan's task-by-task runs might have missed).
+Expected: the pre-existing, out-of-scope failures logged in the SDD ledger (8 as of Task 1: `settings.spec.ts:22` dark-mode-toggle, and 7 `workout.spec.ts` "Log Session" tests depending on `selectFirstWorkoutType()`) plus whatever `running.spec.ts`/`measurements.spec.ts` baseline was confirmed before Tasks 4-5 — check the ledger for the final confirmed count. Every OTHER spec must pass. Any failure outside that named, ledger-confirmed set is a real regression from this plan and must be fixed before this task is considered done.
 
 - [ ] **Step 5: Commit**
 
