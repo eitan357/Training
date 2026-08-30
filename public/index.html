@@ -3142,8 +3142,17 @@ function _histPressMove(e) {
   if (dx > HIST_LONG_PRESS_TOLERANCE || dy > HIST_LONG_PRESS_TOLERANCE) _histPressCancel();
 }
 
-function _histPressEnd() {
+function _histPressEnd(e) {
   if (!_histPress) return;
+  // Suppress the browser's synthetic mousedown/mouseup/click sequence that
+  // fires ~300ms after a real touchend when nothing calls preventDefault()
+  // on it — without this, a single real tap re-enters this whole handler a
+  // second time via the synthetic mouse events (since this same listener
+  // is also registered for mousedown/mouseup to support desktop mouse
+  // users), immediately undoing whatever the real tap just did. Scoped to
+  // touchend only — touchstart/touchmove stay passive, so list scrolling
+  // is unaffected.
+  if (e && e.type === 'touchend') e.preventDefault();
   clearTimeout(_histPress.timer);
   const { sessionId, idx, header, fired } = _histPress;
   _histPressDetach();
