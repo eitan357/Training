@@ -3779,8 +3779,13 @@ function startMeasureTypeDrag(e, card, container) {
 
 // ─── EDIT PANEL TOGGLE ────────────────────────────────────────
 let editPanelOpen = false;
-function toggleEditPanel() {
-  editPanelOpen = !editPanelOpen;
+
+// Pure DOM primitive: makes the workout-plan editor panel match `open`.
+// Kept independent of history/URL — called by _renderRoute() (Task 1)
+// with whatever `state.editPanel === 'workout'` evaluates to.
+function _setWorkoutEditPanel(open) {
+  if (open === editPanelOpen) return;
+  editPanelOpen = open;
   document.getElementById('mainWorkoutContent').style.display = editPanelOpen ? 'none' : 'block';
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
   document.getElementById('mainBackBtn').style.display        = editPanelOpen ? '' : 'none';
@@ -3790,15 +3795,13 @@ function toggleEditPanel() {
   if (editPanelOpen) renderEditAll();
 }
 
-function openWorkoutEdit() {
-  showSection('main');
-  if (!editPanelOpen) toggleEditPanel();
-}
+// Kept as a thin backward-compatible alias — not called anywhere after
+// this task, but harmless to keep in case a future manual/console call
+// relies on the old toggle-style name.
+function toggleEditPanel() { _setWorkoutEditPanel(!editPanelOpen); }
 
-function closeWorkoutEdit() {
-  if (editPanelOpen) toggleEditPanel();
-  showSection('settings');
-}
+function openWorkoutEdit()  { navigateTo('/settings/workout-plan'); }
+function closeWorkoutEdit() { history.back(); }
 
 function openMeasurementsEdit() {
   showSection('measurements');
