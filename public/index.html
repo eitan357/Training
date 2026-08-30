@@ -1563,7 +1563,13 @@ function filterRunByRange(workouts, range) {
 async function initRunSection() {
   if (!_runDataPromise) _runDataPromise = loadRunData();  // fallback if prefetch didn't run
   await _runDataPromise;
-  runShowDashboard();
+  // Pure re-render, no history write — matches showSection()'s own
+  // "history-free" contract. Uses whatever route is ALREADY current in
+  // history.state by the time this continuation runs (navigateTo/
+  // pushSubState always set it before initRunSection() is invoked), so
+  // this can never clobber /running/add (or any sub-state) with a
+  // duplicate/incorrect jump back to the dashboard.
+  _renderRunState(history.state?.runSubView, history.state?.runStep);
 }
 
 // Pure DOM primitive: makes the running section's 3 top-level views
