@@ -1966,6 +1966,11 @@ const _isNewSession      = !sessionStorage.getItem('session_active');
 if (_isNewSession) sessionStorage.setItem('session_active', '1');
 
 // ─── AUTH STATE LISTENER ─────────────────────────────────────
+// Set only while the auth screen is visible: the path the user actually
+// asked for (deep link / bookmark) before we knew whether they were
+// logged in. Read once, right after successful login, then cleared.
+let _pendingPath = null;
+
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
@@ -1974,7 +1979,16 @@ onAuthStateChanged(auth, async user => {
     const ov = document.getElementById('loading-overlay');
     ov.classList.remove('fade-out');
     ov.style.display = 'flex';
-    await initApp();
+
+    // Allowlist check: _pendingPath is user-controllable (whatever path
+    // was in the address bar before login) — only ever used as a lookup
+    // key into the static ROUTES table, never trusted as-is. See spec §4.
+    const requested   = (_pendingPath && ROUTES[_pendingPath]) ? _pendingPath : null;
+    _pendingPath = null;
+
+    await initApp(); // Task 6's boot resolution reads location.pathname as a fallback
+
+    if (requested) navigateTo(requested, { replace: true, isRoot: true });
   } else {
     currentUser = null;
 
@@ -1989,6 +2003,13 @@ onAuthStateChanged(auth, async user => {
     clearInterval(_draftFirestoreTimer);
     if (editPanelOpen)   toggleEditPanel();
     if (typesEditorOpen) toggleTypesEditor();
+
+    // Remember what the user was trying to reach (if it's a real route)
+    // so a fresh login can return them there, then reset the address bar
+    // to '/' — a logged-out tab should never display a deep path in the
+    // URL while showing the auth screen.
+    _pendingPath = ROUTES[location.pathname] ? location.pathname : null;
+    history.replaceState(null, '', '/');
 
     document.getElementById('auth-screen').classList.remove('hidden');
     hideOverlay();
