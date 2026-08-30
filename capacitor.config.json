@@ -1,0 +1,11 @@
+{
+  "appId": "com.eitanmonsa.trainingdiary",
+  "appName": "Training Diary",
+  "webDir": "public",
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "testUser": {
+    "email": "qa-test@training-diary.web.app",
+    "password": "TestPassword123!",
+    "displayName": "QA Test User"
+  },
+  "newUser": {
+    "email": "qa-new-user@training-diary.web.app",
+    "password": "NewUser456!"
+  },
+  "invalidCredentials": {
+    "email": "wrong@example.com",
+    "password": "WrongPassword123!"
+  },
+  "weakPassword": "abc",
+  "invalidEmails": ["notanemail", "@missing.com", "missing@", "test @test.com"],
+  "workout": {
+    "sessionName": "QA Test Workout",
+    "exercises": [
+      { "weight": "80", "sets": "3", "reps": "10" }
+    ]
+  },
+  "run": {
+    "distance": "5.5",
+    "duration": "30",
+    "calories": "320"
+  },
+  "measurement": {
+    "date": "01/01/2026",
+    "value": "75"
+  }
+}

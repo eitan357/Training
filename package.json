@@ -1,0 +1,29 @@
+{
+  "name": "training-diary-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:auth": "playwright test tests/auth.spec.ts",
+    "test:nav": "playwright test tests/navigation.spec.ts",
+    "test:workout": "playwright test tests/main-workout.spec.ts",
+    "test:timer": "playwright test tests/timer.spec.ts",
+    "test:negative": "playwright test tests/negative.spec.ts",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "deploy:web": "firebase deploy --only hosting"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@playwright/test": "^1.45.0",
+    "firebase-admin": "^14.2.0"
+  },
+  "dependencies": {
+    "@capacitor-firebase/authentication": "^8.4.0",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  }
+}

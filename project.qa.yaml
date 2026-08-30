@@ -1,0 +1,44 @@
+project_name: "Training app"
+url: "https://training-diary.web.app"
+test_environment: "production"
+
+client:
+  name: "Training app"
+  logo: null
+  language: "he"
+
+test_config:
+  mode: "standard"
+  priority_browsers: ["chrome", "safari"]
+  priority_devices: ["mobile"]
+  retry_on_failure: 2
+
+scope:
+  skip_stages: []
+  include_test_types:
+    - functional
+    - negative
+    - ui
+    - security
+    - accessibility
+    - usability
+    - performance
+    - i18n
+  excluded_pages: []
+  roles: ["anonymous", "user", "admin"]
+  critical_flows:
+    - "login"
+    - "הוספת אימון"
+
+integrations:
+  - firebase
+
+ci:
+  enabled: false
+  provider: "github"
+  post_pr_comment: false
+  fail_on_critical: true
+
+issue_tracker:
+  provider: "none"
+  auto_create: false

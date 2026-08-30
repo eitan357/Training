@@ -1,0 +1,18 @@
+# Secrets
+android/app/google-services.json
+*.keystore
+*.jks
+service-account-key.json
+service-account-key.json.json
+
+# Android build outputs
+android/app/build/
+android/build/
+android/.gradle/
+
+# Node
+node_modules/
+
+# Playwright
+playwright-report/
+test-results/

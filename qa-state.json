@@ -1,0 +1,381 @@
+{
+  "project_id": "training-app-2026-08-15",
+  "client": { "name": "Training app", "url": "https://training-diary.web.app", "env": "production" },
+  "scope": {
+    "pages": ["all"],
+    "include_test_types": ["functional","negative","ui","security","accessibility","usability","performance","i18n"],
+    "roles": ["anonymous","user","admin"],
+    "mode": "standard",
+    "critical_flows": ["login","הוספת אימון"]
+  },
+  "map": {
+    "pages": [
+      { "id": "login", "title": "Login", "requires_auth": false },
+      { "id": "register", "title": "Register", "requires_auth": false },
+      { "id": "workout", "title": "Workout 🏋️", "requires_auth": true },
+      { "id": "timer", "title": "Timer ⏱️", "requires_auth": true },
+      { "id": "measures", "title": "Measurements 📏", "requires_auth": true },
+      { "id": "history", "title": "History 📊", "requires_auth": true },
+      { "id": "settings", "title": "Settings ⚙️", "requires_auth": true },
+      { "id": "edit-workout-plan", "title": "Edit Workout Plan", "requires_auth": true },
+      { "id": "edit-measurement-types", "title": "Edit Measurement Types", "requires_auth": true },
+      { "id": "running", "title": "Running 🏃", "requires_auth": true, "notes": "hidden by default" },
+      { "id": "running-add-running", "title": "Add Running Workout", "requires_auth": true },
+      { "id": "running-add-elliptical", "title": "Add Elliptical Workout", "requires_auth": true }
+    ],
+    "flows": [
+      { "id": "login_email", "name": "Login with email/password", "requires_manual": false },
+      { "id": "register_email", "name": "Register new account", "requires_manual": false },
+      { "id": "forgot_password", "name": "Forgot password", "requires_manual": true },
+      { "id": "login_google", "name": "Login with Google OAuth", "requires_manual": true },
+      { "id": "log_workout", "name": "הוספת אימון (critical)", "requires_manual": false },
+      { "id": "copy_last_workout", "name": "Copy last workout", "requires_manual": false },
+      { "id": "copy_target_to_card", "name": "Copy target to card", "requires_manual": false },
+      { "id": "use_timer", "name": "Set and run timer", "requires_manual": false },
+      { "id": "log_measurement", "name": "Log measurement", "requires_manual": false },
+      { "id": "view_history", "name": "View history", "requires_manual": false },
+      { "id": "edit_workout_plan", "name": "Edit workout plan", "requires_manual": false },
+      { "id": "edit_measurement_types", "name": "Edit measurement types", "requires_manual": false },
+      { "id": "switch_language", "name": "Switch language", "requires_manual": false },
+      { "id": "toggle_dark_mode", "name": "Toggle dark mode", "requires_manual": false },
+      { "id": "enable_running_page", "name": "Enable Running section", "requires_manual": false },
+      { "id": "log_running_workout", "name": "Log running workout", "requires_manual": false },
+      { "id": "log_elliptical_manual", "name": "Log elliptical (manual)", "requires_manual": false },
+      { "id": "log_elliptical_photo", "name": "Log elliptical (photo)", "requires_manual": true },
+      { "id": "sign_out", "name": "Sign out", "requires_manual": false }
+    ],
+    "requires_manual": [
+      { "flow": "forgot_password", "reason": "Requires real email inbox" },
+      { "flow": "login_google", "reason": "OAuth popup requires Google account" },
+      { "flow": "log_elliptical_photo", "reason": "Camera/gallery requires physical device" }
+    ]
+  },
+  "test_cases": {
+    "functional": [
+      {
+        "id": "TC-FUNC-001", "flow": "login_email", "priority": "critical",
+        "name": "Login with valid credentials",
+        "steps": ["Navigate to https://training-diary.web.app", "Enter email: test@gmail.com", "Enter password: 111111", "Click Sign In"],
+        "expected": "Workout section loads; header shows test@gmail.com",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-002", "flow": "login_email", "priority": "critical",
+        "name": "Login with wrong password shows error",
+        "steps": ["Enter email: test@gmail.com", "Enter password: wrongpassword", "Click Sign In"],
+        "expected": "Error message appears; user stays on login screen",
+        "credentials": "anonymous"
+      },
+      {
+        "id": "TC-FUNC-003", "flow": "register_email", "priority": "high",
+        "name": "Register new account",
+        "steps": ["Click Register tab", "Enter new email (unique)", "Enter password: test123", "Click Register"],
+        "expected": "Account created; Workout section loads",
+        "credentials": "anonymous"
+      },
+      {
+        "id": "TC-FUNC-004", "flow": "sign_out", "priority": "high",
+        "name": "Sign out returns to login screen",
+        "steps": ["Login as admin", "Navigate to Settings (⚙️)", "Click Sign out"],
+        "expected": "Login screen shown; no authenticated content visible",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-005", "flow": "log_workout", "priority": "critical",
+        "name": "Select Workout A and view exercises",
+        "steps": ["Login as admin", "Confirm Workout A tab is active", "Verify 5 exercise cards: Pull-ups, Incline DB Press, Back Squat, Seated Shoulder Press, Bicep Curl"],
+        "expected": "5 exercise cards visible with target pills",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-006", "flow": "log_workout", "priority": "high",
+        "name": "Select Workout B shows different exercises",
+        "steps": ["Login as admin", "Click Workout B tab"],
+        "expected": "Exercise list updates to Workout B template",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-007", "flow": "log_workout", "priority": "critical",
+        "name": "Save workout without exceeding target weight",
+        "steps": ["Login as admin", "Fill Pull-ups: weight='', sets=4, reps=2", "Fill Incline DB Press: weight=12, sets=4, reps=6", "Click Save Workout"],
+        "expected": "Workout saved; no exceeded-weight dialog; success toast shown",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-008", "flow": "log_workout", "priority": "critical",
+        "name": "Save workout with exceeded weight → confirm updates target",
+        "steps": ["Login as admin", "Fill Incline DB Press weight: 16+16 (target is 14+14)", "Click Save Workout", "Confirm dialog appears", "Click confirm"],
+        "expected": "Target weight for Incline DB Press updates to '16+16' in pill",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-009", "flow": "log_workout", "priority": "high",
+        "name": "Save workout with exceeded weight → decline keeps old target",
+        "steps": ["Login as admin", "Fill Incline DB Press weight: 20+20 (target 14+14)", "Click Save Workout", "Dialog appears", "Click cancel/decline"],
+        "expected": "Workout saved; target pill still shows 14+14",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-010", "flow": "copy_last_workout", "priority": "medium",
+        "name": "Copy last workout prefills form",
+        "steps": ["Login as admin", "Click '📋 Copy last workout'"],
+        "expected": "Weight/Sets/Reps inputs fill with values from last workout (04/08/2026)",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-011", "flow": "log_workout", "priority": "medium",
+        "name": "Clear Form resets all inputs",
+        "steps": ["Login as admin", "Fill some weight/sets/reps fields", "Click Clear Form"],
+        "expected": "All Weight, Sets, Reps, and Notes inputs reset to empty/placeholder",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-012", "flow": "copy_target_to_card", "priority": "high",
+        "name": "Tap target pill copies values and expands reps",
+        "steps": ["Login as admin", "Tap target pill on Incline DB Press (target: 4x6-8 14 kg)", "Observe Weight, Sets, Reps inputs"],
+        "expected": "Weight=14+14, Sets=4, Reps=6,6,6,6 (min of range 6-8, expanded to 4 reps)",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-013", "flow": "log_workout", "priority": "medium",
+        "name": "Add Exercise appends new card",
+        "steps": ["Login as admin", "Count current exercise cards (5)", "Click '+ Add Exercise'"],
+        "expected": "6th exercise card appears with empty inputs",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-014", "flow": "log_workout", "priority": "medium",
+        "name": "Remove exercise removes card",
+        "steps": ["Login as admin", "Click ✕ on Pull-ups card"],
+        "expected": "Pull-ups card disappears; 4 cards remain",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-015", "flow": "use_timer", "priority": "medium",
+        "name": "Timer counts down to zero",
+        "steps": ["Navigate to Timer", "Scroll minutes to 00, seconds to 05", "Click Start", "Wait 5 seconds"],
+        "expected": "Timer counts from 0:05 to 0:00; sound plays on finish",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-016", "flow": "use_timer", "priority": "low",
+        "name": "Stop button halts timer",
+        "steps": ["Set timer to 01:00", "Click Start", "Wait 2 seconds", "Click Stop"],
+        "expected": "Timer stops before reaching 0:00",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-017", "flow": "log_measurement", "priority": "high",
+        "name": "Save body measurement",
+        "steps": ["Navigate to Measures", "Set date: 15/08/2026", "Enter Weight: 75", "Enter Chest: 90", "Click Save Measurement"],
+        "expected": "Measurement saved; entry appears in Measurement History",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-018", "flow": "view_history", "priority": "medium",
+        "name": "History shows all workouts with All filter",
+        "steps": ["Navigate to History", "Click All filter (default)"],
+        "expected": "August, July, June, May 2026 month groups visible",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-019", "flow": "view_history", "priority": "medium",
+        "name": "History Workout A filter shows only A workouts",
+        "steps": ["Navigate to History", "Click Workout A filter"],
+        "expected": "Only Workout A entries shown; Workout B entries hidden",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-020", "flow": "view_history", "priority": "medium",
+        "name": "Expand month group shows workout details",
+        "steps": ["Navigate to History", "Click August 2026 group"],
+        "expected": "Table expands with columns: Exercise / Weight / Reps; shows 04/08/2026 data",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-021", "flow": "edit_workout_plan", "priority": "high",
+        "name": "Add exercise to workout plan",
+        "steps": ["Settings → Edit Workout Plan", "Click Workout A tab", "Click '+ Add Exercise'", "Type 'Deadlift' in name field", "Enter Sets: 3, Reps: 5", "Click 💾 Save Changes"],
+        "expected": "Deadlift saved; appears in Workout A exercise list on Workout screen",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-022", "flow": "edit_workout_plan", "priority": "high",
+        "name": "Remove exercise from workout plan",
+        "steps": ["Settings → Edit Workout Plan", "Click ✕ on Seated Bicep Curl", "Click 💾 Save Changes"],
+        "expected": "Seated Bicep Curl removed from Workout A; only 4 exercises on Workout screen",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-023", "flow": "edit_workout_plan", "priority": "medium",
+        "name": "Add new workout type",
+        "steps": ["Settings → Edit Workout Plan", "Click + button next to workout tabs", "Name new type 'C'", "Click 💾 Save Changes"],
+        "expected": "Workout C tab appears in Edit Workout Plan and on Workout screen",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-024", "flow": "enable_running_page", "priority": "high",
+        "name": "Enable Running section replaces Measures tab",
+        "steps": ["Settings → Show Running Page → toggle ON"],
+        "expected": "Bottom nav: Measures tab replaced by 🏃 Running; Running section accessible",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-025", "flow": "enable_running_page", "priority": "medium",
+        "name": "Disable Running section restores Measures tab",
+        "steps": ["Settings → Show Running Page → toggle OFF (if it was ON)"],
+        "expected": "Bottom nav: 📏 Measures tab returns; Running tab gone",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-026", "flow": "log_running_workout", "priority": "high",
+        "name": "Log running workout",
+        "steps": ["Enable Running page in Settings", "Navigate to Running", "Click + Add Workout → Running", "Set Distance: 5, Duration: 30", "Click Save Workout"],
+        "expected": "Workout saved; Last Workout section updates; Weekly Streak increments",
+        "credentials": "admin"
+      },
+      {
+        "id": "TC-FUNC-027", "flow": "log_elliptical_manual", "priority": "medium",
+        "name": "Log elliptical workout (manual entry)",
+        "steps": ["Enable Running page", "Running → + Add Workout → Elliptical → Enter Manually", "Set Distance: 3, Duration: 25", "Click Save Workout"],
+        "expected": "Elliptical workout saved; appears in Running History",
+        "credentials": "admin"
+      }
+    ],
+    "negative": [
+      { "id": "TC-NEG-001", "form": "login", "field": "email", "name": "Sign in with empty email", "input": "", "steps": ["Leave email blank", "Enter any password", "Click Sign In"], "expected": "Error: email is required or button disabled", "credentials": "anonymous" },
+      { "id": "TC-NEG-002", "form": "login", "field": "password", "name": "Sign in with empty password", "input": "", "steps": ["Enter valid email", "Leave password blank", "Click Sign In"], "expected": "Error or button disabled", "credentials": "anonymous" },
+      { "id": "TC-NEG-003", "form": "login", "field": "email", "name": "Sign in with invalid email format", "input": "notanemail", "steps": ["Enter 'notanemail' as email", "Enter password", "Click Sign In"], "expected": "Error: invalid email format", "credentials": "anonymous" },
+      { "id": "TC-NEG-004", "form": "login", "field": "password", "name": "Sign in with wrong password", "input": "wrongpass", "steps": ["Enter test@gmail.com", "Enter 'wrongpass'", "Click Sign In"], "expected": "Firebase error: wrong password", "credentials": "anonymous" },
+      { "id": "TC-NEG-005", "form": "login", "field": "email", "name": "Sign in with unregistered email", "input": "nobody@nowhere.com", "steps": ["Enter nobody@nowhere.com", "Enter any password", "Click Sign In"], "expected": "Firebase error: user not found", "credentials": "anonymous" },
+      { "id": "TC-NEG-006", "form": "register", "field": "password", "name": "Register with password shorter than 6 chars", "input": "abc", "steps": ["Register tab", "Enter new email", "Enter password 'abc'", "Click Register"], "expected": "Error: password must be at least 6 characters", "credentials": "anonymous" },
+      { "id": "TC-NEG-007", "form": "register", "field": "email", "name": "Register with already-registered email", "input": "test@gmail.com", "steps": ["Register tab", "Enter test@gmail.com", "Enter password 111111", "Click Register"], "expected": "Firebase error: email already in use", "credentials": "anonymous" },
+      { "id": "TC-NEG-008", "form": "register", "field": "email", "name": "Register with empty email", "input": "", "steps": ["Register tab", "Leave email blank", "Enter password", "Click Register"], "expected": "Error or button disabled", "credentials": "anonymous" },
+      { "id": "TC-NEG-009", "form": "workout", "field": "weight", "name": "Enter letters in weight field", "input": "abc", "steps": ["Login", "Type 'abc' in Weight field of Pull-ups", "Click Save Workout"], "expected": "Input ignored or validation error; not saved as 'abc'", "credentials": "admin" },
+      { "id": "TC-NEG-010", "form": "workout", "field": "sets", "name": "Enter negative number in Sets", "input": "-3", "steps": ["Login", "Enter -3 in Sets field", "Click Save Workout"], "expected": "Validation error or value clamped to 0", "credentials": "admin" },
+      { "id": "TC-NEG-011", "form": "workout", "field": "workout-name", "name": "Very long workout name (500 chars)", "input": "A".repeat(500), "steps": ["Login", "Enter 500-char string in Workout Name", "Click Save Workout"], "expected": "Input truncated or error; no crash", "credentials": "admin" },
+      { "id": "TC-NEG-012", "form": "workout", "field": "notes", "name": "XSS payload in Notes field", "input": "<script>alert('xss')</script>", "steps": ["Login", "Enter XSS payload in Notes", "Save workout", "View in History"], "expected": "Script not executed; payload stored/shown as text", "credentials": "admin" },
+      { "id": "TC-NEG-013", "form": "workout", "field": "workout-name", "name": "XSS payload in Workout Name", "input": "<img src=x onerror=alert(1)>", "steps": ["Login", "Enter XSS in Workout Name", "Save workout", "View in History"], "expected": "Script not executed; shown as literal text", "credentials": "admin" },
+      { "id": "TC-NEG-014", "form": "workout", "field": "notes", "name": "SQL injection in Notes", "input": "'; DROP TABLE workouts; --", "steps": ["Login", "Enter SQL injection in Notes", "Save"], "expected": "Saved as plain text; no database error (Firebase is NoSQL, not SQL)", "credentials": "admin" },
+      { "id": "TC-NEG-015", "form": "workout", "field": "weight", "name": "Special characters in weight field", "input": "<>\"';", "steps": ["Login", "Enter '<>\"\\';' in Weight", "Save workout"], "expected": "Validation error or ignored; no crash or XSS", "credentials": "admin" },
+      { "id": "TC-NEG-016", "form": "measurement", "field": "date", "name": "Invalid date format in measurement", "input": "32/13/2026", "steps": ["Measures section", "Enter '32/13/2026' as date", "Click Save Measurement"], "expected": "Validation error: invalid date", "credentials": "admin" },
+      { "id": "TC-NEG-017", "form": "measurement", "field": "weight", "name": "Negative weight in measurement", "input": "-10", "steps": ["Measures section", "Enter -10 in Weight (kg)", "Click Save Measurement"], "expected": "Validation error or clamped to 0", "credentials": "admin" },
+      { "id": "TC-NEG-018", "form": "measurement", "field": "chest", "name": "Letters in chest circumference", "input": "abc", "steps": ["Measures section", "Enter 'abc' in Chest field", "Click Save Measurement"], "expected": "Input ignored or validation error", "credentials": "admin" },
+      { "id": "TC-NEG-019", "form": "measurement", "field": "all", "name": "Save measurement with all fields empty", "input": "", "steps": ["Measures section", "Leave all numeric fields blank", "Click Save Measurement"], "expected": "Error or save blocked; not saved as null record", "credentials": "admin" },
+      { "id": "TC-NEG-020", "form": "running", "field": "distance", "name": "Save running workout with empty Distance", "input": "", "steps": ["Running → Add → Running", "Leave Distance empty", "Set Duration: 30", "Click Save Workout"], "expected": "Error: Distance is required", "credentials": "admin" },
+      { "id": "TC-NEG-021", "form": "running", "field": "duration", "name": "Save running workout with empty Duration", "input": "", "steps": ["Running → Add → Running", "Set Distance: 5", "Clear Duration field", "Click Save Workout"], "expected": "Error: Duration is required", "credentials": "admin" },
+      { "id": "TC-NEG-022", "form": "running", "field": "distance", "name": "Distance = 0 in running workout", "input": "0", "steps": ["Running → Add → Running", "Set Distance: 0", "Set Duration: 30", "Click Save Workout"], "expected": "Validation error: distance must be > 0, OR saved with warning", "credentials": "admin" },
+      { "id": "TC-NEG-023", "form": "running", "field": "distance", "name": "Negative distance value", "input": "-5", "steps": ["Running → Add → Running", "Enter -5 in Distance", "Click Save Workout"], "expected": "Validation error or clamped to 0", "credentials": "admin" },
+      { "id": "TC-NEG-024", "form": "edit-workout-plan", "field": "exercise-name", "name": "Save exercise with empty name", "input": "", "steps": ["Settings → Edit Workout Plan", "Clear exercise name field", "Click 💾 Save Changes"], "expected": "Validation error: name required; not saved", "credentials": "admin" },
+      { "id": "TC-NEG-025", "form": "edit-workout-plan", "field": "exercise-name", "name": "XSS payload in exercise name", "input": "<script>alert(1)</script>", "steps": ["Edit Workout Plan", "Enter XSS in exercise name", "Save", "Return to Workout screen"], "expected": "Script not executed; shown as text in exercise card", "credentials": "admin" },
+      { "id": "TC-NEG-026", "form": "edit-measurement-types", "field": "name", "name": "Save measurement type with empty name", "input": "", "steps": ["Settings → Edit Measurement Types", "Clear a name field", "Click 💾 Save Types"], "expected": "Validation error: name required", "credentials": "admin" },
+      { "id": "TC-NEG-027", "form": "timer", "field": "duration", "name": "Start timer with 00:00", "input": "00:00", "steps": ["Timer section", "Ensure both pickers at 00", "Click Start"], "expected": "Timer doesn't start, or immediately triggers completion sound", "credentials": "admin" },
+      { "id": "TC-NEG-028", "form": "workout", "field": "weight", "name": "Extremely large weight value", "input": "99999999", "steps": ["Login", "Enter 99999999 in Weight field", "Save workout"], "expected": "Saved or clamped; no crash or UI overflow", "credentials": "admin" },
+      { "id": "TC-NEG-029", "form": "login", "field": "password", "name": "Password with only spaces", "input": "      ", "steps": ["Enter valid email", "Enter 6 spaces as password", "Click Sign In"], "expected": "Error: invalid credentials or whitespace rejected", "credentials": "anonymous" }
+    ],
+    "ui": [
+      { "id": "TC-UI-001", "page": "login", "viewport": "375px mobile", "theme": "light", "name": "Login screen — mobile light", "steps": ["Navigate to app at 375px width", "Light mode"], "expected": "Form centered, all elements visible, no overflow, readable contrast" },
+      { "id": "TC-UI-002", "page": "login", "viewport": "375px mobile", "theme": "dark", "name": "Login screen — mobile dark", "steps": ["Navigate to app at 375px width", "Dark mode"], "expected": "Background and text contrasts pass; buttons visible; no invisible text" },
+      { "id": "TC-UI-003", "page": "workout", "viewport": "375px mobile", "theme": "light", "lang": "en", "name": "Workout screen — mobile English", "steps": ["Login", "Workout section at 375px", "Light mode, English"], "expected": "Exercise cards don't overflow; target pills readable; bottom nav fully visible" },
+      { "id": "TC-UI-004", "page": "workout", "viewport": "375px mobile", "theme": "light", "lang": "he", "name": "Workout screen — mobile Hebrew RTL", "steps": ["Login", "Switch to Hebrew", "Workout section at 375px"], "expected": "Target pill: weight on RIGHT side (BiDi correct); Hebrew labels aligned right; no text cutoff" },
+      { "id": "TC-UI-005", "page": "workout", "viewport": "375px mobile", "theme": "dark", "lang": "he", "name": "Workout screen — dark + Hebrew", "steps": ["Login", "Dark mode + Hebrew", "Workout section"], "expected": "Dark theme + RTL combined; target pill order correct; contrast OK" },
+      { "id": "TC-UI-006", "page": "timer", "viewport": "375px mobile", "theme": "light", "name": "Timer screen — mobile", "steps": ["Timer section at 375px"], "expected": "Scroll pickers aligned side by side; Start button visible; no horizontal overflow" },
+      { "id": "TC-UI-007", "page": "history", "viewport": "375px mobile", "theme": "light", "name": "History table — horizontal scroll on small screen", "steps": ["History section", "Expand August 2026", "Check Exercise/Weight/Reps table"], "expected": "Table scrolls horizontally inside container; page body does NOT scroll sideways" },
+      { "id": "TC-UI-008", "page": "settings", "viewport": "375px mobile", "theme": "light", "name": "Settings screen — toggles and buttons", "steps": ["Settings at 375px"], "expected": "Language toggle, Dark Mode switch, Sign out button all visible and tappable" },
+      { "id": "TC-UI-009", "page": "running", "viewport": "375px mobile", "theme": "light", "name": "Running section — empty state", "steps": ["Enable Running, navigate to it at 375px"], "expected": "Weekly Streak '0', Personal Records '--', empty state message clear; charts placeholder visible" },
+      { "id": "TC-UI-010", "page": "running-add-running", "viewport": "375px mobile", "theme": "light", "name": "Add Running form — required fields marked", "steps": ["Running → + Add Workout → Running at 375px"], "expected": "Date/Distance/Duration labeled as required (*); form scrollable; Save button accessible" },
+      { "id": "TC-UI-011", "page": "edit-workout-plan", "viewport": "375px mobile", "theme": "light", "name": "Edit Workout Plan — drag handles visible", "steps": ["Settings → Edit Workout Plan at 375px"], "expected": "⠿ drag handles visible; exercise rows don't overflow; Save button at bottom accessible" },
+      { "id": "TC-UI-012", "page": "measures", "viewport": "375px mobile", "theme": "light", "name": "Measurements form — all fields visible", "steps": ["Measures section at 375px"], "expected": "All 8 measurement fields visible and labeled; Save button accessible without horizontal scroll" },
+      { "id": "TC-UI-013", "page": "workout", "viewport": "375px mobile", "theme": "light", "name": "Bottom nav — Running replaces Measures when enabled", "steps": ["Enable Running in Settings", "Check bottom nav"], "expected": "Nav shows: 🏋️ Workout | ⏱️ Timer | 🏃 Running | 📊 History (no Measures)" },
+      { "id": "TC-UI-014", "page": "history", "viewport": "375px mobile", "theme": "dark", "name": "History — dark mode month groups", "steps": ["History in dark mode at 375px"], "expected": "Month headers and workout rows clearly visible; collapse arrow visible; correct colors" }
+    ],
+    "security": [
+      { "id": "TC-SEC-001", "page": "workout", "name": "Unauthenticated access blocked by auth wall", "steps": ["Open app without logging in", "Try to interact with bottom nav buttons"], "expected": "Auth screen intercepts all clicks; no workout data visible", "credentials": "anonymous" },
+      { "id": "TC-SEC-002", "page": "workout", "field": "notes", "name": "XSS in Notes — script not executed", "steps": ["Login", "Enter '<script>alert(document.cookie)</script>' in Notes", "Save workout", "Navigate to History, expand workout"], "expected": "Script tag rendered as text; alert() NOT called; no cookie leakage", "credentials": "admin" },
+      { "id": "TC-SEC-003", "page": "workout", "field": "workout-name", "name": "XSS in Workout Name — not executed in History", "steps": ["Login", "Enter '<img src=x onerror=alert(1)>' as workout name", "Save", "Open History"], "expected": "Image broken or payload shown as text; alert NOT fired", "credentials": "admin" },
+      { "id": "TC-SEC-004", "page": "edit-workout-plan", "field": "exercise-name", "name": "XSS in exercise name — not executed on Workout screen", "steps": ["Settings → Edit Workout Plan", "Name exercise: '<script>alert(1)</script>'", "Save", "Go to Workout screen"], "expected": "Exercise name shown as text; alert NOT fired", "credentials": "admin" },
+      { "id": "TC-SEC-005", "page": "settings", "field": "display-name", "name": "XSS in Display Name — not executed in header", "steps": ["Settings → Display Name: '<script>alert(1)</script>'", "Save", "Check header"], "expected": "Name shown as text in header; alert NOT fired", "credentials": "admin" },
+      { "id": "TC-SEC-006", "page": "login", "name": "Session persists after page refresh", "steps": ["Login as admin", "Reload page (F5)"], "expected": "User stays logged in; Workout section shown (Firebase auth persistence)", "credentials": "admin" },
+      { "id": "TC-SEC-007", "page": "login", "name": "Sign out clears session — back button blocked", "steps": ["Login", "Sign out", "Press browser back button"], "expected": "Login screen shown; no authenticated content accessible", "credentials": "admin" },
+      { "id": "TC-SEC-008", "page": "workout", "name": "User cannot access other user's data via URL manipulation", "steps": ["Login as testeitan@gmail.com", "Try to access admin workout data directly via Firestore path manipulation if exposed"], "expected": "Firebase security rules block cross-user reads; no data leakage", "credentials": "user (testeitan@gmail.com / 111111)" }
+    ],
+    "accessibility": [
+      { "id": "TC-A11Y-001", "page": "login", "name": "Login page — axe-core WCAG 2.1 AA scan", "steps": ["Navigate to login page", "Run axe-core accessibility audit"], "expected": "Zero critical violations; inputs have labels; color contrast ≥ 4.5:1", "tool": "axe-core" },
+      { "id": "TC-A11Y-002", "page": "workout", "name": "Workout page — keyboard tab order", "steps": ["Login", "Tab through Workout section without mouse"], "expected": "Tab order logical: workout type tabs → exercises → add exercise → save; no keyboard traps", "tool": "keyboard" },
+      { "id": "TC-A11Y-003", "page": "workout", "name": "Workout page — axe-core scan", "steps": ["Login", "Navigate to Workout section", "Run axe-core"], "expected": "Exercise cards have accessible labels; target pills have title/aria hint; no missing alt text", "tool": "axe-core" },
+      { "id": "TC-A11Y-004", "page": "timer", "name": "Timer — axe-core scan", "steps": ["Navigate to Timer", "Run axe-core"], "expected": "Scroll pickers accessible; Start button labeled; contrast OK", "tool": "axe-core" },
+      { "id": "TC-A11Y-005", "page": "history", "name": "History table — semantic table headers", "steps": ["History → expand a workout", "Inspect table markup"], "expected": "Table has <thead>, column headers with scope attribute; screen reader can navigate", "tool": "axe-core + manual" },
+      { "id": "TC-A11Y-006", "page": "settings", "name": "Settings — toggle switches keyboard accessible", "steps": ["Settings", "Tab to Dark Mode toggle", "Toggle with Space/Enter", "Tab to Language buttons, activate with Enter"], "expected": "All toggles operable via keyboard; focus ring visible", "tool": "keyboard" }
+    ],
+    "usability": [
+      { "id": "TC-UX-001", "name": "Login — time to first interaction", "heuristic": "Nielsen #1: Visibility of system status", "observation": "Measure time from app open to being able to log a workout. Firebase auth should auto-login returning users within 2 seconds.", "pass_criteria": "none — qualitative" },
+      { "id": "TC-UX-002", "name": "Target pill discoverability", "heuristic": "Nielsen #6: Recognition over recall", "observation": "Is it obvious that the target pill is tappable? Does the 'Tap to copy target values to form' tooltip appear reliably on mobile?", "pass_criteria": "none — qualitative" },
+      { "id": "TC-UX-003", "name": "Exceeded weight dialog clarity", "heuristic": "Nielsen #2: Match between system and real world", "observation": "Does the dialog clearly say HOW MANY exercises exceeded target and that ONLY weight is updated (not sets/reps)?", "pass_criteria": "none — qualitative" },
+      { "id": "TC-UX-004", "name": "Running page hidden by default", "heuristic": "Nielsen #7: Flexibility and efficiency of use", "observation": "Power users who want Running must discover the toggle in Settings. Is there any hint in the nav or onboarding?", "pass_criteria": "none — qualitative" },
+      { "id": "TC-UX-005", "name": "Timer scroll pickers vs number input", "heuristic": "Nielsen #4: Consistency and standards", "observation": "Scroll pickers are unusual for time input on web. Are they intuitive on mobile? Do they respond well to swipe gestures?", "pass_criteria": "none — qualitative" }
+    ],
+    "performance": [
+      { "id": "TC-PERF-001", "page": "login", "name": "Login page Lighthouse score", "steps": ["Run Lighthouse on https://training-diary.web.app (unauthenticated)"], "expected": "Performance ≥ 80; LCP < 2.5s; FCP < 1.8s; CLS < 0.1", "tool": "Lighthouse" },
+      { "id": "TC-PERF-002", "page": "workout", "name": "Workout section load time after auth", "steps": ["Login as admin", "Measure time from Sign In click to Workout section fully rendered with exercise cards"], "expected": "Workout renders within 3 seconds including Firebase data fetch", "tool": "DevTools Network" },
+      { "id": "TC-PERF-003", "page": "history", "name": "History with 4 months of data — render performance", "steps": ["Navigate to History", "Measure render time for 4-month list"], "expected": "Page renders within 2s; no jank when expanding month group; Lighthouse performance ≥ 75", "tool": "Lighthouse + DevTools" }
+    ],
+    "i18n": [
+      { "id": "TC-I18N-001", "name": "Switch to Hebrew — all labels update", "steps": ["Login (English)", "Settings → Language → עברית"], "expected": "ALL visible text switches to Hebrew: nav labels (Workout→אימון?), section headers, buttons, placeholders", "credentials": "admin" },
+      { "id": "TC-I18N-002", "name": "Switch back to English — all labels revert", "steps": ["In Hebrew mode", "Settings → Language → English"], "expected": "All labels revert to English immediately without page reload", "credentials": "admin" },
+      { "id": "TC-I18N-003", "name": "Hebrew mode — target pill: weight on RIGHT", "steps": ["Switch to Hebrew", "Workout screen", "Check target pill format"], "expected": "Pill shows weight on RIGHT side (e.g., '14 kg | 4×6-8'), NOT left", "credentials": "admin" },
+      { "id": "TC-I18N-004", "name": "English mode — target pill: weight on LEFT", "steps": ["Switch to English", "Workout screen", "Check target pill format"], "expected": "Pill shows weight on LEFT side (e.g., '14 kg | 4×6-8')", "credentials": "admin" },
+      { "id": "TC-I18N-005", "name": "Hebrew RTL — text alignment and layout direction", "steps": ["Switch to Hebrew", "Check Workout, History, Settings screens"], "expected": "Hebrew text right-aligned; no LTR/RTL mixing that breaks layout; numerals remain LTR", "credentials": "admin" },
+      { "id": "TC-I18N-006", "name": "Date format consistent across languages", "steps": ["Check dates in History in English", "Switch to Hebrew", "Check same dates"], "expected": "Date format (DD/MM/YYYY) consistent; no locale-switching breaks date display", "credentials": "admin" }
+    ]
+  },
+  "automation": {
+    "scripts_path": "./tests/",
+    "test_data_path": "./fixtures/"
+  },
+  "results": { "runs": [], "last_run": null, "bugs": [], "regressions": [] },
+  "status": {
+    "current_stage": "complete",
+    "completed_stages": ["intake", "exploration", "test_design", "automation", "execution", "bug_analysis", "report", "summary"],
+    "paused_at": null
+  },
+  "scripts_health": {
+    "total": 292,
+    "passed": 285,
+    "failed": 0,
+    "flaky": 6,
+    "skipped": 1,
+    "health_percent": 97.6,
+    "run_time_minutes": 23.9,
+    "fragile_tests": [
+      "running.spec.ts:104 [chromium+mobile] — #run-view-add navigation race",
+      "running.spec.ts:112 [chromium] — same race",
+      "running.spec.ts:116 [chromium] — same race",
+      "accessibility.spec.ts:69 [mobile] — Firebase auth latency in beforeEach",
+      "negative.spec.ts:43 [mobile] — networkidle timeout on mobile emulation"
+    ]
+  },
+  "pipeline_mode": "setup",
+  "setup_complete": false,
+  "plan_approved": true,
+  "pipeline_bypassed": false,
+  "scripts_written": [
+    "tests/auth.spec.ts",
+    "tests/main-workout.spec.ts",
+    "tests/navigation.spec.ts",
+    "tests/settings.spec.ts",
+    "tests/negative.spec.ts",
+    "tests/timer.spec.ts",
+    "tests/workout.spec.ts",
+    "tests/history.spec.ts",
+    "tests/measurements.spec.ts",
+    "tests/running.spec.ts",
+    "tests/ui.spec.ts",
+    "tests/security.spec.ts",
+    "tests/accessibility.spec.ts",
+    "tests/i18n.spec.ts",
+    "tests/performance.spec.ts"
+  ],
+  "demo_mode": false,
+  "dismissed_findings": [],
+  "created_issues": []
+}
