@@ -4,6 +4,7 @@ android/app/google-services.json
 *.jks
 service-account-key.json
 service-account-key.json.json
+.env.test
 
 # Android build outputs
 android/app/build/
