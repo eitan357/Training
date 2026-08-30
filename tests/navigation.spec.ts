@@ -57,7 +57,10 @@ test.describe('Navigation', () => {
     // the gear icon is a different, unlabeled element, so it must be scoped
     // to the currently active section.
     await page.locator('#sec-history .topbar-icon-btn').click();
-    await page.locator('#nav-main').click(); // nav-main isn't visible from settings; navigate directly
+    await expect(page).toHaveURL(/\/settings$/);
+
+    await page.locator('#nav-main').click();
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test('regression: back from settings after visiting an edit panel returns to the ORIGINAL page, not the edit panel\'s section', async ({ page }) => {
@@ -133,4 +136,15 @@ test.describe('Navigation', () => {
     const timerIcon = page.locator('#timerNavIcon');
     await expect(timerIcon).toBeVisible();
   });
+});
+
+test.describe('Deep-linked page loads (regression: relative asset paths broke nested routes)', () => {
+  for (const path of ['/settings/workout-plan', '/settings/measurement-types', '/running/add', '/running/history']) {
+    test(`direct page load at ${path} initializes the app`, async ({ page }) => {
+      requiresCredentials();
+      await page.goto(path);
+      await page.waitForFunction(() => typeof (window as any).navigateTo === 'function', { timeout: 10000 });
+      await expect(page.locator('#loading-overlay')).not.toBeVisible({ timeout: 15000 });
+    });
+  }
 });
