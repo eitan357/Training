@@ -1643,12 +1643,18 @@ function renderRunDashboard() {
   }
 }
 
+// Colors are hand-muted to the app's existing pastel palette (roughly
+// S 30-45%, matching --primary/--green/--red in the CSS custom
+// properties above) — the originals here were 2-3x more saturated than
+// every other colored element in the app. avgHeartRate/paceMinPerKm
+// were already in-family (paceMinPerKm literally reuses --green-d) and
+// are unchanged. See docs/superpowers/specs/2026-08-30-ui-polish-settings-history-charts-design.md §3.
 const RUN_CHARTS_CONFIG = [
-  { key: 'distanceKm',       tKey: 'run.chart.distance', color: '#2563eb', fmt: v => v.toFixed(1) },
+  { key: 'distanceKm',       tKey: 'run.chart.distance', color: '#536fac', fmt: v => v.toFixed(1) },
   { key: 'avgHeartRate',     tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
   { key: 'paceMinPerKm',     tKey: 'run.chart.pace',     color: '#3c7a54', fmt: formatPace },
-  { key: 'calories',         tKey: 'run.chart.calories', color: '#d97706', fmt: v => Math.round(v) },
-  { key: 'avgStridesPerMin', tKey: 'run.chart.spm',      color: '#7c3aed', fmt: v => Math.round(v) },
+  { key: 'calories',         tKey: 'run.chart.calories', color: '#aa7941', fmt: v => Math.round(v) },
+  { key: 'avgStridesPerMin', tKey: 'run.chart.spm',      color: '#9b5aaf', fmt: v => Math.round(v) },
 ];
 
 function runSetRange(range) {
