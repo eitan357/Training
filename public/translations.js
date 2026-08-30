@@ -47,6 +47,9 @@ export const TRANSLATIONS = {
     'btn.cancel':         'ביטול',
     'btn.delete_confirm': 'מחק?',
 
+    // ── App-level (hardware back button) ────────────────────────────
+    'app.press_back_exit': 'לחץ שוב ליציאה',
+
     // ── Timer ─────────────────────────────────────────────────────
     'btn.timer_start':   '▶ התחל',
     'btn.timer_pause':   '⏸ השהה',
@@ -314,6 +317,9 @@ export const TRANSLATIONS = {
     'btn.add':            'Add',
     'btn.cancel':         'Cancel',
     'btn.delete_confirm': 'Delete?',
+
+    // ── App-level (hardware back button) ────────────────────────────
+    'app.press_back_exit': 'Press back again to exit',
 
     // ── Timer ─────────────────────────────────────────────────────
     'btn.timer_start':   '▶ Start',

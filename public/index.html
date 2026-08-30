@@ -4287,6 +4287,35 @@ Object.assign(window, {
   runSetRange, runToggleHistoryRow,
   saveRunningEnabled,
 });
+
+// ─── ANDROID HARDWARE BACK BUTTON ──────────────────────────────
+// Routes the physical back button / gesture-nav through the exact same
+// history.back() every in-app "← back" button already uses (Tasks 2-5),
+// so there is exactly one back-navigation mechanism in the whole app.
+let _backPressedOnce = false;
+
+function handleHardwareBack() {
+  // Never dismiss the draft modal via hardware back — same rule as its
+  // existing no-backdrop-dismiss behavior (data-loss protection).
+  const draftModal = document.getElementById('draftModal');
+  if (draftModal && draftModal.style.display !== 'none') return;
+
+  const authVisible = !document.getElementById('auth-screen').classList.contains('hidden');
+  const atRoot = authVisible || history.state?.isRoot === true;
+
+  if (atRoot) {
+    if (_backPressedOnce) { window.Capacitor.Plugins.App.exitApp(); return; }
+    _backPressedOnce = true;
+    toast(t('app.press_back_exit'));
+    setTimeout(() => { _backPressedOnce = false; }, 2000);
+    return;
+  }
+  history.back();
+}
+
+if (window.Capacitor?.isNativePlatform()) {
+  window.Capacitor.Plugins.App.addListener('backButton', handleHardwareBack);
+}
 </script>
 
 <!-- Bulk action floating bars -->
