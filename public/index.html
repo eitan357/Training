@@ -416,6 +416,23 @@
     .chevron.open { transform: rotate(180deg); }
     .session-body { padding: 0 16px 14px; display: none; }
     .session-body.open { display: block; }
+
+    /* ── HISTORY: bottom expand/collapse strip ── */
+    .session-header:hover { background: rgba(100,116,139,.06); }
+    .expand-strip {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 30px;
+      background: #ede9fe;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      transition: background-color .12s;
+    }
+    .expand-strip:hover { background: #ddd6fe; }
+    .expand-strip.open { background: #e0dbfa; }
+    .expand-strip .chevron { color: var(--primary); font-size: inherit; display: flex; }
+    [data-theme="dark"] .expand-strip { background: #241f42; }
+    [data-theme="dark"] .expand-strip:hover { background: #2d2650; }
+    [data-theme="dark"] .expand-strip.open { background: #332a5c; }
     .hist-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
     .hist-table th {
       color: var(--sub); font-weight: 600; font-size: 11px;
@@ -3010,7 +3027,6 @@ function buildSessionCard(s, i) {
       <div style="display:flex;align-items:center;gap:4px;">
         ${s.autoSaved && !allSessions.some(o => o.dateISO > s.dateISO) ? `<span class="auto-save-badge">${t('draft.auto_badge')}</span>` : ''}
         <span class="session-badge ${badgeClass}">${t('workout.badge')} ${escHtml(s.type)}</span>
-        <span class="chevron">▼</span>
       </div>
     </div>
     <div class="session-body" id="sess_${i}">
@@ -3029,6 +3045,13 @@ function buildSessionCard(s, i) {
           </tr>`).join('')}
         </tbody>
       </table>
+    </div>
+    <div class="expand-strip" onclick="toggleSess(${i}, this)">
+      <div class="chevron">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
     </div>
   </div>`;
 }
@@ -3077,7 +3100,12 @@ function renderHistory() {
 
   list.innerHTML = html;
   const first = document.getElementById('sess_0');
-  if (first) { first.classList.add('open'); document.querySelector('.session-header .chevron')?.classList.add('open'); }
+  if (first) {
+    first.classList.add('open');
+    const firstCard = first.closest('.session-card');
+    firstCard?.querySelector('.chevron')?.classList.add('open');
+    firstCard?.querySelector('.expand-strip')?.classList.add('open');
+  }
 }
 
 // ─── HISTORY LONG-PRESS SELECT ─────────────────────────────────
@@ -3180,7 +3208,14 @@ function _toggleBody(prefix, i, header) {
   const body = document.getElementById(prefix + i);
   if (!body) return;
   body.classList.toggle('open');
-  header?.querySelector('.chevron')?.classList.toggle('open', body.classList.contains('open'));
+  const isOpen = body.classList.contains('open');
+  // Scoped to the card wrapper, not `header` itself: for history the
+  // chevron now lives in a sibling .expand-strip (not inside
+  // .session-header), while for measurements it's still inside
+  // .measure-header — searching from the card finds it either way.
+  const scope = header?.closest('.session-card, .measure-card') || header;
+  scope?.querySelector('.chevron')?.classList.toggle('open', isOpen);
+  scope?.querySelector('.expand-strip')?.classList.toggle('open', isOpen);
 }
 function toggleSess(i, header) { _toggleBody('sess_', i, header); }
 
