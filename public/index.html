@@ -422,17 +422,16 @@
     .expand-strip {
       display: flex; align-items: center; justify-content: center;
       width: 100%; height: 30px;
-      background: #ede9fe;
+      background: var(--bg);
       border-top: 1px solid var(--border);
       cursor: pointer;
       transition: background-color .12s;
     }
-    .expand-strip:hover { background: #ddd6fe; }
-    .expand-strip.open { background: #e0dbfa; }
+    .expand-strip:hover { background: var(--border); }
+    .expand-strip.open { background: #cbd5e1; }
     .expand-strip .chevron { color: var(--primary); font-size: inherit; display: flex; }
-    [data-theme="dark"] .expand-strip { background: #241f42; }
-    [data-theme="dark"] .expand-strip:hover { background: #2d2650; }
-    [data-theme="dark"] .expand-strip.open { background: #332a5c; }
+    [data-theme="dark"] .expand-strip.open { background: #475569; }
+    [data-theme="dark"] .expand-strip:hover { background: #3f4b61; }
     .hist-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
     .hist-table th {
       color: var(--sub); font-weight: 600; font-size: 11px;
