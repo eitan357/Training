@@ -2474,11 +2474,6 @@ function _renderRoute(state) {
 
 function goBack() { history.back(); }
 
-// Expose router functions to global scope for inline event handlers
-window.navigateTo = navigateTo;
-window.goBack = goBack;
-window.showSection = showSection;
-
 window.addEventListener('popstate', e => {
   _renderRoute(e.state || ROUTES[location.pathname] || ROUTES['/']);
 });
@@ -4229,7 +4224,7 @@ Object.assign(window, {
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm,
   _draftModalResume, _draftModalDiscard,
-  goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
+  navigateTo, goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
   filterHistory, toggleSess, toggleMonthGroup,
