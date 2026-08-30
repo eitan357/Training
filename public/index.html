@@ -402,7 +402,7 @@
       box-shadow: var(--shadow); margin-bottom: 12px;
       border: 1px solid var(--border); overflow: hidden;
     }
-    .session-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; }
+    .session-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .session-left   { display: flex; align-items: center; gap: 12px; }
     .session-dot    { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dot-a { background: var(--green); }
@@ -2992,9 +2992,8 @@ function buildSessionCard(s, i) {
   const badgeClass = 'badge-' + s.type.toLowerCase();
   const sel = selectedSessions.has(s.id);
   return `<div class="session-card${sel ? ' sel-active' : ''}" data-sid="${escHtml(s.id)}">
-    <div class="session-header" onclick="toggleSess(${i}, this)">
+    <div class="session-header" data-idx="${i}">
       <div class="session-left">
-        <div class="sel-check${sel ? ' checked' : ''}" onclick="event.stopPropagation();toggleSessionSelect('${escHtml(s.id)}')"></div>
         <div class="session-dot ${dotClass}"></div>
         <div>
           <div class="session-date">${sessionDisplayDate(s)}</div>
@@ -3032,6 +3031,7 @@ function renderHistory() {
   selectedSessions.clear();
   updateHistBulkBar();
   const list = document.getElementById('historyList');
+  _attachHistLongPress();
   const data = activeFilter === 'all' ? allSessions : allSessions.filter(s => s.type === activeFilter);
   if (!data.length) {
     list.innerHTML = `<div class="empty"><div class="empty-icon"><svg class="icon" style="width:48px;height:48px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-runner"/></svg></div><div class="empty-text">${t('workout.no_results')}</div></div>`;
@@ -3072,6 +3072,93 @@ function renderHistory() {
   list.innerHTML = html;
   const first = document.getElementById('sess_0');
   if (first) { first.classList.add('open'); document.querySelector('.session-header .chevron')?.classList.add('open'); }
+}
+
+// ─── HISTORY LONG-PRESS SELECT ─────────────────────────────────
+// Long-press (500ms, <10px movement) anywhere on a .session-header
+// enters/extends multi-select (same selectedSessions Set the bulk bar
+// already reads) instead of a dedicated circle. Short-tap keeps
+// expanding/collapsing the row UNLESS a selection is already active, in
+// which case short-tap toggles that row's selection too (standard
+// long-press-to-select convention — Gmail/Photos/Files/WhatsApp).
+// Delegated from #historyList (attached once, survives renderHistory()'s
+// innerHTML replacement) using the same mousedown/touchstart +
+// document-level mousemove/mouseup + touchmove/touchend pattern as the
+// existing drag-and-drop code (startGenericDrag) for consistency.
+const HIST_LONG_PRESS_MS        = 500;
+const HIST_LONG_PRESS_TOLERANCE = 10;
+let _histPress = null;
+
+function _attachHistLongPress() {
+  const list = document.getElementById('historyList');
+  if (!list || list.dataset.longPressAttached) return;
+  list.dataset.longPressAttached = 'true';
+  list.addEventListener('mousedown',  _histPressStart);
+  list.addEventListener('touchstart', _histPressStart, { passive: true });
+  list.addEventListener('contextmenu', e => { if (_histPress) e.preventDefault(); });
+}
+
+function _histPressStart(e) {
+  if (e.type === 'mousedown' && e.button !== 0) return;
+  const header = e.target.closest('.session-header');
+  if (!header) return;
+  const card = header.closest('.session-card');
+  if (!card) return;
+  const point = e.touches ? e.touches[0] : e;
+  _histPress = {
+    sessionId: card.dataset.sid,
+    idx:       Number(header.dataset.idx),
+    header,
+    startX:    point.clientX,
+    startY:    point.clientY,
+    fired:     false,
+    timer:     null,
+  };
+  _histPress.timer = setTimeout(() => {
+    if (!_histPress) return;
+    _histPress.fired = true;
+    if (navigator.vibrate) navigator.vibrate(30);
+    toggleSessionSelect(_histPress.sessionId);
+  }, HIST_LONG_PRESS_MS);
+
+  document.addEventListener('mousemove',  _histPressMove);
+  document.addEventListener('touchmove',  _histPressMove, { passive: true });
+  document.addEventListener('mouseup',    _histPressEnd);
+  document.addEventListener('touchend',   _histPressEnd);
+  document.addEventListener('touchcancel', _histPressCancel);
+}
+
+function _histPressMove(e) {
+  if (!_histPress) return;
+  const point = e.touches ? e.touches[0] : e;
+  const dx = Math.abs(point.clientX - _histPress.startX);
+  const dy = Math.abs(point.clientY - _histPress.startY);
+  if (dx > HIST_LONG_PRESS_TOLERANCE || dy > HIST_LONG_PRESS_TOLERANCE) _histPressCancel();
+}
+
+function _histPressEnd() {
+  if (!_histPress) return;
+  clearTimeout(_histPress.timer);
+  const { sessionId, idx, header, fired } = _histPress;
+  _histPressDetach();
+  if (fired) return; // long-press already toggled selection — don't also expand/collapse
+  if (selectedSessions.size > 0) { toggleSessionSelect(sessionId); return; }
+  toggleSess(idx, header);
+}
+
+function _histPressCancel() {
+  if (!_histPress) return;
+  clearTimeout(_histPress.timer);
+  _histPressDetach();
+}
+
+function _histPressDetach() {
+  _histPress = null;
+  document.removeEventListener('mousemove',  _histPressMove);
+  document.removeEventListener('touchmove',  _histPressMove);
+  document.removeEventListener('mouseup',    _histPressEnd);
+  document.removeEventListener('touchend',   _histPressEnd);
+  document.removeEventListener('touchcancel', _histPressCancel);
 }
 
 function _toggleBody(prefix, i, header) {

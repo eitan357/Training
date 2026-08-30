@@ -51,4 +51,47 @@ test.describe('History Section', () => {
     await page.locator('#nav-history').click();
     await expect(page.locator('#sec-history')).toHaveClass(/active/);
   });
+
+  test('long-press on a history row selects it and shows the bulk action bar', async ({ page }) => {
+    await page.waitForFunction(() => document.querySelectorAll('.session-header').length > 0 || document.querySelector('.empty'), { timeout: 15000 });
+    const header = page.locator('.session-header').first();
+    if (await header.count() === 0) test.skip(true, 'no history rows available in this test account');
+
+    const box = await header.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
+    await page.mouse.up();
+
+    await expect(page.locator('.session-card').first()).toHaveClass(/sel-active/);
+    await expect(page.locator('#histBulkBar')).toBeVisible();
+    await expect(page.locator('#histBulkCount')).not.toBeEmpty();
+  });
+
+  test('short click on a history row still expands it (not selection)', async ({ page }) => {
+    await page.waitForFunction(() => document.querySelectorAll('.session-header').length > 0 || document.querySelector('.empty'), { timeout: 15000 });
+    const header = page.locator('.session-header').nth(1);
+    if (await header.count() === 0) test.skip(true, 'no second history row available in this test account');
+
+    const wasOpen = await header.evaluate(h => h.closest('.session-card').querySelector('.session-body').classList.contains('open'));
+    await header.click();
+    const isOpen = await header.evaluate(h => h.closest('.session-card').querySelector('.session-body').classList.contains('open'));
+    expect(isOpen).toBe(!wasOpen);
+    await expect(page.locator('#histBulkBar')).toBeHidden();
+  });
+
+  test('long-press then dragging past the movement tolerance cancels the long-press', async ({ page }) => {
+    await page.waitForFunction(() => document.querySelectorAll('.session-header').length > 0 || document.querySelector('.empty'), { timeout: 15000 });
+    const header = page.locator('.session-header').first();
+    if (await header.count() === 0) test.skip(true, 'no history rows available in this test account');
+
+    const box = await header.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2, { steps: 5 });
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+
+    await expect(page.locator('#histBulkBar')).toBeHidden();
+  });
 });
