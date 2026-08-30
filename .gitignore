@@ -16,3 +16,6 @@ node_modules/
 # Playwright
 playwright-report/
 test-results/
+
+# Git worktrees (local scratch, not part of the repo)
+.worktrees/
