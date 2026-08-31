@@ -1061,115 +1061,30 @@
   </div>
 </div>
 
-<!-- ══ RUNNING ══ -->
+<!-- ══ CARDIO ══ -->
 <div id="sec-running" class="section">
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.running">אירובי <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
   </div>
   <div style="padding:16px;">
+    <div id="cardioTypeRow" class="type-row"></div>
 
-    <!-- Dashboard sub-view -->
-    <div id="run-view-dashboard" class="run-sub-view active">
-      <div style="display:flex;gap:10px;margin-bottom:14px;">
-        <button class="run-btn run-btn-primary" style="flex:1;" onclick="runShowAdd()" data-i18n="run.add_btn">+ הוסף אימון</button>
-        <button class="run-btn run-btn-secondary" style="flex:1;" onclick="runShowHistory()" data-i18n="run.history_btn">היסטוריה</button>
-      </div>
-      <div id="run-streak-card" class="run-card"></div>
-      <div id="run-prs-card" class="run-card"></div>
-      <div id="run-last-card" class="run-card"></div>
-      <div id="run-charts-card" class="run-card">
-        <div class="run-card-title" data-i18n="run.charts_title">גרפים</div>
-        <div class="run-range-row">
-          <button class="run-range-btn" data-range="month" onclick="runSetRange('month')" data-i18n="run.range_month">חודש</button>
-          <button class="run-range-btn active" data-range="year" onclick="runSetRange('year')" data-i18n="run.range_year">שנה</button>
-          <button class="run-range-btn" data-range="all" onclick="runSetRange('all')" data-i18n="run.range_all">הכל</button>
-        </div>
-        <div id="run-charts-list"></div>
-      </div>
+    <div id="cardioHistoryPreview" class="history-preview" style="display:none;"></div>
+
+    <div style="display:flex;gap:8px;margin:10px 0;">
+      <button class="run-btn run-btn-secondary" style="flex:1;display:none;" id="cardioCopyLastBtn" onclick="copyLastCardioWorkout()" data-i18n="copy.last_btn">העתקת אימון אחרון</button>
+      <button class="run-btn run-btn-secondary" style="flex:1;" onclick="clearCardioForm()" data-i18n="clear.btn">נקה טופס</button>
     </div>
 
-    <!-- Add workout sub-view -->
-    <div id="run-view-add" class="run-sub-view">
-      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runGoBack()" data-i18n="btn.back">← חזרה</button>
-      <!-- Step 1: Type -->
-      <div id="run-add-step1">
-        <div class="run-card"><div class="run-card-title" data-i18n="run.step1_title">בחר סוג אימון</div><div id="run-type-list"></div></div>
-      </div>
-      <!-- Step 2: OCR -->
-      <div id="run-add-step2" style="display:none;">
-        <div class="run-card">
-          <div class="run-card-title" data-i18n="run.step2_title">תמונה מהמסך</div>
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runCameraInput').click()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-camera"/></svg> <span data-i18n="run.camera_btn">צלם תמונה</span></button>
-            <button class="run-btn run-btn-secondary" style="flex:1;" onclick="document.getElementById('runGalleryInput').click()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-image"/></svg> <span data-i18n="run.gallery_btn">בחר מגלריה</span></button>
-          </div>
-          <input type="file" id="runCameraInput" accept="image/*" capture="environment" style="display:none;" onchange="runHandleOcr(this)">
-          <input type="file" id="runGalleryInput" accept="image/*" style="display:none;" onchange="runHandleOcr(this)">
-          <span id="runOcrZoneText" style="display:block;text-align:center;font-size:13px;color:var(--sub);min-height:18px;margin:4px 0;"></span>
-          <p id="runOcrError" style="color:var(--red);font-size:13px;display:none;"></p>
-          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep3({})" data-i18n="run.manual_btn">הכנס ידנית</button>
-          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="goBack()" data-i18n="btn.back">← חזרה</button>
-        </div>
-      </div>
-      <!-- Step 3: Review form -->
-      <div id="run-add-step3" style="display:none;">
-        <div class="run-card">
-          <div class="run-card-title" data-i18n="run.step3_title">פרטי האימון</div>
-          <div id="run-step3-type" style="font-size:13px;color:var(--sub);margin-bottom:10px;"></div>
-          <div class="run-form-field">
-            <label class="run-form-label" data-i18n="run.date_label">תאריך *</label>
-            <input type="date" id="run-f-date" class="run-form-input">
-          </div>
-          <div class="run-form-field">
-            <label class="run-form-label" data-i18n="run.dist_label">מרחק (ק"מ) *</label>
-            <input type="number" id="run-f-dist" class="run-form-input" step="0.01" min="0" placeholder="0.00">
-          </div>
-          <div class="run-form-field">
-            <label class="run-form-label" data-i18n="run.dur_label">משך (דקות) *</label>
-            <input type="number" id="run-f-dur" class="run-form-input" min="0" placeholder="30">
-          </div>
-          <div class="run-form-field">
-            <label class="run-form-label" data-i18n="run.cal_label">קלוריות</label>
-            <input type="number" id="run-f-cal" class="run-form-input" min="0" placeholder="--">
-          </div>
-          <div class="run-form-field">
-            <label class="run-form-label" data-i18n="run.spm_label">צעדים/דקה</label>
-            <input type="number" id="run-f-spm" class="run-form-input" min="0" placeholder="--">
-          </div>
-          <div class="run-form-field">
-            <label class="run-form-label" data-i18n="run.hr_label">דופק ממוצע</label>
-            <input type="number" id="run-f-hr" class="run-form-input" min="0" placeholder="--">
-          </div>
-          <div class="run-form-field">
-            <div class="run-toggle-row">
-              <span class="run-form-label" style="margin:0;" data-i18n="run.tired_label">הרגשתי עייפות</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="run-f-tired">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-          <div class="run-form-field">
-            <label class="run-form-label" data-i18n="run.notes_label">הערות</label>
-            <textarea id="run-f-notes" class="run-form-input" rows="3" placeholder="הערות אופציונליות..." data-i18n-ph="run.notes_ph"></textarea>
-          </div>
-          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:4px;" onclick="goBack()" data-i18n="btn.back">← חזרה</button>
-          <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="runSaveBtn" onclick="runSaveWorkout()" data-i18n="run.save_btn">שמור אימון</button>
-          <p id="runFormError" style="color:var(--red);font-size:13px;margin-top:8px;display:none;"></p>
-        </div>
-      </div>
+    <div class="run-form-field">
+      <input type="text" id="cardioSessionNameInput" class="run-form-input" data-i18n-ph="workout.name_default_ph" placeholder="שם האימון (ראשון, שני, דלואד...)">
     </div>
 
-    <!-- History sub-view -->
-    <div id="run-view-history" class="run-sub-view">
-      <button class="run-btn run-btn-secondary" style="margin-bottom:14px;" onclick="runGoBack()" data-i18n="btn.back">← חזרה</button>
-      <div class="run-card">
-        <div class="run-card-title" data-i18n="run.history_title">היסטוריית אימונים</div>
-        <div id="run-history-list"></div>
-      </div>
-    </div>
+    <div id="cardioFieldList"></div>
 
+    <button class="run-btn run-btn-secondary" style="width:100%;margin-top:10px;" onclick="addCustomCardioField()" data-i18n="cardio.add_field_btn">+ הוסף שדה</button>
+    <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="cardioSaveBtn" onclick="submitCardioData()" data-i18n="btn.save_workout">שמור אימון</button>
   </div>
 </div>
 
