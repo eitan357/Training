@@ -261,9 +261,21 @@ Note: `_setWorkoutEditPanel`, `_setMeasurementTypesPanel`, and `_renderRunState`
 
 - [ ] **Step 4: Confirm the file still parses (no browser yet — full behavior lands after Task 5)**
 
-Run: `node --check public/index.html 2>&1 | head -5 || true`
+`public/index.html` is HTML, not pure JS, so `node --check` can't run on it directly — extract the module script's contents to a temp `.mjs` file and check that instead (this only parses, it does not execute or fetch the remote CDN imports, so it works offline):
 
-Expected: this specific command will report a syntax error because `index.html` is not pure JS (it's HTML) — that's fine, this step exists only to catch a gross typo by eye. Instead, visually diff the replaced block against the "before" and "after" shown above and confirm every brace balances. Do **not** attempt to load the app in a browser until Task 5 is complete — `_setWorkoutEditPanel`/`_setMeasurementTypesPanel`/`_renderRunState` don't exist yet and the app will throw on the first render.
+Run:
+```bash
+node -e "
+const fs = require('fs');
+const html = fs.readFileSync('public/index.html', 'utf8');
+const m = html.match(/<script type=\"module\">([\s\S]*?)<\/script>/);
+fs.writeFileSync('.worktrees-syntax-check.mjs', m[1]);
+"
+node --check .worktrees-syntax-check.mjs && echo "SYNTAX OK"
+rm .worktrees-syntax-check.mjs
+```
+
+Expected: `SYNTAX OK`. If this fails, the error message includes a line number into the extracted script — cross-reference against the block you just edited before doing anything else. Do **not** attempt to load the app in a browser until Task 5 is complete — `_setWorkoutEditPanel`/`_setMeasurementTypesPanel`/`_renderRunState` don't exist yet and the app will throw on the first render.
 
 - [ ] **Step 5: Commit**
 
@@ -434,7 +446,7 @@ function closeWorkoutEdit() { history.back(); }
 - [ ] **Step 2: Run the existing workout edit-panel tests**
 
 Run: `npx playwright test tests/workout.spec.ts`
-Expected: all pass, including `closing edit panel navigates back to settings` (verified against this exact design in the spec, §7) — the sequence `main → settings (navigateTo) → /settings/workout-plan (openWorkoutEdit → navigateTo) → history.back()` lands back on the `/settings` entry, which carries no `editPanel`, so `_renderRoute` closes the panel.
+Expected: **8 pre-existing failures unrelated to this plan** are known and out of scope (confirmed in the SDD ledger, `.superpowers/sdd/2026-08-30-unified-navigation-history/progress.md`) — all 7 "Workout — Log Session" tests that depend on `selectFirstWorkoutType()` (a workout-type-tab → exercise-card rendering issue, nowhere near navigation code) plus the unrelated dark-mode-toggle test in settings.spec.ts. Do not attempt to fix these. The test that actually matters for this task, `closing edit panel navigates back to settings`, passed in the confirmed clean baseline and **must still pass** here (verified against this exact design in the spec, §7) — the sequence `main → settings (navigateTo) → /settings/workout-plan (openWorkoutEdit → navigateTo) → history.back()` lands back on the `/settings` entry, which carries no `editPanel`, so `_renderRoute` closes the panel. If any test beyond the known 8 starts failing, that IS a regression from this task.
 
 - [ ] **Step 3: Commit**
 
@@ -781,11 +793,11 @@ Object.assign(window, {
 - [ ] **Step 6: Run the existing running-section tests**
 
 Run: `npx playwright test tests/running.spec.ts`
-Expected: all pass unchanged — every asserted onclick string (`runGoBack()`, `runShowAdd()`, `runShowHistory()`, `runShowStep3({})`) still exists verbatim; `#run-view-add`/`#run-add-step1`/`#run-add-step3` visibility assertions still hold because `_renderRunState`/`_renderRunStep` reproduce the same `style.display` logic.
+**Confirmed pre-existing, out-of-scope gap (verified in the SDD ledger by checking out the pre-Task-1 commit and reproducing identically): 13 of 15 tests in this file already fail before this task, and before this whole plan — every test that depends on the `enableRunningSection()` helper (its toggle-click step hangs until timeout). This is NOT something to investigate or fix as part of this task.** Only 2 tests are expected to pass and must keep passing: "running section is present in DOM" and "running toggle exists in settings" (neither uses the broken helper). Since the automated suite cannot exercise anything past the enable step, Step 7 below (manual browser verification) is this task's PRIMARY verification, not a supplement — do not skip it or treat a "13 failed, as expected" result as sufficient on its own.
 
 - [ ] **Step 7: Manual verification of the wizard-step back fix**
 
-In a browser: enable running (settings toggle) → Add workout → select "Elliptical" (step 2) → click browser back button → confirm you land on step 1 of the wizard (not the dashboard) — this is the mid-wizard regression fix described in the spec §3.3/§5.4. Then from step 1, click back again → confirm you land on the running dashboard.
+The normal settings-toggle UI path is blocked by the pre-existing bug from Step 6 (the toggle click hangs), so bypass it: `saveRunningEnabled` is directly exported to `window` (`public/index.html:4250` area) — write a small throwaway Playwright script (not part of the committed test suite) that logs in, then runs `page.evaluate(() => (window).saveRunningEnabled(true))` instead of clicking the toggle, then `page.goto('/running/add')` (or `page.evaluate(() => (window).runShowAdd())`), selects "Elliptical" to reach step 2, calls `page.goBack()`, and asserts `page.url()` ends in `/running/add` with step 1's DOM visible (`#run-add-step1` displayed, not step 2) — confirming you land on step 1 of the wizard, not the dashboard (the mid-wizard regression fix described in spec §3.3/§5.4). Then `page.goBack()` again and assert you land on `/running` with the dashboard visible. Delete the throwaway script when done — it is not part of this task's committed deliverable, just a verification aid for the pre-existing broken toggle helper.
 
 - [ ] **Step 8: Commit**
 
@@ -1073,7 +1085,7 @@ and add immediately after it:
 
 - [ ] **Step 3: Add the hardware back button handler**
 
-In `public/index.html`, immediately before the final `Object.assign(window, { ... })` export block (currently starting at line 4162), add:
+In `public/index.html`, find the `// ─── RUNNING EXPORTS ─────────────────────────────────` `Object.assign(window, {...})` block (the one Task 5 last edited) and add the following code **immediately after its closing `});`**, i.e. exactly where Task 5 Step 4 deleted the old dedicated `popstate` listener, right before the closing `</script>` tag — this is genuinely the last statement in the module script, so anchor on "right after the RUNNING EXPORTS block's closing `});`", not on any line number (every earlier task in this plan shifts line numbers — match by the code shown, never by a cited line):
 
 ```js
 // ─── ANDROID HARDWARE BACK BUTTON ──────────────────────────────
@@ -1232,7 +1244,10 @@ Add this new test inside `test.describe('Navigation', ...)`:
     await page.locator('#mainBackBtn').click();
     await expect(page.locator('#sec-settings')).toHaveClass(/active/);
 
-    await page.locator('.topbar-back-btn', { hasText: 'חזרה' }).first().click();
+    // Scoped to #sec-settings specifically — mainBackBtn (#sec-main) and
+    // measBackBtn (#sec-measurements) share the same .topbar-back-btn class
+    // and the same "חזרה" text, so an unscoped locator would be ambiguous.
+    await page.locator('#sec-settings .topbar-back-btn').click();
     await expect(page.locator('#sec-timer')).toHaveClass(/active/);
   });
 ```
@@ -1245,7 +1260,7 @@ Expected: all pass, including the two new tests. If the regression test fails, d
 - [ ] **Step 4: Run the full test suite once as a final cross-check**
 
 Run: `npx playwright test`
-Expected: all specs pass (this plan's tasks touched code paths exercised by `navigation.spec.ts`, `running.spec.ts`, `workout.spec.ts`, `measurements.spec.ts`, `settings.spec.ts`, `auth.spec.ts` — a full run catches any interaction this plan's task-by-task runs might have missed).
+Expected: the pre-existing, out-of-scope failures logged in the SDD ledger (8 as of Task 1: `settings.spec.ts:22` dark-mode-toggle, and 7 `workout.spec.ts` "Log Session" tests depending on `selectFirstWorkoutType()`) plus whatever `running.spec.ts`/`measurements.spec.ts` baseline was confirmed before Tasks 4-5 — check the ledger for the final confirmed count. Every OTHER spec must pass. Any failure outside that named, ledger-confirmed set is a real regression from this plan and must be fixed before this task is considered done.
 
 - [ ] **Step 5: Commit**
 

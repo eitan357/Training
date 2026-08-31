@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Training Diary</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#6d64a8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -892,7 +892,7 @@
     <div><div class="topbar-title" data-i18n="title.workout">כוח <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-flame"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()" data-i18n="btn.back">← חזרה</button>
-      <button class="topbar-icon-btn" id="mainGearBtn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" id="mainGearBtn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
 
@@ -965,7 +965,7 @@
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.history">היסטוריה <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-chart"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
   <div style="padding:16px;">
@@ -980,7 +980,7 @@
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.timer">טיימר <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
   <div class="tv2-wrap">
@@ -1031,7 +1031,7 @@
     <div><div class="topbar-title" data-i18n="title.measurements">מדידות <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></div><div class="topbar-sub topbar-email"></div></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="measBackBtn" style="display:none;" onclick="closeMeasurementsEdit()" data-i18n="btn.back">← חזרה</button>
-      <button class="topbar-icon-btn" id="measGearBtn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+      <button class="topbar-icon-btn" id="measGearBtn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
 
@@ -1065,7 +1065,7 @@
 <div id="sec-running" class="section">
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.running">אירובי <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-icon-btn" onclick="showSection('settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+    <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
   </div>
   <div style="padding:16px;">
 
@@ -1109,7 +1109,7 @@
           <span id="runOcrZoneText" style="display:block;text-align:center;font-size:13px;color:var(--sub);min-height:18px;margin:4px 0;"></span>
           <p id="runOcrError" style="color:var(--red);font-size:13px;display:none;"></p>
           <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep3({})" data-i18n="run.manual_btn">הכנס ידנית</button>
-          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="runShowStep1()" data-i18n="btn.back">← חזרה</button>
+          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:8px;" onclick="goBack()" data-i18n="btn.back">← חזרה</button>
         </div>
       </div>
       <!-- Step 3: Review form -->
@@ -1154,7 +1154,7 @@
             <label class="run-form-label" data-i18n="run.notes_label">הערות</label>
             <textarea id="run-f-notes" class="run-form-input" rows="3" placeholder="הערות אופציונליות..." data-i18n-ph="run.notes_ph"></textarea>
           </div>
-          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:4px;" onclick="runBackFromForm()" data-i18n="btn.back">← חזרה</button>
+          <button class="run-btn run-btn-secondary" style="width:100%;margin-top:4px;" onclick="goBack()" data-i18n="btn.back">← חזרה</button>
           <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="runSaveBtn" onclick="runSaveWorkout()" data-i18n="run.save_btn">שמור אימון</button>
           <p id="runFormError" style="color:var(--red);font-size:13px;margin-top:8px;display:none;"></p>
         </div>
@@ -1271,25 +1271,25 @@
 </div>
 
 <nav class="bottomnav">
-  <button class="nav-item active" id="nav-main"         onclick="showSection('main')">
+  <button class="nav-item active" id="nav-main"         onclick="navigateTo('/')">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-flame"/></svg></span><span data-i18n="nav.workout">כוח</span>
   </button>
-  <button class="nav-item"        id="nav-timer"        onclick="showSection('timer')">
+  <button class="nav-item"        id="nav-timer"        onclick="navigateTo('/timer')">
     <span class="nav-icon" id="timerNavIcon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-stopwatch"/></svg></span><span id="timerNavLabel" data-i18n="nav.timer">טיימר</span>
   </button>
-  <button class="nav-item"        id="nav-measurements" onclick="showSection('measurements')">
+  <button class="nav-item"        id="nav-measurements" onclick="navigateTo('/measurements')">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></span><span data-i18n="nav.measurements">מדידות</span>
   </button>
-  <button class="nav-item"        id="nav-running"      onclick="showSection('running')" style="display:none;">
+  <button class="nav-item"        id="nav-running"      onclick="navigateTo('/running')" style="display:none;">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></span><span data-i18n="run.nav">אירובי</span>
   </button>
-  <button class="nav-item"        id="nav-history"      onclick="showSection('history')">
+  <button class="nav-item"        id="nav-history"      onclick="navigateTo('/history')">
     <span class="nav-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-chart"/></svg></span><span data-i18n="nav.history">היסטוריה</span>
   </button>
 </nav>
 
 <script type="module">
-import { TRANSLATIONS, LANGUAGES }                                from './translations.js?v=20';
+import { TRANSLATIONS, LANGUAGES }                                from '/translations.js?v=20';
 import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
@@ -1412,7 +1412,7 @@ function initSettingsUI() {
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName_' + (currentUser?.uid || '')) || '';
 
   // Running gate
-  const RUN_ALLOWED = ['eitan357@gmail.com', 'test@gmail.com'];
+  const RUN_ALLOWED = RUNNING_ALLOWED_EMAILS;
   const gateRow = document.getElementById('runningGateRow');
   if (gateRow) {
     gateRow.style.display = RUN_ALLOWED.includes(currentUser?.email) ? 'flex' : 'none';
@@ -1482,6 +1482,7 @@ let editMeasureTypes = [];
 let lastWorkouts     = {};
 
 // ─── RUNNING STATE ────────────────────────────────────────────
+const RUNNING_ALLOWED_EMAILS = ['eitan357@gmail.com', 'test@gmail.com'];
 let runningEnabled     = false;
 let runWorkouts        = [];
 let runWorkoutTypes    = [];
@@ -1594,49 +1595,43 @@ function filterRunByRange(workouts, range) {
 async function initRunSection() {
   if (!_runDataPromise) _runDataPromise = loadRunData();  // fallback if prefetch didn't run
   await _runDataPromise;
-  runShowDashboard();
+  // Pure re-render, no history write — matches showSection()'s own
+  // "history-free" contract. Uses whatever route is ALREADY current in
+  // history.state by the time this continuation runs (navigateTo/
+  // pushSubState always set it before initRunSection() is invoked), so
+  // this can never clobber /running/add (or any sub-state) with a
+  // duplicate/incorrect jump back to the dashboard.
+  _renderRunState(history.state?.runSubView, history.state?.runStep);
 }
 
-function runShowDashboard() {
-  document.getElementById('run-view-dashboard').classList.add('active');
-  document.getElementById('run-view-add').classList.remove('active');
-  document.getElementById('run-view-history').classList.remove('active');
-  renderRunDashboard();
-  renderRunCharts();
+// Pure DOM primitive: makes the running section's 3 top-level views
+// (dashboard/add/history) AND the add-wizard's 3 steps match the given
+// arguments. Never touches history — called by _renderRoute() (Task 1).
+function _renderRunState(runSubView, runStep) {
+  document.getElementById('run-view-dashboard').classList.toggle('active', !runSubView);
+  document.getElementById('run-view-add').classList.toggle('active', runSubView === 'add');
+  document.getElementById('run-view-history').classList.toggle('active', runSubView === 'history');
+
+  if (!runSubView) { renderRunDashboard(); renderRunCharts(); }
+  else if (runSubView === 'history') { renderRunHistory(); }
+  else if (runSubView === 'add') { _renderRunStep(runStep || 1); }
 }
 
-function runShowAdd() {
-  history.pushState({ runSubView: 'add' }, '');
-  document.getElementById('run-view-dashboard').classList.remove('active');
-  document.getElementById('run-view-add').classList.add('active');
-  document.getElementById('run-view-history').classList.remove('active');
-  runShowStep1();
-}
+// runShowDashboard/runShowAdd/runShowHistory stay as the PUBLIC entry
+// points wired to onclick attributes (their exact names are asserted by
+// tests/running.spec.ts) — each now just navigates through the router
+// instead of touching the DOM directly.
+function runShowDashboard() { navigateTo('/running'); }
+function runShowAdd()       { navigateTo('/running/add'); }
+function runShowHistory()   { navigateTo('/running/history'); }
 
-function runShowHistory() {
-  history.pushState({ runSubView: 'history' }, '');
-  document.getElementById('run-view-dashboard').classList.remove('active');
-  document.getElementById('run-view-add').classList.remove('active');
-  document.getElementById('run-view-history').classList.add('active');
-  renderRunHistory();
-}
-
-function runGoBack() {
-  if (history.state?.runSubView) {
-    history.back();
-  } else {
-    runShowDashboard();
-  }
-}
-
-function runBackFromForm() {
-  const type = runWorkoutTypes.find(tp => tp.id === _runSelectedTypeId);
-  if (type?.name === 'Elliptical') {
-    runShowStep2();
-  } else {
-    runShowStep1();
-  }
-}
+// One code path for "back" everywhere in the running section — same
+// history.back() the settings page and edit panels use. Because
+// runShowAdd/runShowHistory push real routes on top of /running, and
+// each wizard step pushes a sub-state on top of /running/add (Step 2
+// below), history.back() alone always lands on the correct previous
+// screen with no special-casing needed.
+function runGoBack() { history.back(); }
 
 function renderRunDashboard() {
   const streak = calcRunStreak(runWorkouts);
@@ -1757,41 +1752,44 @@ function translateTypeName(name) {
   return name;
 }
 
-function runShowStep1() {
-  _runSelectedTypeId = null;
-  document.getElementById('run-add-step1').style.display = '';
-  document.getElementById('run-add-step2').style.display = 'none';
-  document.getElementById('run-add-step3').style.display = 'none';
-
-  const list = document.getElementById('run-type-list');
-  list.innerHTML = runWorkoutTypes.map(type =>
-    `<button class="run-type-btn" onclick="runSelectType('${type.id}','${escHtml(type.name)}')">${escHtml(translateTypeName(type.name))}</button>`
-  ).join('');
-}
-
-function runSelectType(id, name) {
-  _runSelectedTypeId = id;
-  if (name === 'Elliptical') {
-    runShowStep2();
-  } else {
-    runShowStep3({});
+// _renderRunStep(n) is the pure DOM primitive for "show wizard step n
+// with whatever _runPrefill/_runSelectedTypeId already hold" — no
+// history writes. runShowStep1/2/3 (below) are the PUBLIC entry points
+// that render AND push a sub-state; _renderRunState (Step 1) calls this
+// directly (no push) when responding to an already-changed history
+// position (back button, popstate, boot).
+function _renderRunStep(n) {
+  document.getElementById('run-add-step1').style.display = n === 1 ? '' : 'none';
+  document.getElementById('run-add-step2').style.display = n === 2 ? '' : 'none';
+  document.getElementById('run-add-step3').style.display = n === 3 ? '' : 'none';
+  if (n === 1) {
+    const list = document.getElementById('run-type-list');
+    list.innerHTML = runWorkoutTypes.map(type =>
+      `<button class="run-type-btn" onclick="runSelectType('${type.id}','${escHtml(type.name)}')">${escHtml(translateTypeName(type.name))}</button>`
+    ).join('');
+  } else if (n === 2) {
+    document.getElementById('runOcrZoneText').textContent = '';
+    document.getElementById('runOcrError').style.display = 'none';
+  } else if (n === 3) {
+    _renderRunStep3Form();
   }
 }
 
-function runShowStep2() {
-  document.getElementById('run-add-step1').style.display = 'none';
-  document.getElementById('run-add-step2').style.display = '';
-  document.getElementById('run-add-step3').style.display = 'none';
-  document.getElementById('runOcrZoneText').textContent = '';
-  document.getElementById('runOcrError').style.display = 'none';
+function runShowStep1() { _runSelectedTypeId = null; _renderRunStep(1); pushSubState({ runStep: 1 }); }
+
+function runSelectType(id, name) {
+  _runSelectedTypeId = id;
+  if (name === 'Elliptical') { _renderRunStep(2); pushSubState({ runStep: 2 }); }
+  else                       { runShowStep3({}); }
 }
 
-function runShowStep3(prefill) {
+// _renderRunStep3Form(prefill) is the pure DOM-filling half of the old
+// runShowStep3 body — unchanged logic, just split out so _renderRunStep
+// (no-history-write path) and runShowStep3 (history-writing path) can
+// both reach it. `prefill` defaults to whatever runShowStep3 last set on
+// _runPrefill so popstate/back re-renders the same values.
+function _renderRunStep3Form(prefill = _runPrefill) {
   _runPrefill = prefill;
-  document.getElementById('run-add-step1').style.display = 'none';
-  document.getElementById('run-add-step2').style.display = 'none';
-  document.getElementById('run-add-step3').style.display = '';
-
   const selectedType = runWorkoutTypes.find(tp => tp.id === _runSelectedTypeId);
   document.getElementById('run-step3-type').textContent = selectedType ? translateTypeName(selectedType.name) : '';
 
@@ -1807,6 +1805,8 @@ function runShowStep3(prefill) {
   document.getElementById('runSaveBtn').disabled = false;
   document.getElementById('runSaveBtn').textContent = t('run.save_btn');
 }
+
+function runShowStep3(prefill) { _renderRunStep3Form(prefill); pushSubState({ runStep: 3 }); }
 
 async function runHandleOcr(input) {
   const file = input.files?.[0];
@@ -1949,7 +1949,7 @@ async function runSaveWorkout() {
   try {
     await addRunWorkout(workout);
     toast(t('run.saved_ok'));
-    history.back();
+    navigateTo('/running');
   } catch (err) {
     btn.disabled = false;
     btn.textContent = t('run.save_btn');
@@ -2005,6 +2005,11 @@ const _isNewSession      = !sessionStorage.getItem('session_active');
 if (_isNewSession) sessionStorage.setItem('session_active', '1');
 
 // ─── AUTH STATE LISTENER ─────────────────────────────────────
+// Set only while the auth screen is visible: the path the user actually
+// asked for (deep link / bookmark) before we knew whether they were
+// logged in. Read once, right after successful login, then cleared.
+let _pendingPath = null;
+
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
@@ -2013,7 +2018,16 @@ onAuthStateChanged(auth, async user => {
     const ov = document.getElementById('loading-overlay');
     ov.classList.remove('fade-out');
     ov.style.display = 'flex';
-    await initApp();
+
+    // Allowlist check: _pendingPath is user-controllable (whatever path
+    // was in the address bar before login) — only ever used as a lookup
+    // key into the static ROUTES table, never trusted as-is. See spec §4.
+    const requested   = (_pendingPath && ROUTES[_pendingPath]) ? _pendingPath : null;
+    _pendingPath = null;
+
+    await initApp(); // Task 6's boot resolution reads location.pathname as a fallback
+
+    if (requested) navigateTo(requested, { replace: true, isRoot: true });
   } else {
     currentUser = null;
 
@@ -2025,10 +2039,18 @@ onAuthStateChanged(auth, async user => {
     runWorkoutTypes    = [];
     _runSelectedTypeId = null;
     _runPrefill        = {};
+    _runDataPromise    = null;
     Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
     _draftFirestoreTimer = {};
     if (editPanelOpen)   toggleEditPanel();
     if (typesEditorOpen) toggleTypesEditor();
+
+    // Remember what the user was trying to reach (if it's a real route)
+    // so a fresh login can return them there, then reset the address bar
+    // to '/' — a logged-out tab should never display a deep path in the
+    // URL while showing the auth screen.
+    _pendingPath = ROUTES[location.pathname] ? location.pathname : null;
+    history.replaceState(null, '', '/');
 
     document.getElementById('auth-screen').classList.remove('hidden');
     hideOverlay();
@@ -2373,6 +2395,22 @@ async function initApp() {
   hideOverlay();
   // Phase 2 — background Firestore sync (non-blocking)
   _backgroundSync(hadCache).catch(() => {});
+
+  // Boot-time route resolution: land on whatever URL the tab actually
+  // has (deep link, refresh, bookmark) instead of always defaulting to
+  // main. An unrecognized path falls back to '/' — see spec §3.5/§4 for
+  // why location.pathname is only ever used as an allowlist lookup key.
+  let bootPath = ROUTES[location.pathname] ? location.pathname : '/';
+  if (bootPath.startsWith('/running') && !_isRunningAllowed()) bootPath = '/';
+  navigateTo(bootPath, { replace: true, isRoot: true });
+}
+
+// Re-checks the exact same gate initSettingsUI already applies (hard-coded
+// email allow-list + the runningEnabled flag) so a direct/bookmarked
+// /running URL can't show the section to a user it isn't meant for. This
+// is UI convenience, not a security boundary — see docs/product/12-security-and-privacy.md.
+function _isRunningAllowed() {
+  return RUNNING_ALLOWED_EMAILS.includes(currentUser?.email) && runningEnabled === true;
 }
 
 async function reloadAppData() {
@@ -2424,19 +2462,37 @@ function applyAppData(data) {
 
 // ─── NAVIGATION ───────────────────────────────────────────────
 const SECTION_ORDER = { main: 0, timer: 1, running: 2, measurements: 2, history: 3, settings: 4 };
+
+// Every top-level screen reachable by URL / bookmark / hardware back
+// button. Edit panels and running sub-views get real paths too, so the
+// address bar always matches what's on screen. The running wizard's
+// steps (1/2/3) stay OUT of this table on purpose — see pushSubState().
+const ROUTES = {
+  '/':                           { section: 'main' },
+  '/timer':                      { section: 'timer' },
+  '/measurements':               { section: 'measurements' },
+  '/running':                    { section: 'running', runSubView: null },
+  '/history':                    { section: 'history' },
+  '/settings':                   { section: 'settings' },
+  '/settings/workout-plan':      { section: 'main', editPanel: 'workout' },
+  '/settings/measurement-types': { section: 'measurements', editPanel: 'measurementTypes' },
+  '/running/add':                { section: 'running', runSubView: 'add', runStep: 1 },
+  '/running/history':            { section: 'running', runSubView: 'history' },
+};
+
 let currentSection = 'main';
-let prevSection    = 'main';
 const _sectionScrollPos = {};
 
+// Pure DOM primitive: makes the visible section match `name`. Never
+// touches history/URL — kept history-free on purpose because two
+// Playwright tests call window.showSection() directly and expect no
+// side effect beyond the DOM swap.
 function showSection(name) {
-  if (editPanelOpen) toggleEditPanel();
-  if (typesEditorOpen) toggleTypesEditor();
   if (name === currentSection) return;
 
   const mc = document.getElementById('main-content');
   _sectionScrollPos[currentSection] = mc.scrollTop;
 
-  prevSection = currentSection;
   const fromIdx = SECTION_ORDER[currentSection] ?? 0;
   const toIdx   = SECTION_ORDER[name] ?? 0;
   const isRTL = LANGUAGES[currentLang]?.dir === 'rtl';
@@ -2467,6 +2523,56 @@ function showSection(name) {
   updateHistBulkBar();
   updateMeasBulkBar();
 }
+
+// ─── ROUTER ────────────────────────────────────────────────────
+// navigateTo() is the ONLY place that pushes/replaces a history entry
+// with a NEW URL. Every nav-bar button, gear icon, and settings
+// shortcut calls this — never showSection() directly — so the browser
+// back button, the Android hardware back button, and in-app "← back"
+// buttons all walk the exact same stack.
+function navigateTo(path, opts = {}) {
+  const { replace = false, isRoot = false } = opts;
+  if (path.startsWith('/running') && typeof _isRunningAllowed === 'function' && !_isRunningAllowed()) path = '/';
+  const route = ROUTES[path];
+  if (!route) { navigateTo('/', { replace: true, isRoot: true }); return; }
+  const state = { editPanel: null, runSubView: null, runStep: null, ...route, isRoot };
+  if (replace) history.replaceState(state, '', path);
+  else         history.pushState(state, '', path);
+  _renderRoute(state);
+}
+
+// Layers a sub-screen (edit panel state carried on /settings/*, running
+// wizard step) on top of the CURRENT url without changing the visible
+// path. Used only by the running wizard (Task 5) — the edit panels get
+// their own real paths instead (Tasks 3-4).
+function pushSubState(patch) {
+  const state = { ...(history.state || { section: currentSection }), ...patch, isRoot: false };
+  history.pushState(state, '', location.pathname);
+  _renderRoute(state);
+}
+
+// The single function that makes the DOM match ANY state object.
+// Called from navigateTo(), pushSubState(), the popstate listener
+// below, the Android hardware-back handler (Task 9), and app boot
+// (Task 6). This is what guarantees identical behavior across all of
+// those triggers — they all funnel through here.
+function _renderRoute(state) {
+  if (state.section === 'running' && !_isRunningAllowed()) { navigateTo('/', { replace: true, isRoot: true }); return; }
+  showSection(state.section);
+  _setWorkoutEditPanel(state.section === 'main' && state.editPanel === 'workout');
+  _setMeasurementTypesPanel(state.section === 'measurements' && state.editPanel === 'measurementTypes');
+  if (state.section === 'running') _renderRunState(state.runSubView, state.runStep);
+}
+
+function goBack() { history.back(); }
+
+window.addEventListener('popstate', e => {
+  if (!document.getElementById('auth-screen').classList.contains('hidden')) {
+    history.replaceState(null, '', '/');
+    return;
+  }
+  _renderRoute(e.state || ROUTES[location.pathname] || ROUTES['/']);
+});
 
 // ─── DRAFT AUTO-SAVE ─────────────────────────────────────────
 // `domain` distinguishes strength vs. cardio (Phase B) so a strength type
@@ -3870,8 +3976,16 @@ async function saveMeasureEdit(saveBtn, measureId) {
 function cancelMeasureEdit() { renderMeasurements(); }
 
 // ─── MEASUREMENT TYPES EDITOR ─────────────────────────────────
-function toggleTypesEditor() {
-  typesEditorOpen = !typesEditorOpen;
+// Pure DOM primitive, kept under its ORIGINAL name and toggle-style
+// signature on purpose: tests/measurements.spec.ts:90,94 calls
+// window.toggleTypesEditor() directly, twice, expecting a raw open/close
+// toggle independent of history. _renderRoute() (Task 1) calls the
+// explicit-boolean variant below instead.
+function toggleTypesEditor() { _setMeasurementTypesPanel(!typesEditorOpen); }
+
+function _setMeasurementTypesPanel(open) {
+  if (open === typesEditorOpen) return;
+  typesEditorOpen = open;
   document.getElementById('typesEditorPanel').style.display    = typesEditorOpen ? 'block' : 'none';
   document.getElementById('measurementsContent').style.display = typesEditorOpen ? 'none'  : 'block';
   document.getElementById('measBackBtn').style.display         = typesEditorOpen ? '' : 'none';
@@ -3934,7 +4048,7 @@ async function saveTypesEditor() {
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'measurementTypes'), { types });
     toast(t('types.saved_ok'), 'success');
-    toggleTypesEditor();
+    closeMeasurementsEdit();
     await reloadAppData();
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
@@ -3954,8 +4068,13 @@ function startMeasureTypeDrag(e, card, container) {
 
 // ─── EDIT PANEL TOGGLE ────────────────────────────────────────
 let editPanelOpen = false;
-function toggleEditPanel() {
-  editPanelOpen = !editPanelOpen;
+
+// Pure DOM primitive: makes the workout-plan editor panel match `open`.
+// Kept independent of history/URL — called by _renderRoute() (Task 1)
+// with whatever `state.editPanel === 'workout'` evaluates to.
+function _setWorkoutEditPanel(open) {
+  if (open === editPanelOpen) return;
+  editPanelOpen = open;
   document.getElementById('mainWorkoutContent').style.display = editPanelOpen ? 'none' : 'block';
   document.getElementById('mainEditPanel').style.display      = editPanelOpen ? 'block' : 'none';
   document.getElementById('mainBackBtn').style.display        = editPanelOpen ? '' : 'none';
@@ -3965,27 +4084,16 @@ function toggleEditPanel() {
   if (editPanelOpen) renderEditAll();
 }
 
-function goBack() { showSection(prevSection); }
+// Kept as a thin backward-compatible alias — not called anywhere after
+// this task, but harmless to keep in case a future manual/console call
+// relies on the old toggle-style name.
+function toggleEditPanel() { _setWorkoutEditPanel(!editPanelOpen); }
 
-function openWorkoutEdit() {
-  showSection('main');
-  if (!editPanelOpen) toggleEditPanel();
-}
+function openWorkoutEdit()  { navigateTo('/settings/workout-plan'); }
+function closeWorkoutEdit() { history.back(); }
 
-function closeWorkoutEdit() {
-  if (editPanelOpen) toggleEditPanel();
-  showSection('settings');
-}
-
-function openMeasurementsEdit() {
-  showSection('measurements');
-  if (!typesEditorOpen) toggleTypesEditor();
-}
-
-function closeMeasurementsEdit() {
-  if (typesEditorOpen) toggleTypesEditor();
-  showSection('settings');
-}
+function openMeasurementsEdit()  { navigateTo('/settings/measurement-types'); }
+function closeMeasurementsEdit() { history.back(); }
 
 // ─── COPY TARGET TO CARD ──────────────────────────────────────
 function copyTargetToCard(cardEl) {
@@ -4401,7 +4509,7 @@ Object.assign(window, {
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm,
   _draftModalResume, _draftModalDiscard,
-  goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
+  navigateTo, goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
   filterHistory, toggleSess, toggleMonthGroup,
@@ -4416,16 +4524,41 @@ Object.assign(window, {
 // ─── RUNNING EXPORTS ─────────────────────────────────────────
 Object.assign(window, {
   runShowDashboard, runShowAdd, runShowHistory,
-  runShowStep1, runSelectType, runShowStep2, runShowStep3,
+  runShowStep1, runSelectType, runShowStep3,
   runHandleOcr, runSaveWorkout,
-  runGoBack, runBackFromForm,
+  runGoBack,
   runSetRange, runToggleHistoryRow,
   saveRunningEnabled,
 });
 
-window.addEventListener('popstate', () => {
-  if (currentSection === 'running') runShowDashboard();
-});
+// ─── ANDROID HARDWARE BACK BUTTON ──────────────────────────────
+// Routes the physical back button / gesture-nav through the exact same
+// history.back() every in-app "← back" button already uses (Tasks 2-5),
+// so there is exactly one back-navigation mechanism in the whole app.
+let _backPressedOnce = false;
+
+function handleHardwareBack() {
+  // Never dismiss the draft modal via hardware back — same rule as its
+  // existing no-backdrop-dismiss behavior (data-loss protection).
+  const draftModal = document.getElementById('draftModal');
+  if (draftModal && draftModal.style.display !== 'none') return;
+
+  const authVisible = !document.getElementById('auth-screen').classList.contains('hidden');
+  const atRoot = authVisible || history.state?.isRoot === true;
+
+  if (atRoot) {
+    if (_backPressedOnce) { window.Capacitor.Plugins.App.exitApp(); return; }
+    _backPressedOnce = true;
+    toast(t('app.press_back_exit'));
+    setTimeout(() => { _backPressedOnce = false; }, 2000);
+    return;
+  }
+  history.back();
+}
+
+if (window.Capacitor?.isNativePlatform()) {
+  window.Capacitor.Plugins.App.addListener('backButton', handleHardwareBack);
+}
 </script>
 
 <!-- Bulk action floating bars -->
