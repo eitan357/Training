@@ -85,6 +85,27 @@ test.describe('Workout — Log Session', () => {
     const keys = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('draft_')));
     expect(keys.some(k => k.includes('_strength_'))).toBe(true);
   });
+
+  test('draft round-trips workout name through localStorage', async ({ page }) => {
+    await page.locator('#nav-main').click();
+    await page.waitForFunction(() => {
+      const row = document.getElementById('typeRow');
+      return row && row.children.length > 0;
+    }, { timeout: 10000 });
+    await page.locator('#typeRow button, #typeRow .type-btn').first().click();
+    const sessionName = 'SDD round-trip session ' + Date.now();
+    await page.locator('#sessionNameInput').fill(sessionName);
+    await page.waitForTimeout(400); // > 300ms debounce
+    await page.reload();
+    await page.locator('#nav-main').click();
+    await page.waitForFunction(() => {
+      const row = document.getElementById('typeRow');
+      return row && row.children.length > 0;
+    }, { timeout: 10000 });
+    await page.locator('#typeRow button, #typeRow .type-btn').first().click();
+    // same-session reload restores silently (no modal) per docs/product/02
+    await expect(page.locator('#sessionNameInput')).toHaveValue(sessionName);
+  });
 });
 
 test.describe('Workout — Edit Plan', () => {
