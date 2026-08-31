@@ -1984,9 +1984,10 @@ function runToggleHistoryRow(id) {
 // ─── DRAFT STATE ──────────────────────────────────────────────
 let _draftDirty          = {};   // { type: boolean }
 let _draftSaveDebounce   = {};   // { type: timeoutId }
-let _draftFirestoreTimer = null;
+let _draftFirestoreTimer = {};
 let _tabState            = {};   // { type: serialized form state }
 let _draftModalType      = null;
+let _draftModalDomain    = null;
 const _isNewSession      = !sessionStorage.getItem('session_active');
 if (_isNewSession) sessionStorage.setItem('session_active', '1');
 
@@ -2011,7 +2012,7 @@ onAuthStateChanged(auth, async user => {
     runWorkoutTypes    = [];
     _runSelectedTypeId = null;
     _runPrefill        = {};
-    clearInterval(_draftFirestoreTimer);
+    Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
     if (editPanelOpen)   toggleEditPanel();
     if (typesEditorOpen) toggleTypesEditor();
 
@@ -2340,8 +2341,8 @@ async function initApp() {
   const hadCache = _applyLocalCache();
   selectType(workoutTypes[0] || 'A');
   renderTypeButtons();
-  _draftAttachListeners();
-  _draftStartFirestoreTimer();
+  _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput');
+  _draftStartFirestoreTimer('strength', () => selectedType);
   hideOverlay();
   // Phase 2 — background Firestore sync (non-blocking)
   _backgroundSync(hadCache).catch(() => {});
@@ -2518,57 +2519,62 @@ function _draftQualifies(domain, draft)   { return WORKOUT_DOMAINS[domain].quali
 // domain could in principle diverge them), not because the logic differs.
 function _draftHasBannerData(domain, draft) { return _draftQualifies(domain, draft); }
 
-function _draftSaveLocal(type) {
+function _draftSaveLocal(domain, type) {
   if (!currentUser) return;
-  const key      = _draftKey('strength', type);
+  const key      = _draftKey(domain, type);
   const existing = JSON.parse(localStorage.getItem(key) || 'null');
   const now      = new Date().toISOString();
-  const data     = { ..._draftSerialize('strength'), createdAt: existing?.createdAt || now, lastModified: now };
+  const data     = { ..._draftSerialize(domain), createdAt: existing?.createdAt || now, lastModified: now };
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-function _draftLoadLocal(type) {
+function _draftLoadLocal(domain, type) {
   if (!currentUser) return null;
-  try { return JSON.parse(localStorage.getItem(_draftKey('strength', type)) || 'null'); } catch(e) { return null; }
+  try { return JSON.parse(localStorage.getItem(_draftKey(domain, type)) || 'null'); } catch(e) { return null; }
 }
 
-async function _draftSaveFirestore(type) {
+async function _draftSaveFirestore(domain, type) {
   if (!currentUser) return;
-  const local = _draftLoadLocal(type);
+  const local = _draftLoadLocal(domain, type);
   if (!local) return;
   try {
-    await setDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + type), local);
+    await setDoc(doc(db, 'users', currentUser.uid, 'drafts', domain + '_' + type), local);
   } catch(e) { /* silent — localStorage is the fallback */ }
 }
 
-async function _draftDelete(type) {
+async function _draftDelete(domain, type) {
   if (!currentUser) return;
-  localStorage.removeItem(_draftKey('strength', type));
-  delete _draftDirty[type];
-  try { await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + type)); } catch(e) {}
+  localStorage.removeItem(_draftKey(domain, type));
+  delete _draftDirty[domain + ':' + type];
+  try { await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', domain + '_' + type)); } catch(e) {}
 }
 
-function _draftOnInput() {
-  if (!selectedType) return;
-  clearTimeout(_draftSaveDebounce[selectedType]);
-  _draftSaveDebounce[selectedType] = setTimeout(() => {
-    _draftSaveLocal(selectedType);
-    _draftDirty[selectedType] = true;
+function _draftOnInput(domain) {
+  const type = domain === 'strength' ? selectedType : _cardioSelectedType; // _cardioSelectedType added in Phase B; undefined here is fine, strength is the only live caller until then
+  if (!type) return;
+  const dk = domain + ':' + type;
+  clearTimeout(_draftSaveDebounce[dk]);
+  _draftSaveDebounce[dk] = setTimeout(() => {
+    _draftSaveLocal(domain, type);
+    _draftDirty[dk] = true;
   }, 300);
 }
 
-function _draftAttachListeners() {
-  document.getElementById('exerciseList')?.addEventListener('input', _draftOnInput);
-  document.getElementById('sessionNameInput')?.addEventListener('input', _draftOnInput);
+function _draftAttachListeners(domain, listId, nameInputId) {
+  document.getElementById(listId)?.addEventListener('input', () => _draftOnInput(domain));
+  document.getElementById(nameInputId)?.addEventListener('input', () => _draftOnInput(domain));
 }
 
-function _draftStartFirestoreTimer() {
-  clearInterval(_draftFirestoreTimer);
-  _draftFirestoreTimer = setInterval(async () => {
-    if (!selectedType || !_draftDirty[selectedType]) return;
-    _draftSaveLocal(selectedType);
-    await _draftSaveFirestore(selectedType);
-    _draftDirty[selectedType] = false;
+function _draftStartFirestoreTimer(domain, getType) {
+  clearInterval(_draftFirestoreTimer[domain]);
+  _draftFirestoreTimer[domain] = setInterval(async () => {
+    const type = getType();
+    if (!type) return;
+    const dk = domain + ':' + type;
+    if (!_draftDirty[dk]) return;
+    _draftSaveLocal(domain, type);
+    await _draftSaveFirestore(domain, type);
+    _draftDirty[dk] = false;
   }, 30000);
 }
 
@@ -2684,11 +2690,11 @@ async function checkAndAutoSavePreviousDrafts() {
   }
   for (const key of localKeys) {
     const type  = key.slice(prefix.length);
-    const local = _draftLoadLocal(type);
+    const local = _draftLoadLocal('strength', type);
     if (!local) continue;
     const draftDate = (local.createdAt || '').slice(0, 10);
     if (!draftDate || draftDate >= today) continue;
-    try { await _draftSaveFirestore(type); } catch(e) {}
+    try { await _draftSaveFirestore('strength', type); } catch(e) {}
   }
   let count = 0;
   try {
@@ -2750,9 +2756,10 @@ function _tabRestoreOrDraft(type) {
   }
 }
 
-function _draftShowModal(type, draft) {
+function _draftShowModal(domain, type, draft) {
   if (_draftModalType) return;
   _draftModalType = type;
+  _draftModalDomain = domain;
   const exCount = (draft.exercises || []).filter(e => e.weight || e.sets || e.reps).length;
   const timeStr = draft.lastModified
     ? new Date(draft.lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -2768,20 +2775,20 @@ function _draftShowModal(type, draft) {
 }
 
 function _draftModalResume() {
-  const type  = _draftModalType;
+  const domain = _draftModalDomain, type = _draftModalType;
   document.getElementById('draftModal').style.display = 'none';
   _draftModalType = null;
-  const draft = _draftLoadLocal(type);
+  const draft = _draftLoadLocal(domain, type);
   if (!draft) { toast(t('draft.discard'), 'error'); return; }
-  _draftApplyToForm('strength', draft);
-  _tabState[type] = _draftSerialize('strength');
+  _draftApplyToForm(domain, draft);
+  _tabState[domain + ':' + type] = _draftSerialize(domain);
 }
 
 async function _draftModalDiscard() {
-  const type = _draftModalType;
+  const domain = _draftModalDomain, type = _draftModalType;
   document.getElementById('draftModal').style.display = 'none';
   _draftModalType = null;
-  await _draftDelete(type);
+  await _draftDelete(domain, type);
 }
 
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
@@ -2797,7 +2804,7 @@ function clearWorkoutForm(silent = false) {
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
     (editTemplates[selectedType] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps, ex._legacyTarget)).join('');
-  _draftAttachListeners();
+  _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput');
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
   localStorage.removeItem(_draftKey('strength', selectedType));
@@ -3015,7 +3022,7 @@ async function submitData() {
     const cachedLW = { date: `${dd}/${mm}/${yyyy}`, dateISO: `${yyyy}-${mm}-${dd}`, type: selectedType, sessionName, exercises };
     try { localStorage.setItem(_cacheKeyLastWorkout(selectedType), JSON.stringify(cachedLW)); } catch(e) {}
     lastWorkouts[selectedType] = cachedLW;
-    await _draftDelete(selectedType);
+    await _draftDelete('strength', selectedType);
     toast(`${t('workout.saved_ok')} (${exercises.length} ${t('workout.exercises')})`, 'success');
     await reloadAppData();
     clearWorkoutForm(true);
@@ -3928,7 +3935,7 @@ function copyTargetToCard(cardEl) {
     if (ts) sInput.value = ts;
     if (tr) rInput.value = expandReps(ts, tr);
     toast(t('target.copied'), 'success');
-    _draftOnInput();
+    _draftOnInput('strength');
   } else {
     const lt = tEl?.dataset.legacy?.trim();
     if (!lt) { toast(t('target.not_set'), 'error'); return; }
@@ -3943,7 +3950,7 @@ function copyTargetToCard(cardEl) {
     if (parsed.weight === null && parsed.reps === null) {
       toast(t('target.parse_error'), 'error');
     } else {
-      _draftOnInput();
+      _draftOnInput('strength');
     }
   }
 }
