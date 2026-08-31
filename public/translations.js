@@ -277,6 +277,13 @@ export const TRANSLATIONS = {
     'settings.running_show':     'הצג עמוד אירובי',
     'settings.running_show_sub': 'מחליף את עמוד המדידות בנב-בר',
 
+    // ── Cardio (dynamic fields) ─────────────────────────────────────
+    'copy.last_btn':                  'העתקת אימון אחרון',
+    'clear.btn':                      'נקה טופס',
+    'cardio.add_field_btn':           '+ הוסף שדה',
+    'cardio.new_field_default_label': 'שדה חדש',
+    'cardio.date_required':           'יש למלא תאריך',
+
     // ── Target copy/bump ──────────────────────────────────────────
     'target.copy_hint':       'לחץ להעתיק ערכי יעד לטופס',
     'target.overwrite_confirm':'שדות מלאים יידרסו. להמשיך?',
@@ -548,6 +555,13 @@ export const TRANSLATIONS = {
     'run.chart.spm':        'Steps/min',
     'settings.running_show':     'Show Cardio Page',
     'settings.running_show_sub': 'Replaces the Measurements tab in the nav bar',
+
+    // ── Cardio (dynamic fields) ─────────────────────────────────────
+    'copy.last_btn':                  'Copy Last Workout',
+    'clear.btn':                      'Clear Form',
+    'cardio.add_field_btn':           '+ Add Field',
+    'cardio.new_field_default_label': 'New Field',
+    'cardio.date_required':           'Date is required',
 
     // ── Target copy/bump ──────────────────────────────────────────
     'target.copy_hint':       'Tap to copy target values to form',

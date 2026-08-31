@@ -1526,13 +1526,8 @@ function filterRunByRange(workouts, range) {
 async function initRunSection() {
   if (!_runDataPromise) _runDataPromise = loadRunData();  // fallback if prefetch didn't run
   await _runDataPromise;
-  // Pure re-render, no history write — matches showSection()'s own
-  // "history-free" contract. Uses whatever route is ALREADY current in
-  // history.state by the time this continuation runs (navigateTo/
-  // pushSubState always set it before initRunSection() is invoked), so
-  // this can never clobber /running/add (or any sub-state) with a
-  // duplicate/incorrect jump back to the dashboard.
-  _renderRunState(history.state?.runSubView, history.state?.runStep);
+  renderCardioTypeButtons();
+  selectCardioType(cardioSelectedType || runningTypes[0]);
 }
 
 // Pure DOM primitive: makes the running section's 3 top-level views
@@ -1887,6 +1882,147 @@ async function runSaveWorkout() {
     errEl.textContent = t('run.save_error') + err.message;
     errEl.style.display = '';
   }
+}
+
+// ─── CARDIO FIELD RENDERING ─────────────────────────────────────
+let lastCardioWorkouts = {};   // mirrors lastWorkouts, keyed by cardio type name
+
+function renderCardioFieldRow(field, value) {
+  const val = value ?? '';
+  let inputHtml;
+  if (field.fieldType === 'date') {
+    inputHtml = `<input type="text" class="cardio-field-input" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off" value="${escHtml(String(val))}">`;
+  } else if (field.fieldType === 'number') {
+    inputHtml = `<input type="number" class="cardio-field-input" step="any" value="${escHtml(String(val))}" placeholder="--">`;
+  } else if (field.fieldType === 'checkbox') {
+    inputHtml = `<label class="toggle-switch"><input type="checkbox" class="cardio-field-input"${val ? ' checked' : ''}><span class="toggle-slider"></span></label>`;
+  } else {
+    inputHtml = `<input type="text" class="cardio-field-input" value="${escHtml(String(val))}" placeholder="--">`;
+  }
+  return `<div class="run-form-field cardio-field-row" data-id="${escHtml(field.id)}" data-label="${escHtml(field.label)}" data-field-type="${escHtml(field.fieldType)}">
+    <label class="run-form-label">${escHtml(field.label)}</label>
+    ${inputHtml}
+  </div>`;
+}
+
+function renderCardioFieldList(type, prefillFields) {
+  const template = cardioEditTemplates[type] || [];
+  const byId = {};
+  (prefillFields || []).forEach(f => { byId[f.id] = f.value; });
+  document.getElementById('cardioFieldList').innerHTML =
+    template.map(f => renderCardioFieldRow(f, byId[f.id])).join('');
+}
+
+function renderCardioTypeButtons() {
+  document.getElementById('cardioTypeRow').innerHTML = runningTypes.map(type =>
+    `<button class="type-btn${type === cardioSelectedType ? ' active' : ''}" data-type="${escHtml(type)}" onclick="selectCardioType('${escHtml(type)}')">${escHtml(type)}</button>`
+  ).join('');
+}
+
+function selectCardioType(type) {
+  if (cardioSelectedType === type) return;
+  _tabSnapshotCurrent('cardio', cardioSelectedType);
+  if (cardioSelectedType && _draftHasFormData('cardio')) {
+    _draftSaveLocal('cardio', cardioSelectedType);
+    _draftDirty['cardio:' + cardioSelectedType] = true;
+  }
+  cardioSelectedType = type;
+  document.querySelectorAll('#cardioTypeRow .type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+
+  const last = lastCardioWorkouts[type];
+  const box  = document.getElementById('cardioHistoryPreview');
+  if (last) {
+    box.style.display = '';
+    box.innerHTML = `<div class="history-preview-title">${sessionDisplayDate(last)}${last.sessionName ? ' · ' + escHtml(last.sessionName) : ''}</div>`;
+    document.getElementById('cardioCopyLastBtn').style.display = '';
+  } else {
+    box.style.display = 'none';
+    document.getElementById('cardioCopyLastBtn').style.display = 'none';
+  }
+
+  const nameInput = document.getElementById('cardioSessionNameInput');
+  nameInput.value = '';
+  nameInput.placeholder = last?.sessionName ? (t('workout.name_last_ph') + last.sessionName) : t('workout.name_default_ph');
+
+  renderCardioFieldList(type);
+  _draftAttachListeners('cardio', 'cardioFieldList', 'cardioSessionNameInput');
+  _tabRestoreOrDraft('cardio', type);
+}
+
+function clearCardioForm(silent = false) {
+  if (!cardioSelectedType) return;
+  const nameInput = document.getElementById('cardioSessionNameInput');
+  const last = lastCardioWorkouts[cardioSelectedType];
+  nameInput.value = '';
+  nameInput.placeholder = last?.sessionName ? (t('workout.name_last_ph') + last.sessionName) : t('workout.name_default_ph');
+  renderCardioFieldList(cardioSelectedType);
+  _draftAttachListeners('cardio', 'cardioFieldList', 'cardioSessionNameInput');
+  delete _tabState['cardio:' + cardioSelectedType];
+  delete _draftDirty['cardio:' + cardioSelectedType];
+  localStorage.removeItem(_draftKey('cardio', cardioSelectedType));
+  if (currentUser) deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', 'cardio_' + cardioSelectedType)).catch(() => {});
+  if (!silent) toast(t('clear.success'), 'error');
+}
+
+function copyLastCardioWorkout() {
+  const last = lastCardioWorkouts[cardioSelectedType];
+  if (!last) return;
+  const existingDraft = _draftLoadLocal('cardio', cardioSelectedType);
+  if (existingDraft && _draftHasBannerData('cardio', existingDraft)) {
+    if (!confirm(t('draft.overwrite_confirm'))) return;
+  }
+  const hasData = [...document.querySelectorAll('#cardioFieldList .cardio-field-input')].some(inp =>
+    inp.type === 'checkbox' ? inp.checked : inp.value.trim()
+  );
+  if (hasData && !confirm(t('target.overwrite_confirm'))) return;
+  renderCardioFieldList(cardioSelectedType, last.fields);
+  toast(`✓ ${t('copy.success')} ${t('copy.from')}${sessionDisplayDate(last)}`, 'success');
+  _draftOnInput('cardio');
+}
+
+function addCustomCardioField() {
+  const id = 'adhoc_' + genId();
+  document.getElementById('cardioFieldList').insertAdjacentHTML('beforeend',
+    renderCardioFieldRow({ id, label: t('cardio.new_field_default_label'), fieldType: 'text' }, ''));
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+async function submitCardioData() {
+  const btn = document.getElementById('cardioSaveBtn');
+  const fields = [];
+  document.querySelectorAll('#cardioFieldList .cardio-field-row').forEach(row => {
+    const ft = row.dataset.fieldType;
+    const input = row.querySelector('.cardio-field-input');
+    let value = ft === 'checkbox' ? input.checked : input.value.trim();
+    if (ft !== 'checkbox' && value === '') return; // skip empty non-checkbox fields, same convention as saveMeasurement
+    fields.push({ id: row.dataset.id, label: row.dataset.label, fieldType: ft, value });
+  });
+  const dateField = fields.find(f => f.fieldType === 'date');
+  if (!dateField || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) {
+    toast(t('cardio.date_required'), 'error'); return;
+  }
+  const [dd, mm, yyyy] = dateField.value.split('/');
+  const dateISO = `${yyyy}-${mm}-${dd}`;
+
+  const sessionName = document.getElementById('cardioSessionNameInput')?.value.trim() || '';
+  btn.disabled = true; btn.innerText = t('saving');
+  try {
+    await addDoc(collection(db, 'users', currentUser.uid, 'runWorkouts'), {
+      date: dateField.value, dateISO,
+      workoutType: cardioSelectedType,
+      sessionName, fields,
+      createdAt: serverTimestamp(),
+    });
+    const cachedLW = { date: dateField.value, dateISO, workoutType: cardioSelectedType, sessionName, fields };
+    lastCardioWorkouts[cardioSelectedType] = cachedLW;
+    await _draftDelete('cardio', cardioSelectedType);
+    toast(t('workout.saved_ok'), 'success');
+    await reloadAppData();
+    clearCardioForm(true);
+  } catch (err) {
+    toast(t('error.save') + err.message, 'error');
+  }
+  btn.disabled = false; btn.innerText = t('btn.save_workout');
 }
 
 // ─── RUNNING HISTORY ─────────────────────────────────────────
@@ -2669,6 +2805,7 @@ const WORKOUT_DOMAINS = {
     editTabsId:           'cardioEditTabs',
     typeRowId:             'cardioTypeRow',
     entriesCollection: 'runWorkouts',
+    getSelectedType: () => cardioSelectedType,
   },
 };
 
@@ -4506,6 +4643,18 @@ document.getElementById('m-date').addEventListener('input', function () {
   if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
   if (v.length > 5) v = v.slice(0,5) + '/' + v.slice(5,9);
   this.value = v;
+});
+
+// #cardioFieldList's date input is created dynamically (renderCardioFieldRow),
+// so unlike #m-date above this must be event-delegated rather than a
+// one-time addEventListener.
+document.getElementById('cardioFieldList').addEventListener('input', e => {
+  const row = e.target.closest('.cardio-field-row');
+  if (!row || row.dataset.fieldType !== 'date') return;
+  let v = e.target.value.replace(/\D/g,'');
+  if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
+  if (v.length > 5) v = v.slice(0,5) + '/' + v.slice(5,9);
+  e.target.value = v;
 });
 
 // ─── EXPOSE TO WINDOW (for inline onclick handlers) ───────────
