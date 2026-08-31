@@ -2910,15 +2910,28 @@ async function migrateCardioDataV2() {
       window.__cardioMigrationDone = true;
       return;
     }
-    const oldTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.order - b.order);
+    const oldTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
 
     const templateData = { types: oldTypes.map(t => t.name) };
+    // Every old type gets the identical 8-field CARDIO_MIGRATION_FIELD_MAP template —
+    // intentional, not an oversight: the old fixed-schema runWorkoutTypes/runWorkouts
+    // shape had no per-type field customization to preserve, so there's nothing to
+    // differentiate between types here. Later features (e.g. confirmAddCardioType)
+    // are what let a NEW type diverge from this seed template.
     oldTypes.forEach(t => { templateData[t.name] = CARDIO_MIGRATION_FIELD_MAP.map(f => ({ ...f })); });
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'runningTemplates'), templateData);
 
     const oldWorkoutsSnap = await getDocs(collection(db, 'users', currentUser.uid, 'runWorkouts'));
     for (const wDoc of oldWorkoutsSnap.docs) {
       const w = wDoc.data();
+      // Per-doc idempotency guard: a prior partial run of this migration may have
+      // already rewritten this exact doc to the new shape (workoutType/fields present,
+      // old keys already removed via deleteField()) before failing elsewhere and
+      // leaving the overall guard flag unset. Reprocessing it here would read the
+      // now-undefined old-schema keys and silently corrupt the doc (empty fields[],
+      // wrong workoutType, garbled date — see task-1 review). Skip anything that
+      // already looks migrated.
+      if (w.workoutType !== undefined || w.fields !== undefined) continue;
       const typeName = oldTypes.find(t => t.id === w.workoutTypeId)?.name || oldTypes[0].name;
       const fields = CARDIO_MIGRATION_FIELD_MAP
         .filter(f => f.id !== 'date' && w[f.id] != null && w[f.id] !== '')
