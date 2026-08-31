@@ -1494,13 +1494,13 @@ let lastWorkouts     = {};
 // ─── RUNNING STATE ────────────────────────────────────────────
 const RUNNING_ALLOWED_EMAILS = ['eitan357@gmail.com', 'test@gmail.com'];
 let runningEnabled     = false;
-let runWorkouts        = [];
-let runWorkoutTypes    = [];
+let allRunWorkouts     = [];   // was runWorkouts — renamed for symmetry with allSessions/allMeasurements
+let runningTypes       = [];   // was runWorkoutTypes' .name list — now plain strings, like workoutTypes
+let cardioSelectedType = null;
+let cardioEditTab      = null;
+let cardioEditTemplates = {};
 let _runCharts         = {};
 let _runCurrentRange   = 'year';
-let _runAddStep        = 1;
-let _runSelectedTypeId = null;
-let _runPrefill        = {};
 let _runDataPromise    = null;  // holds the in-flight or resolved prefetch promise
 
 // ─── RUNNING DATA LAYER ──────────────────────────────────────
@@ -1515,13 +1515,13 @@ async function loadRunData() {
         addDoc(typesRef, { name: 'Elliptical', order: 1 }),
       ]);
       const fresh = await getDocs(query(typesRef, orderBy('order')));
-      runWorkoutTypes = fresh.docs.map(d => ({ id: d.id, ...d.data() }));
+      runningTypes = fresh.docs.map(d => ({ id: d.id, ...d.data() }));
     } else {
-      runWorkoutTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      runningTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
     const wRef  = collection(db, 'users', currentUser.uid, 'runWorkouts');
     const wSnap = await getDocs(query(wRef, orderBy('date', 'desc')));
-    runWorkouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allRunWorkouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (err) {
     toast('שגיאה בטעינת נתוני ריצה: ' + err.message, 'error');
   }
@@ -1538,7 +1538,7 @@ async function addRunWorkout(workout) {
   const ref = collection(db, 'users', currentUser.uid, 'runWorkouts');
   await addDoc(ref, { ...workout, createdAt: serverTimestamp() });
   const snap = await getDocs(query(ref, orderBy('date', 'desc')));
-  runWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  allRunWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 // ─── RUNNING CALCULATIONS ────────────────────────────────────
@@ -1644,14 +1644,14 @@ function runShowHistory()   { navigateTo('/running/history'); }
 function runGoBack() { history.back(); }
 
 function renderRunDashboard() {
-  const streak = calcRunStreak(runWorkouts);
+  const streak = calcRunStreak(allRunWorkouts);
   document.getElementById('run-streak-card').innerHTML = `
     <div class="run-streak-badge">
       <div class="run-streak-num">${streak}</div>
       <div class="run-streak-lbl">${t('run.streak_label')}</div>
     </div>`;
 
-  const prs = calcRunPRs(runWorkouts);
+  const prs = calcRunPRs(allRunWorkouts);
   document.getElementById('run-prs-card').innerHTML = `
     <div class="run-card-title">${t('run.prs_title')}</div>
     <div class="run-stat-row">
@@ -1660,9 +1660,9 @@ function renderRunDashboard() {
       <div class="run-stat"><div class="run-stat-val">${prs.lowestHeartRate > 0 ? prs.lowestHeartRate : '--'}</div><div class="run-stat-lbl">${t('run.lowest_hr')}</div></div>
     </div>`;
 
-  const last = runWorkouts[0];
+  const last = allRunWorkouts[0];
   if (last) {
-    const rawLastType = runWorkoutTypes.find(tp => tp.id === last.workoutTypeId)?.name;
+    const rawLastType = runningTypes.find(tp => tp.id === last.workoutTypeId)?.name;
     const typeName = rawLastType ? escHtml(translateTypeName(rawLastType)) : t('run.default_type');
     document.getElementById('run-last-card').innerHTML = `
       <div class="run-card-title">${t('run.last_title')}</div>
@@ -1702,7 +1702,7 @@ function runSetRange(range) {
 }
 
 function renderRunCharts() {
-  const filtered  = filterRunByRange(runWorkouts, _runCurrentRange);
+  const filtered  = filterRunByRange(allRunWorkouts, _runCurrentRange);
   const sorted    = [...filtered].sort((a, b) => a.date.localeCompare(b.date));
   const container = document.getElementById('run-charts-list');
   if (!container) return;
@@ -1774,7 +1774,7 @@ function _renderRunStep(n) {
   document.getElementById('run-add-step3').style.display = n === 3 ? '' : 'none';
   if (n === 1) {
     const list = document.getElementById('run-type-list');
-    list.innerHTML = runWorkoutTypes.map(type =>
+    list.innerHTML = runningTypes.map(type =>
       `<button class="run-type-btn" onclick="runSelectType('${type.id}','${escHtml(type.name)}')">${escHtml(translateTypeName(type.name))}</button>`
     ).join('');
   } else if (n === 2) {
@@ -1800,7 +1800,7 @@ function runSelectType(id, name) {
 // _runPrefill so popstate/back re-renders the same values.
 function _renderRunStep3Form(prefill = _runPrefill) {
   _runPrefill = prefill;
-  const selectedType = runWorkoutTypes.find(tp => tp.id === _runSelectedTypeId);
+  const selectedType = runningTypes.find(tp => tp.id === _runSelectedTypeId);
   document.getElementById('run-step3-type').textContent = selectedType ? translateTypeName(selectedType.name) : '';
 
   document.getElementById('run-f-date').value  = prefill.date              ?? new Date().toISOString().slice(0, 10);
@@ -1972,12 +1972,12 @@ async function runSaveWorkout() {
 function renderRunHistory() {
   const list = document.getElementById('run-history-list');
   if (!list) return;
-  if (runWorkouts.length === 0) {
+  if (allRunWorkouts.length === 0) {
     list.innerHTML = `<div style="text-align:center;color:var(--sub);padding:20px;">${t('run.no_workouts')}</div>`;
     return;
   }
-  list.innerHTML = runWorkouts.map(w => {
-    const rawHistType = runWorkoutTypes.find(tp => tp.id === w.workoutTypeId)?.name ?? '';
+  list.innerHTML = allRunWorkouts.map(w => {
+    const rawHistType = runningTypes.find(tp => tp.id === w.workoutTypeId)?.name ?? '';
     const typeName = escHtml(translateTypeName(rawHistType));
     const pace     = w.paceMinPerKm ? formatPace(w.paceMinPerKm) : '--';
     const tired    = w.feltTired ? '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-tired"/></svg>' : '';
@@ -2045,10 +2045,11 @@ onAuthStateChanged(auth, async user => {
     selectedType       = null;
     _tabState          = {};
     activeFilter       = 'all';
-    runWorkouts        = [];
-    runWorkoutTypes    = [];
-    _runSelectedTypeId = null;
-    _runPrefill        = {};
+    allRunWorkouts     = [];
+    runningTypes       = [];
+    cardioSelectedType = null;
+    cardioEditTab      = null;
+    cardioEditTemplates = {};
     _runDataPromise    = null;
     Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
     _draftFirestoreTimer = {};
@@ -2709,6 +2710,42 @@ const WORKOUT_DOMAINS = {
     getEditTab:      () => editTab,
     setEditTab:      v => { editTab = v; },
     getTypes:        () => workoutTypes,
+  },
+  cardio: {
+    serialize: () => {
+      const fields = [];
+      document.querySelectorAll('#cardioFieldList .cardio-field-row').forEach(row => {
+        const ft = row.dataset.fieldType;
+        let value;
+        if (ft === 'checkbox') value = row.querySelector('.cardio-field-input').checked;
+        else value = row.querySelector('.cardio-field-input').value;
+        fields.push({ id: row.dataset.id, label: row.dataset.label, fieldType: ft, value });
+      });
+      return { workoutName: document.getElementById('cardioSessionNameInput')?.value || '', fields };
+    },
+    applyToForm: draft => {
+      const nameInput = document.getElementById('cardioSessionNameInput');
+      if (nameInput) nameInput.value = draft.workoutName || '';
+      document.querySelectorAll('#cardioFieldList .cardio-field-row').forEach(row => {
+        const f = (draft.fields || []).find(x => x.id === row.dataset.id);
+        if (!f || f.value === '' || f.value == null) return;
+        const input = row.querySelector('.cardio-field-input');
+        if (row.dataset.fieldType === 'checkbox') input.checked = !!f.value;
+        else input.value = f.value;
+      });
+    },
+    hasFormData: () => {
+      if (document.getElementById('cardioSessionNameInput')?.value.trim()) return true;
+      return [...document.querySelectorAll('#cardioFieldList .cardio-field-input')].some(inp =>
+        inp.type === 'checkbox' ? inp.checked : inp.value.trim()
+      );
+    },
+    qualifies: draft => !!(draft.workoutName?.trim()) || (draft.fields || []).some(f => f.value !== '' && f.value != null && f.value !== false),
+    templatesDoc: ['config', 'runningTemplates'],
+    editListContainerId: 'cardioEditListContainer',
+    editTabsId:           'cardioEditTabs',
+    typeRowId:             'cardioTypeRow',
+    entriesCollection: 'runWorkouts',
   },
 };
 
