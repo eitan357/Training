@@ -1495,12 +1495,18 @@ let lastWorkouts     = {};
 const RUNNING_ALLOWED_EMAILS = ['eitan357@gmail.com', 'test@gmail.com'];
 let runningEnabled     = false;
 let allRunWorkouts     = [];   // was runWorkouts — renamed for symmetry with allSessions/allMeasurements
-let runningTypes       = [];   // was runWorkoutTypes' .name list — now plain strings, like workoutTypes
+let runningTypes       = [];   // was runWorkoutTypes — {id, name} objects loaded from Firestore, same shape as before the rename
 let cardioSelectedType = null;
 let cardioEditTab      = null;
 let cardioEditTemplates = {};
 let _runCharts         = {};
 let _runCurrentRange   = 'year';
+// _runSelectedTypeId/_runPrefill are still read/assigned by the old Add-Workout
+// wizard (runShowStep1/runSelectType/_renderRunStep3Form/runSaveWorkout), which
+// stays live and onclick-wired until Task 8 deletes it — kept declared here
+// (not dropped) so those existing call sites don't throw ReferenceError.
+let _runSelectedTypeId = null;
+let _runPrefill        = {};
 let _runDataPromise    = null;  // holds the in-flight or resolved prefetch promise
 
 // ─── RUNNING DATA LAYER ──────────────────────────────────────
@@ -2050,6 +2056,8 @@ onAuthStateChanged(auth, async user => {
     cardioSelectedType = null;
     cardioEditTab      = null;
     cardioEditTemplates = {};
+    _runSelectedTypeId = null;
+    _runPrefill        = {};
     _runDataPromise    = null;
     Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
     _draftFirestoreTimer = {};
