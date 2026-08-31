@@ -147,43 +147,18 @@ git commit -m "feat(history): add strength/cardio toggle, generalize renderHisto
 ## Task 2: Cardio Color Strategy + Card Body Renderer
 
 **Files:**
-- Modify: `public/index.html` (`WORKOUT_DOMAINS.cardio`, new CSS)
+- Modify: `public/index.html` (`WORKOUT_DOMAINS.cardio`)
 
 **Interfaces:**
-- Produces: `hashColorClass(name)`, `WORKOUT_DOMAINS.cardio.colorClass/renderCardMeta/renderCardBody/badgeText` (the four keys Phase A Task 7 requires every domain to supply).
+- Consumes: `typeColorClass(types, typeName)` — the shared 6-color indexed palette introduced in `2026-08-31-A-shared-workout-engine.md` Task 7 Step 0, already used by strength; this task is only cardio's registration against the same function, no new palette/CSS.
+- Produces: `WORKOUT_DOMAINS.cardio.colorClass/renderCardMeta/renderCardBody/badgeText` (the four keys Phase A Task 7 requires every domain to supply).
 
-- [ ] **Step 1: Add a small fixed palette + hash function**
+- [ ] **Step 1: Register the cardio domain's card-rendering config**
 
-Strength's colors are hardcoded per exact type name (`dot-a`/`dot-b`, styled in CSS for exactly those two classes) — cardio's types are open-ended and user-named, so this task adds a **hash-of-name → palette index** strategy instead of per-name CSS. Add, near the existing `.dot-a`/`.dot-b`/`.badge-a`/`.badge-b` CSS rules:
-
-```css
-    .dot-c0, .badge-c0 { --dc: #536fac; } .dot-c1, .badge-c1 { --dc: #3c7a54; }
-    .dot-c2, .badge-c2 { --dc: #aa7941; } .dot-c3, .badge-c3 { --dc: #9b5aaf; }
-    .dot-c4, .badge-c4 { --dc: #a05555; } .dot-c5, .badge-c5 { --dc: #4a8a8a; }
-    .session-dot[class*="dot-c"] { background: var(--dc); }
-    .session-badge[class*="badge-c"] { background: var(--dc); color: #fff; }
-```
-
-(6-color palette, reusing the exact muted hex values already established for the running charts in `docs/superpowers/specs/2026-08-30-ui-polish-settings-history-charts-design.md` §3 — visual consistency with the charts this same plan relocates in Task 4.)
-
-Add, near `genId()`:
+Cardio's types are open-ended and user-named, same as strength's — no cardio-specific color work is needed here, `typeColorClass` (Phase A) already assigns by position in whichever `types` array is passed to it, so cardio just passes `runningTypes` instead of `workoutTypes`. Add to `WORKOUT_DOMAINS.cardio` (extending the object from Phase B):
 
 ```js
-// Deterministic name → palette-index hash, so the same cardio type always
-// gets the same color across sessions without needing a stored color field.
-function hashColorClass(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return 'c' + (h % 6);
-}
-```
-
-- [ ] **Step 2: Register the cardio domain's card-rendering config**
-
-Add to `WORKOUT_DOMAINS.cardio` (extending the object from Phase B):
-
-```js
-    colorClass: s => hashColorClass(s.workoutType),
+    colorClass: s => typeColorClass(runningTypes, s.workoutType),
     renderCardMeta: s => `${(s.fields||[]).length} ${t('cardio.fields_count')}`,
     badgeText: s => escHtml(s.workoutType),
     renderCardBody: s => `
@@ -197,19 +172,19 @@ Add to `WORKOUT_DOMAINS.cardio` (extending the object from Phase B):
       </table>`,
 ```
 
-- [ ] **Step 3: Add the new i18n key**
+- [ ] **Step 2: Add the new i18n key**
 
 Hebrew: `'cardio.fields_count': 'שדות',` — English: `'cardio.fields_count': 'fields',`
 
-- [ ] **Step 4: Run the full suite, manual check**
+- [ ] **Step 3: Run the full suite, manual check**
 
-Run: `npx playwright test`. Manual: switch History to אירובי, confirm cards render with distinct colors per type, expand a card, confirm the fields table shows label/value pairs including a checkmark for checkbox fields.
+Run: `npx playwright test`. Manual: switch History to אירובי, confirm cards render with distinct colors per type (index 0/1 matching strength's green/purple if cardio happens to have 2+ types, index 2+ the amber/violet/red-brown/teal rotation), expand a card, confirm the fields table shows label/value pairs including a checkmark for checkbox fields.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add public/index.html public/translations.js
-git commit -m "feat(history): cardio card colors (hash-based palette) and fields-table card body"
+git commit -m "feat(history): register cardio card colors via the shared indexed palette, add fields-table card body"
 ```
 
 ---

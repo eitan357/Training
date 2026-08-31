@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - All JS changes in `public/index.html` only; test changes in `tests/*.spec.ts`. No new files this phase.
-- **Zero behavior change for strength.** Every task ends with `npx playwright test` (the full suite) passing unchanged — this is the regression canary called out in the spec §4.
+- **Zero behavior change for strength**, with one explicit, user-requested exception: Task 7 replaces the 2-type hardcoded color CSS (`.dot-a`/`.dot-b`) with a 6-color indexed palette shared by both domains, fixing an existing bug where a 3rd+ strength type renders with no color at all. A's and B's colors are pinned to stay pixel-identical; only a 3rd+ type's rendering visibly changes (from broken to correct). Every other task ends with `npx playwright test` (the full suite) passing unchanged — this is the regression canary called out in the spec §4.
 - Function names introduced here (`WORKOUT_DOMAINS`, `_draftKey`, `_draftSerialize`, etc.) are **consumed by Phase B** — do not rename after this plan ships without updating `2026-08-31-B-cardio-page-rebuild.md`.
 - `escHtml()` wraps any user-controlled string in `innerHTML` — standing project rule, unaffected by this refactor (no new user-controlled strings introduced).
 - Commit after every task.
@@ -1118,11 +1118,64 @@ git commit -m "refactor(editor): generalize template-editor shell (render/add/re
 ## Task 7: Generalize History Rendering, Edit, and Delete
 
 **Files:**
-- Modify: `public/index.html:3014-3070` (`buildSessionCard`, `renderHistory`), `:3231-3323` (`editSession`, `saveSessionEdit`, `deleteSession`)
+- Modify: `public/index.html:3014-3070` (`buildSessionCard`, `renderHistory`), `:3231-3323` (`editSession`, `saveSessionEdit`, `deleteSession`), `:408-414` (`.dot-a`/`.dot-b`/`.badge-a`/`.badge-b` CSS)
 
 **Interfaces:**
-- Consumes: `WORKOUT_DOMAINS` — extended with `entriesCollection`, `dotClass`/`badgeClass` strategy, `renderCardBody`, `renderEditRow`, `collectEditRow`.
-- Produces: registry additions consumed by Phase C's history-page unification (`2026-08-31-C-history-unification-and-cleanup.md`).
+- Consumes: `WORKOUT_DOMAINS` — extended with `entriesCollection`, `colorClass`, `renderCardBody`, `renderEditRow`, `collectEditRow`.
+- Produces: `typeColorClass(types, typeName)` (shared, domain-agnostic — used by both strength in this task and cardio in Plan B/C, see Step 0 below), registry additions consumed by Phase C's history-page unification (`2026-08-31-C-history-unification-and-cleanup.md`).
+
+**One intentional exception to this plan's "zero behavior change" constraint:** today only exactly two strength types (`A`/`B`) have hardcoded colors (`.dot-a`/`.dot-b`) — the *existing* template editor (`03-workout-template-editor.md`) already lets a user add a third/fourth type, and that type silently renders with no color at all (no CSS rule matches `dot-c`, `dot-d`, ...). Per explicit user request, this task fixes that for strength (and Plan B/C reuses the same fix for cardio) by replacing the two hardcoded classes with a 6-color **indexed palette** — color assigned by each type's position in the domain's `types` array, not by its name. Index 0 keeps `A`'s exact existing green, index 1 keeps `B`'s exact existing purple, so **every currently-saved A/B session renders pixel-identical colors after this task** — only a 3rd+ type (which today renders with no color at all) visibly changes, from broken to correct. This is a bug fix riding along with the refactor, not a silent behavior change to anything that worked before.
+
+- [ ] **Step 0: Replace the 2-type hardcoded color CSS with a shared 6-color indexed palette**
+
+Find (`public/index.html:408-414`):
+
+```css
+    .dot-a { background: var(--green); }
+    .dot-b { background: var(--primary); }
+    ...
+    .badge-a { background: var(--green); }
+    .badge-b { background: var(--primary); }
+```
+
+(read the exact live lines — there may be a `.dot-c`-style rule or none at all between `.dot-b` and `.badge-a`; replace only the four lines shown, keep anything else in between untouched) with:
+
+```css
+    /* Shared 6-color indexed palette — position-in-types-array decides the
+       color, not the type's name, so it works identically for strength's
+       user-defined types and cardio's user-defined types (Plan B/C). Index
+       0/1 are exactly A's/B's pre-existing green/purple so already-saved
+       sessions don't visibly change color. */
+    .dot-c0   { background: var(--green); }
+    .dot-c1   { background: var(--primary); }
+    .dot-c2   { background: #aa7941; }
+    .dot-c3   { background: #9b5aaf; }
+    .dot-c4   { background: #a05555; }
+    .dot-c5   { background: #4a8a8a; }
+    .badge-c0 { background: var(--green); }
+    .badge-c1 { background: var(--primary); }
+    .badge-c2 { background: #aa7941; }
+    .badge-c3 { background: #9b5aaf; }
+    .badge-c4 { background: #a05555; }
+    .badge-c5 { background: #4a8a8a; }
+```
+
+Add, near `genId()` (`public/index.html:2156`):
+
+```js
+// Shared color-assignment strategy for BOTH strength and cardio type
+// badges/dots: color follows a type's position in its domain's `types`
+// array (workoutTypes for strength, runningTypes for cardio — Plan B), not
+// its name. This is what lets a user-added 3rd/4th/Nth type always get a
+// distinct, defined color instead of silently rendering colorless (the bug
+// that motivated this function). Index 0/1 are pinned to strength's
+// pre-existing green/purple so A/B never visibly change color.
+const TYPE_COLOR_PALETTE_SIZE = 6;
+function typeColorClass(types, typeName) {
+  const idx = types.indexOf(typeName);
+  return 'c' + (idx >= 0 ? idx % TYPE_COLOR_PALETTE_SIZE : 0);
+}
+```
 
 - [ ] **Step 1: Extend `WORKOUT_DOMAINS.strength` with history-rendering config**
 
@@ -1130,7 +1183,7 @@ Add to the `strength` entry in `WORKOUT_DOMAINS` (from Task 6's block):
 
 ```js
     entriesCollection: 'workouts',
-    colorClass: s => s.type.toLowerCase(),   // 'dot-a' / 'badge-a' etc — strength's existing 2-type hardcode stays exactly as-is; Phase C introduces a hash-based strategy for cardio's open-ended type names
+    colorClass: s => typeColorClass(workoutTypes, s.type),
     renderCardMeta: s => `${(s.exercises||[]).length} ${t('workout.exercises')}`,
     renderCardBody: s => `
       <table class="hist-table">
@@ -1275,13 +1328,13 @@ Find (inside `renderHistory`, both branches of the month-grouping `if (isLatest)
 - [ ] **Step 4: Run the full suite**
 
 Run: `npx playwright test`
-Expected: all pass, unchanged. Manual: open History, confirm cards, colors, month grouping, long-press select, and expand/collapse are pixel-identical to before this task.
+Expected: all pass, unchanged. Manual: open History, confirm A/B cards, colors, month grouping, long-press select, and expand/collapse are pixel-identical to before this task. Then, in the template editor, add a temporary 3rd strength type, save, log one entry under it, and confirm its History card now renders with a distinct color (amber, per palette index 2) instead of the pre-existing no-color bug — this is the one deliberate visible fix in this task, confirm it, then remove the temporary type again if it isn't wanted long-term.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add public/index.html
-git commit -m "refactor(history): generalize buildSessionCard rendering by domain"
+git commit -m "refactor(history): generalize buildSessionCard rendering by domain, fix uncolored 3rd+ workout types with a shared indexed palette"
 ```
 
 ---
@@ -1310,6 +1363,6 @@ git commit -m "test: full regression pass after shared-workout-engine extraction
 
 ## Self-Review Notes (per superpowers:writing-plans)
 
-- **Spec coverage:** Spec §4's extraction list (draft engine, tabs, copy-last-workout/clear-form, template-editor shell, history chrome) → Tasks 1-7 respectively. Spec §3.3 (domain-namespaced draft keys) → Task 1. The "left domain-specific, not shared" half of §4 (strength's exercise-card renderer) is explicitly **not** touched anywhere in this plan — verified by grep in Task 4/Step 2's instruction to read live line numbers rather than assume them, so no task accidentally rewrites `makeExCard`/`copyTargetToCard`/`parseTargetString`.
+- **Spec coverage:** Spec §4's extraction list (draft engine, tabs, copy-last-workout/clear-form, template-editor shell, history chrome) → Tasks 1-7 respectively. User feedback from the design-review round (not in the original spec doc, added directly to this plan): the shared indexed color palette (Task 7, Step 0) fixing uncolored 3rd+ workout types for both domains. Spec §3.3 (domain-namespaced draft keys) → Task 1. The "left domain-specific, not shared" half of §4 (strength's exercise-card renderer) is explicitly **not** touched anywhere in this plan — verified by grep in Task 4/Step 2's instruction to read live line numbers rather than assume them, so no task accidentally rewrites `makeExCard`/`copyTargetToCard`/`parseTargetString`.
 - **Type/name consistency check:** `WORKOUT_DOMAINS` is declared once (Task 2) and only ever extended (Tasks 6, 7), never redeclared. `_draftKey/_draftSerialize/_draftApplyToForm/_draftHasFormData/_draftQualifies/_draftHasBannerData/_draftSaveLocal/_draftLoadLocal/_draftSaveFirestore/_draftDelete/_draftOnInput/_draftAttachListeners/_draftStartFirestoreTimer/_draftShowModal/_tabSnapshotCurrent/_tabRestoreOrDraft` all gain a leading `domain` parameter in the task that touches them and every downstream task's call sites are updated in the same task (no task leaves a stale bare call for a later task to discover) — Task 8's full-suite run is the backstop that would catch any missed call site immediately (a syntax/runtime error, not a silent behavior change).
 - **No placeholders:** every step contains complete, copy-pasteable code except the three places explicitly marked `...` (Tasks 4, 6, 7) — each of those three names the exact unchanged surrounding code by line-range citation and states precisely which one or two lines inside it change, which is the plan's own "read the live file, only these lines move" instruction rather than a placeholder.
