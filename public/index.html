@@ -1995,10 +1995,10 @@ function runToggleHistoryRow(id) {
 }
 
 // ─── DRAFT STATE ──────────────────────────────────────────────
-let _draftDirty          = {};   // { type: boolean }
-let _draftSaveDebounce   = {};   // { type: timeoutId }
-let _draftFirestoreTimer = {};
-let _tabState            = {};   // { type: serialized form state }
+let _draftDirty          = {};   // { "domain:type": boolean }
+let _draftSaveDebounce   = {};   // { "domain:type": timeoutId }
+let _draftFirestoreTimer = {};   // { domain: intervalId }
+let _tabState            = {};   // { "domain:type": serialized form state }
 let _draftModalType      = null;
 let _draftModalDomain    = null;
 const _isNewSession      = !sessionStorage.getItem('session_active');
@@ -2026,6 +2026,7 @@ onAuthStateChanged(auth, async user => {
     _runSelectedTypeId = null;
     _runPrefill        = {};
     Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
+    _draftFirestoreTimer = {};
     if (editPanelOpen)   toggleEditPanel();
     if (typesEditorOpen) toggleTypesEditor();
 
@@ -2368,7 +2369,7 @@ async function initApp() {
   selectType(workoutTypes[0] || 'A');
   renderTypeButtons();
   _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput');
-  _draftStartFirestoreTimer('strength', () => selectedType);
+  _draftStartFirestoreTimer('strength', () => WORKOUT_DOMAINS.strength.getSelectedType());
   hideOverlay();
   // Phase 2 — background Firestore sync (non-blocking)
   _backgroundSync(hadCache).catch(() => {});
@@ -2557,7 +2558,7 @@ const WORKOUT_DOMAINS = {
       const templateData = { types };
       types.forEach(wtype => {
         templateData[wtype] = (templates[wtype] || [])
-          .filter(ex => ex.name.trim())
+          .filter(ex => !WORKOUT_DOMAINS.strength.isEmptyItem(ex))
           .map(ex => {
             const hasNew = (ex.targetWeight || '').trim() || (ex.targetSets || '').trim() || (ex.targetReps || '').trim();
             const r = { id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight || '').trim(), targetSets: (ex.targetSets || '').trim(), targetReps: (ex.targetReps || '').trim() };
@@ -2587,12 +2588,22 @@ const WORKOUT_DOMAINS = {
         </tbody>
       </table>`,
     badgeText: s => `${t('workout.badge')} ${escHtml(s.type)}`,
+    getSelectedType: () => selectedType,
+    getTemplates:    () => editTemplates,
+    getEditTab:      () => editTab,
+    setEditTab:      v => { editTab = v; },
+    getTypes:        () => workoutTypes,
   },
 };
 
-// Generic dispatchers — every caller below (draft engine, tab state,
-// copy-last-workout) goes through these, never the per-domain functions
-// directly, so Phase B only has to add a registry entry, not touch callers.
+// Generic dispatchers — the draft engine, tab state and copy-last-workout go
+// through these rather than the per-domain functions directly. Phase B adds a
+// `cardio` entry to this registry; most callers below already dispatch through
+// it via `domain`, though a handful of template-editor/draft functions
+// (renderEditList, collectEdits, switchEditTab, addEditExercise, removeEditEx,
+// confirmAddType, removeWorkoutType, saveTemplates, checkAndAutoSavePreviousDrafts)
+// still read strength's globals directly and will need their own
+// generalization pass in Phase B.
 function _draftSerialize(domain)          { return WORKOUT_DOMAINS[domain].serialize(); }
 function _draftApplyToForm(domain, draft) { return WORKOUT_DOMAINS[domain].applyToForm(draft); }
 function _draftHasFormData(domain)        { return WORKOUT_DOMAINS[domain].hasFormData(); }
@@ -2635,7 +2646,7 @@ async function _draftDelete(domain, type) {
 }
 
 function _draftOnInput(domain) {
-  const type = domain === 'strength' ? selectedType : _cardioSelectedType; // _cardioSelectedType added in Phase B; undefined here is fine, strength is the only live caller until then
+  const type = WORKOUT_DOMAINS[domain].getSelectedType();
   if (!type) return;
   const dk = domain + ':' + type;
   clearTimeout(_draftSaveDebounce[dk]);
@@ -2645,9 +2656,14 @@ function _draftOnInput(domain) {
   }, 300);
 }
 
+// Memoized per domain so the (element, 'input', handler) triple is identical on
+// every call and addEventListener de-duplicates it. clearWorkoutForm() re-attaches
+// after every successful save; a fresh closure here would stack listeners forever.
+const _draftInputHandlers = {};
 function _draftAttachListeners(domain, listId, nameInputId) {
-  document.getElementById(listId)?.addEventListener('input', () => _draftOnInput(domain));
-  document.getElementById(nameInputId)?.addEventListener('input', () => _draftOnInput(domain));
+  const h = _draftInputHandlers[domain] ||= () => _draftOnInput(domain);
+  document.getElementById(listId)?.addEventListener('input', h);
+  document.getElementById(nameInputId)?.addEventListener('input', h);
 }
 
 function _draftStartFirestoreTimer(domain, getType) {
@@ -2785,7 +2801,19 @@ async function checkAndAutoSavePreviousDrafts() {
   try {
     const snap = await getDocs(collection(db, 'users', currentUser.uid, 'drafts'));
     const toProcess = [];
-    snap.forEach(d => { if (d.id.startsWith('strength_')) toProcess.push({ type: d.id.slice('strength_'.length), ...d.data() }); });
+    // Doc ids are `{domain}_{type}` since the domain-namespacing migration.
+    // An id with no known domain prefix is a pre-migration strength draft (bare
+    // type name): process it like a strength draft so it keeps its auto-save
+    // safety net, but delete it under its OWN id (tracked as docId), never a
+    // reconstructed `strength_`-prefixed one. A doc belonging to some other
+    // known domain (Phase B's `cardio_`) is skipped — this function is
+    // strength-only and must not auto-save cardio drafts as strength workouts.
+    const otherPrefixes = Object.keys(WORKOUT_DOMAINS).filter(k => k !== 'strength').map(k => k + '_');
+    snap.forEach(d => {
+      if (d.id.startsWith('strength_'))                 toProcess.push({ docId: d.id, type: d.id.slice('strength_'.length), ...d.data() });
+      else if (otherPrefixes.some(p => d.id.startsWith(p))) return;           // another domain's draft
+      else                                              toProcess.push({ docId: d.id, type: d.id, ...d.data() });  // legacy pre-migration doc
+    });
 
     for (const draft of toProcess) {
       const draftDate = (draft.createdAt || '').slice(0, 10);
@@ -2809,7 +2837,7 @@ async function checkAndAutoSavePreviousDrafts() {
         });
         count++;
       }
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + draft.type));
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', draft.docId));
       localStorage.removeItem(_draftKey('strength', draft.type));
     }
     if (count > 0) toast(`${count} ${t('draft.autosaved_toast')}`, 'success');
@@ -2864,6 +2892,7 @@ function _draftModalResume() {
   const domain = _draftModalDomain, type = _draftModalType;
   document.getElementById('draftModal').style.display = 'none';
   _draftModalType = null;
+  _draftModalDomain = null;
   const draft = _draftLoadLocal(domain, type);
   if (!draft) { toast(t('draft.discard'), 'error'); return; }
   _draftApplyToForm(domain, draft);
@@ -2874,6 +2903,7 @@ async function _draftModalDiscard() {
   const domain = _draftModalDomain, type = _draftModalType;
   document.getElementById('draftModal').style.display = 'none';
   _draftModalType = null;
+  _draftModalDomain = null;
   await _draftDelete(domain, type);
 }
 
@@ -3073,17 +3103,7 @@ async function submitData() {
         tEl.dataset.tw      = actualText;
         tEl.textContent     = buildTargetPillText(actualText, tEl.dataset.ts || '', tEl.dataset.tr || '');
       });
-      const templateData = { types: workoutTypes };
-      workoutTypes.forEach(wtype => {
-        templateData[wtype] = (editTemplates[wtype] || [])
-          .filter(ex => ex.name.trim())
-          .map(ex => {
-            const hasNew = (ex.targetWeight || '').trim() || (ex.targetSets || '').trim() || (ex.targetReps || '').trim();
-            const r = { id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight || '').trim(), targetSets: (ex.targetSets || '').trim(), targetReps: (ex.targetReps || '').trim() };
-            if (!hasNew && ex._legacyTarget) r.target = ex._legacyTarget;
-            return r;
-          });
-      });
+      const templateData = WORKOUT_DOMAINS.strength.buildSaveDoc(workoutTypes, editTemplates);
       setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData).catch(() => {});
       try { localStorage.setItem(_cacheKeyTemplates(), JSON.stringify(templateData)); } catch(e) {}
     }
