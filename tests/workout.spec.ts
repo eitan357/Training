@@ -95,7 +95,17 @@ test.describe('Workout — Log Session', () => {
     await page.locator('#typeRow button, #typeRow .type-btn').first().click();
     const sessionName = 'SDD round-trip session ' + Date.now();
     await page.locator('#sessionNameInput').fill(sessionName);
-    await page.waitForTimeout(400); // > 300ms debounce
+    // Wait for the actual debounced localStorage write to land (not just a
+    // fixed sleep) — under heavier system load a fixed 400ms timeout can
+    // elapse before the 300ms-debounced autosave has actually persisted,
+    // making the reload below race the write.
+    await page.waitForFunction((expected) => {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('draft_') && k.includes('_strength_'));
+      return keys.some(k => {
+        try { return JSON.parse(localStorage.getItem(k) || 'null')?.workoutName === expected; }
+        catch(e) { return false; }
+      });
+    }, sessionName, { timeout: 5000 });
     await page.reload();
     await page.locator('#nav-main').click();
     await page.waitForFunction(() => {
