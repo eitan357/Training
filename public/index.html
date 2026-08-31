@@ -405,13 +405,26 @@
     .session-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .session-left   { display: flex; align-items: center; gap: 12px; }
     .session-dot    { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .dot-a { background: var(--green); }
-    .dot-b { background: var(--primary); }
+    /* Shared 6-color indexed palette — position-in-types-array decides the
+       color, not the type's name, so it works identically for strength's
+       user-defined types and cardio's user-defined types (Plan B/C). Index
+       0/1 are exactly A's/B's pre-existing green/purple so already-saved
+       sessions don't visibly change color. */
+    .dot-c0   { background: var(--green); }
+    .dot-c1   { background: var(--primary); }
+    .dot-c2   { background: #aa7941; }
+    .dot-c3   { background: #9b5aaf; }
+    .dot-c4   { background: #a05555; }
+    .dot-c5   { background: #4a8a8a; }
     .session-date   { font-weight: 700; font-size: 15px; }
     .session-count  { font-size: 12px; color: var(--sub); margin-top: 1px; }
     .session-badge  { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; color: white; }
-    .badge-a { background: var(--green); }
-    .badge-b { background: var(--primary); }
+    .badge-c0 { background: var(--green); }
+    .badge-c1 { background: var(--primary); }
+    .badge-c2 { background: #aa7941; }
+    .badge-c3 { background: #9b5aaf; }
+    .badge-c4 { background: #a05555; }
+    .badge-c5 { background: #4a8a8a; }
     .chevron { color: var(--sub); font-size: 12px; transition: transform .2s; }
     .chevron.open { transform: rotate(180deg); }
     .session-body { padding: 0 16px 14px; display: none; }
@@ -2158,6 +2171,19 @@ function genId() {
   return crypto.randomUUID().replace(/-/g,'').substring(0,12).toUpperCase();
 }
 
+// Shared color-assignment strategy for BOTH strength and cardio type
+// badges/dots: color follows a type's position in its domain's `types`
+// array (workoutTypes for strength, runningTypes for cardio — Plan B), not
+// its name. This is what lets a user-added 3rd/4th/Nth type always get a
+// distinct, defined color instead of silently rendering colorless (the bug
+// that motivated this function). Index 0/1 are pinned to strength's
+// pre-existing green/purple so A/B never visibly change color.
+const TYPE_COLOR_PALETTE_SIZE = 6;
+function typeColorClass(types, typeName) {
+  const idx = types.indexOf(typeName);
+  return 'c' + (idx >= 0 ? idx % TYPE_COLOR_PALETTE_SIZE : 0);
+}
+
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
@@ -2542,6 +2568,25 @@ const WORKOUT_DOMAINS = {
       return templateData;
     },
     isEmptyItem: ex => !ex.name.trim(),
+    entriesCollection: 'workouts',
+    colorClass: s => typeColorClass(workoutTypes, s.type),
+    renderCardMeta: s => `${(s.exercises||[]).length} ${t('workout.exercises')}`,
+    renderCardBody: s => `
+      <table class="hist-table">
+        <thead><tr>
+          <th data-i18n="col.exercise">${t('col.exercise')}</th><th class="col-num" data-i18n="col.weight">${t('col.weight')}</th>
+          <th class="col-reps" data-i18n="col.reps">${t('col.reps')}</th>
+        </tr></thead>
+        <tbody>
+          ${(s.exercises||[]).map(e => `<tr>
+            <td><div class="td-name">${escHtml(String(e.name))}</div>
+              ${e.notes ? `<div class="td-note">${escHtml(String(e.notes))}</div>` : ''}</td>
+            <td class="td-num">${e.weight||'—'}</td>
+            <td class="td-num">${e.reps||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`,
+    badgeText: s => `${t('workout.badge')} ${escHtml(s.type)}`,
   },
 };
 
@@ -3082,9 +3127,10 @@ function filterHistory(f) {
   renderHistory();
 }
 
-function buildSessionCard(s, i) {
-  const dotClass   = 'dot-'   + s.type.toLowerCase();
-  const badgeClass = 'badge-' + s.type.toLowerCase();
+function buildSessionCard(domain, s, i) {
+  const D = WORKOUT_DOMAINS[domain];
+  const dotClass   = 'dot-'   + D.colorClass(s);
+  const badgeClass = 'badge-' + D.colorClass(s);
   const sel = selectedSessions.has(s.id);
   return `<div class="session-card${sel ? ' sel-active' : ''}" data-sid="${escHtml(s.id)}">
     <div class="session-header" data-idx="${i}">
@@ -3093,30 +3139,17 @@ function buildSessionCard(s, i) {
         <div>
           <div class="session-date">${sessionDisplayDate(s)}</div>
           ${s.sessionName ? `<div class="session-name-label">${escHtml(s.sessionName)}</div>` : ''}
-          <div class="session-count">${(s.exercises||[]).length} ${t('workout.exercises')}</div>
+          <div class="session-count">${D.renderCardMeta(s)}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:4px;">
         ${s.autoSaved && !allSessions.some(o => o.dateISO > s.dateISO) ? `<span class="auto-save-badge">${t('draft.auto_badge')}</span>` : ''}
-        <span class="session-badge ${badgeClass}">${t('workout.badge')} ${escHtml(s.type)}</span>
+        <span class="session-badge ${badgeClass}">${D.badgeText(s)}</span>
       </div>
     </div>
     <div class="session-body" id="sess_${i}">
       <div class="divider"></div>
-      <table class="hist-table">
-        <thead><tr>
-          <th data-i18n="col.exercise">${t('col.exercise')}</th><th class="col-num" data-i18n="col.weight">${t('col.weight')}</th>
-          <th class="col-reps" data-i18n="col.reps">${t('col.reps')}</th>
-        </tr></thead>
-        <tbody>
-          ${(s.exercises||[]).map(e => `<tr>
-            <td><div class="td-name">${escHtml(String(e.name))}</div>
-              ${e.notes ? `<div class="td-note">${escHtml(String(e.notes))}</div>` : ''}</td>
-            <td class="td-num">${e.weight||'—'}</td>
-            <td class="td-num">${e.reps||'—'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
+      ${D.renderCardBody(s)}
     </div>
     <div class="expand-strip" onclick="toggleSess(${i}, this)">
       <div class="chevron">
@@ -3155,7 +3188,7 @@ function renderHistory() {
 
     if (isLatest) {
       html += `<div class="month-label">${label}</div>`;
-      sessions.forEach(s => { html += buildSessionCard(s, si++); });
+      sessions.forEach(s => { html += buildSessionCard('strength', s, si++); });
     } else {
       html += `<div class="month-group-header" onclick="toggleMonthGroup('${gid}',this)">
         <span class="month-group-title">${label}</span>
@@ -3165,7 +3198,7 @@ function renderHistory() {
         </span>
       </div>
       <div class="month-group-body" id="${gid}">`;
-      sessions.forEach(s => { html += buildSessionCard(s, si++); });
+      sessions.forEach(s => { html += buildSessionCard('strength', s, si++); });
       html += `</div>`;
     }
   });
