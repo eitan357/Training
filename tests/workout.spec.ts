@@ -74,6 +74,9 @@ test.describe('Workout — Log Session', () => {
   });
 
   test('draft is stored under a domain-namespaced localStorage key', async ({ page }) => {
+    // Deliberately avoids selectFirstWorkoutType() — that helper also waits for
+    // #exerciseList .card, which this QA account's async-load timing makes flaky;
+    // this test only needs #typeRow, not the exercise cards.
     await page.locator('#nav-main').click();
     await page.waitForFunction(() => {
       const row = document.getElementById('typeRow');
@@ -87,6 +90,9 @@ test.describe('Workout — Log Session', () => {
   });
 
   test('draft round-trips workout name through localStorage', async ({ page }) => {
+    // Deliberately avoids selectFirstWorkoutType() — that helper also waits for
+    // #exerciseList .card, which this QA account's async-load timing makes flaky;
+    // this test only needs #typeRow, not the exercise cards.
     await page.locator('#nav-main').click();
     await page.waitForFunction(() => {
       const row = document.getElementById('typeRow');
