@@ -2441,8 +2441,10 @@ function showSection(name) {
 }
 
 // ─── DRAFT AUTO-SAVE ─────────────────────────────────────────
-function _draftKey(type) {
-  return `draft_${currentUser?.uid}_${type}`;
+// `domain` distinguishes strength vs. cardio (Phase B) so a strength type
+// and a cardio type sharing the same name never collide in storage.
+function _draftKey(domain, type) {
+  return `draft_${currentUser?.uid}_${domain}_${type}`;
 }
 
 function _draftSerialize() {
@@ -2482,7 +2484,7 @@ function _draftHasFormData() {
 
 function _draftSaveLocal(type) {
   if (!currentUser) return;
-  const key      = _draftKey(type);
+  const key      = _draftKey('strength', type);
   const existing = JSON.parse(localStorage.getItem(key) || 'null');
   const now      = new Date().toISOString();
   const data     = { ..._draftSerialize(), createdAt: existing?.createdAt || now, lastModified: now };
@@ -2491,7 +2493,7 @@ function _draftSaveLocal(type) {
 
 function _draftLoadLocal(type) {
   if (!currentUser) return null;
-  try { return JSON.parse(localStorage.getItem(_draftKey(type)) || 'null'); } catch(e) { return null; }
+  try { return JSON.parse(localStorage.getItem(_draftKey('strength', type)) || 'null'); } catch(e) { return null; }
 }
 
 async function _draftSaveFirestore(type) {
@@ -2499,15 +2501,15 @@ async function _draftSaveFirestore(type) {
   const local = _draftLoadLocal(type);
   if (!local) return;
   try {
-    await setDoc(doc(db, 'users', currentUser.uid, 'drafts', type), local);
+    await setDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + type), local);
   } catch(e) { /* silent — localStorage is the fallback */ }
 }
 
 async function _draftDelete(type) {
   if (!currentUser) return;
-  localStorage.removeItem(_draftKey(type));
+  localStorage.removeItem(_draftKey('strength', type));
   delete _draftDirty[type];
-  try { await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', type)); } catch(e) {}
+  try { await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + type)); } catch(e) {}
 }
 
 function _draftApplyToForm(draft) {
@@ -2653,7 +2655,7 @@ async function checkAndAutoSavePreviousDrafts() {
   if (!currentUser) return 0;
   const today = new Date().toISOString().slice(0, 10);
   // Sync any previous-day localStorage drafts → Firestore before reading
-  const prefix = `draft_${currentUser.uid}_`;
+  const prefix = `draft_${currentUser.uid}_strength_`;
   const localKeys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -2671,7 +2673,7 @@ async function checkAndAutoSavePreviousDrafts() {
   try {
     const snap = await getDocs(collection(db, 'users', currentUser.uid, 'drafts'));
     const toProcess = [];
-    snap.forEach(d => toProcess.push({ type: d.id, ...d.data() }));
+    snap.forEach(d => { if (d.id.startsWith('strength_')) toProcess.push({ type: d.id.slice('strength_'.length), ...d.data() }); });
 
     for (const draft of toProcess) {
       const draftDate = (draft.createdAt || '').slice(0, 10);
@@ -2695,8 +2697,8 @@ async function checkAndAutoSavePreviousDrafts() {
         });
         count++;
       }
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', draft.type));
-      localStorage.removeItem(_draftKey(draft.type));
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + draft.type));
+      localStorage.removeItem(_draftKey('strength', draft.type));
     }
     if (count > 0) toast(`${count} ${t('draft.autosaved_toast')}`, 'success');
   } catch(e) { /* silent */ }
@@ -2777,8 +2779,8 @@ function clearWorkoutForm(silent = false) {
   _draftAttachListeners();
   delete _tabState[selectedType];
   delete _draftDirty[selectedType];
-  localStorage.removeItem(_draftKey(selectedType));
-  if (currentUser) deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', selectedType)).catch(() => {});
+  localStorage.removeItem(_draftKey('strength', selectedType));
+  if (currentUser) deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + selectedType)).catch(() => {});
   if (!silent) toast(t('clear.success'), 'error');
 }
 

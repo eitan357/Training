@@ -72,6 +72,14 @@ test.describe('Workout — Log Session', () => {
   test('draft modal overlay is attached in DOM', async ({ page }) => {
     await expect(page.locator('#draftModal')).toBeAttached();
   });
+
+  test('draft is stored under a domain-namespaced localStorage key', async ({ page }) => {
+    await selectFirstWorkoutType(page);
+    await page.locator('#exerciseList .ex-weight').first().fill('42');
+    await page.waitForTimeout(400); // > 300ms debounce
+    const keys = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('draft_')));
+    expect(keys.some(k => k.includes('_strength_'))).toBe(true);
+  });
 });
 
 test.describe('Workout — Edit Plan', () => {
