@@ -2733,26 +2733,27 @@ async function checkAndAutoSavePreviousDrafts() {
 }
 
 // ─── TAB STATE & DRAFT MODAL ─────────────────────────────────
-function _tabSnapshotCurrent() {
-  if (!selectedType) return;
-  _tabState[selectedType] = _draftSerialize('strength');
+function _tabSnapshotCurrent(domain, type) {
+  if (!type) return;
+  _tabState[domain + ':' + type] = _draftSerialize(domain);
 }
 
-function _tabRestoreOrDraft(type) {
-  if (_tabState[type]) {
-    _draftApplyToForm('strength', _tabState[type]);
+function _tabRestoreOrDraft(domain, type) {
+  const dk = domain + ':' + type;
+  if (_tabState[dk]) {
+    _draftApplyToForm(domain, _tabState[dk]);
     return;
   }
-  const draft = _draftLoadLocal(type);
-  if (!draft || !_draftHasBannerData('strength', draft)) return;
+  const draft = _draftLoadLocal(domain, type);
+  if (!draft || !_draftHasBannerData(domain, draft)) return;
   const today = new Date().toISOString().slice(0, 10);
   if ((draft.createdAt || '').slice(0, 10) !== today) return;
   if (_isNewSession) {
-    _draftShowModal(type, draft);
+    _draftShowModal(domain, type, draft);
   } else {
     // Refresh within same session — restore silently
-    _draftApplyToForm('strength', draft);
-    _tabState[type] = _draftSerialize('strength');
+    _draftApplyToForm(domain, draft);
+    _tabState[dk] = _draftSerialize(domain);
   }
 }
 
@@ -2815,10 +2816,10 @@ function clearWorkoutForm(silent = false) {
 function selectType(type) {
   if (selectedType === type) return;
   // Snapshot current tab into memory, then save to localStorage as safety net
-  _tabSnapshotCurrent();
+  _tabSnapshotCurrent('strength', selectedType);
   if (selectedType && _draftHasFormData('strength')) {
-    _draftSaveLocal(selectedType);
-    _draftDirty[selectedType] = true;
+    _draftSaveLocal('strength', selectedType);
+    _draftDirty['strength:' + selectedType] = true;
   }
   selectedType = type;
   document.querySelectorAll('#typeRow .type-btn').forEach(b =>
@@ -2864,7 +2865,7 @@ function selectType(type) {
   document.getElementById('saveBtn').style.display = 'block';
   document.getElementById('addBtn').style.display  = 'block';
 
-  _tabRestoreOrDraft(type);
+  _tabRestoreOrDraft('strength', type);
 }
 
 function toggleHistPreview() {
