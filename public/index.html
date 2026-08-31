@@ -2806,8 +2806,8 @@ function clearWorkoutForm(silent = false) {
   document.getElementById('exerciseList').innerHTML =
     (editTemplates[selectedType] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps, ex._legacyTarget)).join('');
   _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput');
-  delete _tabState[selectedType];
-  delete _draftDirty[selectedType];
+  delete _tabState['strength:' + selectedType];
+  delete _draftDirty['strength:' + selectedType];
   localStorage.removeItem(_draftKey('strength', selectedType));
   if (currentUser) deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', 'strength_' + selectedType)).catch(() => {});
   if (!silent) toast(t('clear.success'), 'error');
@@ -3961,7 +3961,7 @@ function copyTargetToCard(cardEl) {
 function copyLastWorkout() {
   const last = lastWorkouts[selectedType];
   if (!last) return;
-  const existingDraft = _draftLoadLocal(selectedType);
+  const existingDraft = _draftLoadLocal('strength', selectedType);
   if (existingDraft && _draftHasBannerData('strength', existingDraft)) {
     if (!confirm(t('draft.overwrite_confirm'))) return;
   }
@@ -3983,7 +3983,7 @@ function copyLastWorkout() {
     }
   });
   toast(`✓ ${copied} ${t('copy.success')} ${t('copy.from')}${sessionDisplayDate(last)}`, 'success');
-  if (copied > 0) _draftOnInput();
+  if (copied > 0) _draftOnInput('strength');
 }
 
 // ─── TIMER ────────────────────────────────────────────────────
