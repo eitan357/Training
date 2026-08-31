@@ -1298,7 +1298,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
 import { getFirestore, initializeFirestore, persistentLocalCache,
          doc, getDoc, setDoc, addDoc, updateDoc,
          deleteDoc, collection, query, orderBy,
-         getDocs, serverTimestamp }                               from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
+         getDocs, serverTimestamp, deleteField }                  from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
 
 // ─── FIREBASE CONFIG ─────────────────────────────────────────
 const firebaseConfig = {
@@ -1453,6 +1453,16 @@ applyLang();
 
 const fbApp  = initializeApp(firebaseConfig);
 const auth   = getAuth(fbApp);
+
+// Test-only Firestore read hook — Playwright has no other way to assert
+// document shape without a custom backend (docs/product/14). No-ops in
+// production since nothing calls window.__debugGetDoc outside tests.
+window.__debugGetDoc = async (pathParts) => {
+  if (!currentUser) return null;
+  const snap = await getDoc(doc(db, 'users', currentUser.uid, ...pathParts));
+  return snap.exists() ? snap.data() : null;
+};
+
 let db;
 try {
   db = initializeFirestore(fbApp, { localCache: persistentLocalCache() });
@@ -2789,6 +2799,7 @@ function _draftStartFirestoreTimer(domain, getType) {
 function _cacheKeyTemplates()       { return `templates_${currentUser?.uid}`; }
 function _cacheKeyLastWorkout(type) { return `lastWorkout_${currentUser?.uid}_${type}`; }
 function _cacheKeyRunning()         { return `running_enabled_${currentUser?.uid}`; }
+function _cacheKeyRunningTemplates() { return `runningTemplates_${currentUser?.uid}`; }
 
 function _applyLocalCache() {
   if (!currentUser) return false;
@@ -2866,8 +2877,80 @@ function _backgroundApplyData(data) {
   setDefaultDate();
 }
 
+// ─── CARDIO DATA MIGRATION (V2 — runWorkoutTypes/runWorkouts → runningTemplates) ───
+// One-time, guarded by config/settings.cardioMigratedV2. Wrapped in the same
+// silent try/catch pattern as _backgroundSync (docs/product/10) — a failure
+// here must never block app load, and simply retries next load since the
+// guard flag isn't set until the whole migration succeeds.
+const CARDIO_MIGRATION_FIELD_MAP = [
+  { id: 'date',              label: 'תאריך',      fieldType: 'date' },
+  { id: 'distanceKm',        label: 'מרחק',        fieldType: 'number' },
+  { id: 'durationMinutes',   label: 'זמן',          fieldType: 'number' },
+  { id: 'calories',          label: 'קלוריות',      fieldType: 'number' },
+  { id: 'avgStridesPerMin',  label: 'צעדים',        fieldType: 'number' },
+  { id: 'avgHeartRate',      label: 'דופק ממוצע',  fieldType: 'number' },
+  { id: 'feltTired',         label: 'הרגשתי עייפות', fieldType: 'checkbox' },
+  { id: 'notes',             label: 'הערות',        fieldType: 'text' },
+];
+
+async function migrateCardioDataV2() {
+  if (!currentUser) return;
+  try {
+    const settingsRef = doc(db, 'users', currentUser.uid, 'config', 'settings');
+    const settingsSnap = await getDoc(settingsRef);
+    if (settingsSnap.exists() && settingsSnap.data().cardioMigratedV2 === true) {
+      window.__cardioMigrationDone = true;
+      return;
+    }
+
+    const typesSnap = await getDocs(collection(db, 'users', currentUser.uid, 'runWorkoutTypes'));
+    if (typesSnap.empty) {
+      // Nothing to migrate (new user, or already-clean state) — just set the flag.
+      await setDoc(settingsRef, { cardioMigratedV2: true }, { merge: true });
+      window.__cardioMigrationDone = true;
+      return;
+    }
+    const oldTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.order - b.order);
+
+    const templateData = { types: oldTypes.map(t => t.name) };
+    oldTypes.forEach(t => { templateData[t.name] = CARDIO_MIGRATION_FIELD_MAP.map(f => ({ ...f })); });
+    await setDoc(doc(db, 'users', currentUser.uid, 'config', 'runningTemplates'), templateData);
+
+    const oldWorkoutsSnap = await getDocs(collection(db, 'users', currentUser.uid, 'runWorkouts'));
+    for (const wDoc of oldWorkoutsSnap.docs) {
+      const w = wDoc.data();
+      const typeName = oldTypes.find(t => t.id === w.workoutTypeId)?.name || oldTypes[0].name;
+      const fields = CARDIO_MIGRATION_FIELD_MAP
+        .filter(f => f.id !== 'date' && w[f.id] != null && w[f.id] !== '')
+        .map(f => ({ id: f.id, label: f.label, fieldType: f.fieldType, value: w[f.id] }));
+      const dateISO = w.date; // old schema's `date` field is already YYYY-MM-DD
+      const [yyyy, mm, dd] = dateISO.split('-');
+      await updateDoc(doc(db, 'users', currentUser.uid, 'runWorkouts', wDoc.id), {
+        date: `${dd}/${mm}/${yyyy}`,
+        dateISO,
+        workoutType: typeName,
+        fields,
+        // Explicitly remove the old fixed-schema keys so the doc matches the
+        // new shape exactly (Firestore deleteField(), imported alongside the
+        // other v12 SDK named imports already at the top of index.html).
+        distanceKm: deleteField(), durationMinutes: deleteField(), paceMinPerKm: deleteField(),
+        calories: deleteField(), avgStridesPerMin: deleteField(), avgHeartRate: deleteField(),
+        feltTired: deleteField(), notes: deleteField(), workoutTypeId: deleteField(),
+      });
+    }
+
+    for (const tDoc of typesSnap.docs) {
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'runWorkoutTypes', tDoc.id));
+    }
+
+    await setDoc(settingsRef, { cardioMigratedV2: true }, { merge: true });
+    window.__cardioMigrationDone = true;
+  } catch (e) { /* silent — retried next load, guard flag only set on full success */ }
+}
+
 async function _backgroundSync(hadCache) {
   try {
+    await migrateCardioDataV2();
     await Promise.all([
       checkAndAutoSavePreviousDrafts(),
       loadRunningEnabled().then(() => {
