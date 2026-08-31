@@ -2502,6 +2502,46 @@ const WORKOUT_DOMAINS = {
     applyToForm:  _strengthDraftApplyToForm,
     hasFormData:  _strengthDraftHasFormData,
     qualifies:    _strengthDraftQualifies,
+    templatesDoc: ['config', 'templates'],           // doc(db,'users',uid,...templatesDoc)
+    editListContainerId: 'editListContainer',
+    editTabsId:           'editTabs',
+    typeRowId:             'typeRow',
+    filterRowId:           'filterRow',
+    newItem: () => ({ name: '', targetWeight: '', targetSets: '', targetReps: '', id: '' }),
+    renderItemRow: (ex, idx) => `
+      <span class="drag-handle">⠿</span>
+      <div class="edit-fields">
+        <input class="ex-name-input" value="${escHtml(ex.name)}" placeholder="${t('edit.ex_name_ph')}">
+        <div class="target-fields">
+          <input class="target-field-input target-weight-input" value="${escHtml(ex.targetWeight || '')}" placeholder="${t('col.weight')}">
+          <input class="target-field-input target-sets-input"   value="${escHtml(ex.targetSets   || '')}" placeholder="${t('col.sets')}">
+          <input class="target-field-input target-reps-input"   value="${escHtml(ex.targetReps   || '')}" placeholder="${t('col.reps')}">
+        </div>
+      </div>
+      <button class="edit-remove" onclick="removeEditEx(${idx})">✕</button>`,
+    collectItemFromRow: c => ({
+      name:          c.querySelector('.ex-name-input').value,
+      targetWeight:  c.querySelector('.target-weight-input')?.value || '',
+      targetSets:    c.querySelector('.target-sets-input')?.value   || '',
+      targetReps:    c.querySelector('.target-reps-input')?.value   || '',
+      id:            c.dataset.id           || '',
+      _legacyTarget: c.dataset.legacyTarget || '',
+    }),
+    buildSaveDoc: (types, templates) => {
+      const templateData = { types };
+      types.forEach(wtype => {
+        templateData[wtype] = (templates[wtype] || [])
+          .filter(ex => ex.name.trim())
+          .map(ex => {
+            const hasNew = (ex.targetWeight || '').trim() || (ex.targetSets || '').trim() || (ex.targetReps || '').trim();
+            const r = { id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight || '').trim(), targetSets: (ex.targetSets || '').trim(), targetReps: (ex.targetReps || '').trim() };
+            if (!hasNew && ex._legacyTarget) r.target = ex._legacyTarget;
+            return r;
+          });
+      });
+      return templateData;
+    },
+    isEmptyItem: ex => !ex.name.trim(),
   },
 };
 
@@ -3406,13 +3446,14 @@ function renderEditTabs() {
 function renderEditAll() {
   if (!workoutTypes.includes(editTab)) editTab = workoutTypes[0];
   renderEditTabs();
-  renderEditList(editTab);
+  renderEditList('strength', editTab);
   renderTypeButtons();
   renderFilterButtons();
 }
 
-function renderEditList(type) {
-  const el    = document.getElementById('editListContainer');
+function renderEditList(domain, type) {
+  const D     = WORKOUT_DOMAINS[domain];
+  const el    = document.getElementById(D.editListContainerId);
   const items = editTemplates[type] || [];
   if (!items.length) {
     el.innerHTML = `<div class="empty"><div class="empty-text">${t('edit.no_exercises')}</div></div>`;
@@ -3421,54 +3462,38 @@ function renderEditList(type) {
   el.innerHTML = '';
   items.forEach((ex, idx) => {
     const card = document.createElement('div');
-    card.className           = 'edit-card';
-    card.dataset.id          = ex.id           || '';
+    card.className            = 'edit-card';
+    card.dataset.id           = ex.id           || '';
     card.dataset.legacyTarget = ex._legacyTarget || '';
-    card.innerHTML  = `
-      <span class="drag-handle">⠿</span>
-      <div class="edit-fields">
-        <input class="ex-name-input" value="${escHtml(ex.name)}" placeholder="${t('edit.ex_name_ph')}">
-        <div class="target-fields">
-          <input class="target-field-input target-weight-input" value="${escHtml(ex.targetWeight || '')}" placeholder="${t('col.weight')}">
-          <input class="target-field-input target-sets-input"   value="${escHtml(ex.targetSets   || '')}" placeholder="${t('col.sets')}">
-          <input class="target-field-input target-reps-input"   value="${escHtml(ex.targetReps   || '')}" placeholder="${t('col.reps')}">
-        </div>
-      </div>
-      <button class="edit-remove" onclick="removeEditEx(${idx})">✕</button>`;
+    card.innerHTML = D.renderItemRow(ex, idx);
     el.appendChild(card);
   });
   initDragSort(el, type);
 }
 
-function switchEditTab(type) { collectEdits(); editTab = type; renderEditTabs(); renderEditList(type); }
+function switchEditTab(type) { collectEdits('strength'); editTab = type; renderEditTabs(); renderEditList('strength', type); }
 
 function addEditExercise() {
-  collectEdits();
+  collectEdits('strength');
   if (!editTemplates[editTab]) editTemplates[editTab] = [];
-  editTemplates[editTab].push({ name: '', targetWeight: '', targetSets: '', targetReps: '', id: '' });
+  editTemplates[editTab].push(WORKOUT_DOMAINS.strength.newItem());
   renderEditTabs();
-  renderEditList(editTab);
+  renderEditList('strength', editTab);
   window.scrollTo(0, document.body.scrollHeight);
 }
 
 function removeEditEx(idx) {
-  collectEdits();
+  collectEdits('strength');
   editTemplates[editTab].splice(idx, 1);
   renderEditTabs();
-  renderEditList(editTab);
+  renderEditList('strength', editTab);
 }
 
-function collectEdits() {
-  const cards = document.getElementById('editListContainer').querySelectorAll('.edit-card');
+function collectEdits(domain) {
+  const D     = WORKOUT_DOMAINS[domain];
+  const cards = document.getElementById(D.editListContainerId).querySelectorAll('.edit-card');
   if (!cards.length) return;
-  editTemplates[editTab] = [...cards].map(c => ({
-    name:          c.querySelector('.ex-name-input').value,
-    targetWeight:  c.querySelector('.target-weight-input')?.value || '',
-    targetSets:    c.querySelector('.target-sets-input')?.value   || '',
-    targetReps:    c.querySelector('.target-reps-input')?.value   || '',
-    id:            c.dataset.id           || '',
-    _legacyTarget: c.dataset.legacyTarget || '',
-  }));
+  editTemplates[editTab] = [...cards].map(D.collectItemFromRow);
 }
 
 function showAddTypeForm() {
@@ -3483,7 +3508,7 @@ function confirmAddType() {
   const val = document.getElementById('newTypeName').value.trim();
   if (!val) return;
   if (workoutTypes.map(wtype => wtype.toLowerCase()).includes(val.toLowerCase())) { toast(t('edit.type_exists'), 'error'); return; }
-  collectEdits();
+  collectEdits('strength');
   workoutTypes.push(val);
   editTemplates[val] = [];
   editTab = val;
@@ -3494,7 +3519,7 @@ function confirmAddType() {
 
 function removeWorkoutType(type) {
   if (workoutTypes.length <= 1) { toast(t('edit.min_one_type'), 'error'); return; }
-  collectEdits();
+  collectEdits('strength');
   workoutTypes = workoutTypes.filter(wtype => wtype !== type);
   delete editTemplates[type];
   if (editTab === type) editTab = workoutTypes[0];
@@ -3503,18 +3528,8 @@ function removeWorkoutType(type) {
 }
 
 async function saveTemplates() {
-  collectEdits();
-  const templateData = { types: workoutTypes };
-  workoutTypes.forEach(wtype => {
-    templateData[wtype] = (editTemplates[wtype]||[])
-      .filter(ex => ex.name.trim())
-      .map(ex => {
-        const hasNew = (ex.targetWeight || '').trim() || (ex.targetSets || '').trim() || (ex.targetReps || '').trim();
-        const r = { id: ex.id || genId(), name: ex.name.trim(), targetWeight: (ex.targetWeight || '').trim(), targetSets: (ex.targetSets || '').trim(), targetReps: (ex.targetReps || '').trim() };
-        if (!hasNew && ex._legacyTarget) r.target = ex._legacyTarget;
-        return r;
-      });
-  });
+  collectEdits('strength');
+  const templateData = WORKOUT_DOMAINS.strength.buildSaveDoc(workoutTypes, editTemplates);
   const total = workoutTypes.reduce((n, wtype) => n + (templateData[wtype]||[]).length, 0);
   if (!total) { toast(t('edit.no_items'), 'error'); return; }
 
