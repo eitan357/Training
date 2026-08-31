@@ -19,6 +19,11 @@
 - `escHtml()` wraps any user-controlled string (field labels, session names) put into `innerHTML` — standing project rule.
 - All new user-facing **app copy** (button labels, section titles, error messages) needs `he`/`en` entries in `public/translations.js`. User-created content (field labels, type names, session names) does **not** — same convention as exercise names.
 - Commit after every task.
+- **Router awareness (added post-write, before execution):** since this plan was authored, the separate unified-navigation-history plan **landed and merged into `main`** — the running section now goes through a real `history.pushState` router (`ROUTES`, `navigateTo`, `_renderRoute`, `pushSubState`) instead of raw DOM/`history.pushState({}, '')` calls. This plan's tasks were written against the pre-router code and need the amendments below wherever they touch running-section navigation. Every other task (1, 2, 5, 6) is unaffected — only Task 4 Step 7 and Task 7-8 need the patches called out inline below.
+  - The bottom-nav button already calls `onclick="navigateTo('/running')"` (not `showSection('running')`) — no change needed, this already matches what this plan wants (simple navigation, no sub-routes).
+  - The running-feature email allowlist was factored into one top-level constant, `const RUNNING_ALLOWED_EMAILS = ['eitan357@gmail.com', 'test@gmail.com'];`, consumed in **two** places: `initSettingsUI` (via a local `const RUN_ALLOWED = RUNNING_ALLOWED_EMAILS;` alias, gates the settings row's visibility) and a separate function `_isRunningAllowed()` (gates direct/bookmarked `/running` URL navigation in both boot-time route resolution and `navigateTo` itself). Task 7 below now needs to neutralize **both** — removing only the settings-row gate (as originally written) would leave `_isRunningAllowed()` still redirecting an ungated user away from `/running` even after the toggle is visible to them.
+  - The old dedicated running `popstate` listener Task 8 was written to delete **no longer exists** — the router work already removed it (routing now goes through the one unified `popstate` listener). No action needed for that specific step; it's called out below so an implementer doesn't search for something that's already gone and wonder if they missed it.
+  - The router added its own running-specific rendering layer (`_renderRunState`, `_renderRunStep`, `_renderRunStep3Form`) and two `ROUTES` sub-entries (`/running/add`, `/running/history`) plus a sub-state helper (`pushSubState`) that this plan's new single-page cardio design has no use for. Task 8 below is amended to remove the former (all running-specific) and explicitly leave `pushSubState` alone (a generic, harmless, reusable router primitive — not this plan's to manage, even though this plan is its only current caller).
 
 ---
 
@@ -560,13 +565,21 @@ async function submitCardioData() {
 
 - [ ] **Step 7: Wire `initRunSection` to the new page instead of the old dashboard**
 
+**Router amendment:** this function's body now includes the router integration added after this plan was written — the "Find" block below reflects the *current* live-file content (not the pre-router version). Match by content as always, but this one specific mismatch is expected and pre-diagnosed, not drift to investigate.
+
 Find (`public/index.html`, `initRunSection`):
 
 ```js
 async function initRunSection() {
   if (!_runDataPromise) _runDataPromise = loadRunData();  // fallback if prefetch didn't run
   await _runDataPromise;
-  runShowDashboard();
+  // Pure re-render, no history write — matches showSection()'s own
+  // "history-free" contract. Uses whatever route is ALREADY current in
+  // history.state by the time this continuation runs (navigateTo/
+  // pushSubState always set it before initRunSection() is invoked), so
+  // this can never clobber /running/add (or any sub-state) with a
+  // duplicate/incorrect jump back to the dashboard.
+  _renderRunState(history.state?.runSubView, history.state?.runStep);
 }
 ```
 
@@ -914,7 +927,9 @@ git commit -m "feat(cardio): add the cardio template editor (type carousel, type
 
 - [ ] **Step 1: Remove the email-allowlist gate**
 
-Find (`public/index.html:1395-1409`):
+**Router amendment:** since this plan was written, the unified-navigation-history plan landed and factored the inline `['eitan357@gmail.com', 'test@gmail.com']` array into a shared top-level constant, `RUNNING_ALLOWED_EMAILS` (declared once, elsewhere in the file), consumed here via a local alias. The "Find" block below reflects the current live-file content.
+
+Find (`public/index.html`, `initSettingsUI`):
 
 ```js
 function initSettingsUI() {
@@ -924,7 +939,7 @@ function initSettingsUI() {
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName_' + (currentUser?.uid || '')) || '';
 
   // Running gate
-  const RUN_ALLOWED = ['eitan357@gmail.com', 'test@gmail.com'];
+  const RUN_ALLOWED = RUNNING_ALLOWED_EMAILS;
   const gateRow = document.getElementById('runningGateRow');
   if (gateRow) {
     gateRow.style.display = RUN_ALLOWED.includes(currentUser?.email) ? 'flex' : 'none';
@@ -949,6 +964,42 @@ function initSettingsUI() {
 ```
 
 The `runningGateRow` id-based `display:none` toggling is gone entirely — Step 2 removes the CSS `display:none` that hid it by default in markup, so the row is unconditionally visible.
+
+- [ ] **Step 1b (router amendment — not in the original brief): neutralize the URL-level gate too**
+
+The settings-row visibility gate above is only half the picture. The router work also added `_isRunningAllowed()`, a separate function that gates *direct/bookmarked navigation* to `/running` (called from boot-time route resolution and from `navigateTo` itself) — if left untouched, an ungated user could still get silently redirected away from `/running` even after Step 1-2 make the toggle visible to them. Find (`public/index.html`, near `loadRunData`):
+
+```js
+const RUNNING_ALLOWED_EMAILS = ['eitan357@gmail.com', 'test@gmail.com'];
+```
+
+Delete this line entirely (its only remaining reference after this step is inside `_isRunningAllowed`, fixed next — confirm via `grep -n "RUNNING_ALLOWED_EMAILS" public/index.html` that no other reference remains before deleting, and if one does, it means the live file drifted further than expected — stop and match what you actually find).
+
+Then find `_isRunningAllowed`:
+
+```js
+// Re-checks the exact same gate initSettingsUI already applies (hard-coded
+// email allow-list + the runningEnabled flag) so a direct/bookmarked
+// /running URL can't show the section to a user it isn't meant for. This
+// is UI convenience, not a security boundary — see docs/product/12-security-and-privacy.md.
+function _isRunningAllowed() {
+  return RUNNING_ALLOWED_EMAILS.includes(currentUser?.email) && runningEnabled === true;
+}
+```
+
+replace with:
+
+```js
+// Now only checks the on/off toggle — the email allowlist this used to
+// also check is gone (the cardio page is open to every user, spec §1).
+// Kept as its own named function (not inlined at call sites) because
+// boot-time route resolution and navigateTo() both call it.
+function _isRunningAllowed() {
+  return runningEnabled === true;
+}
+```
+
+(Leave `navigateTo`'s and `initApp`'s own calls to `_isRunningAllowed()` untouched — they don't need to change, they just now get a different answer.)
 
 - [ ] **Step 2: Make the toggle row unconditionally visible in markup**
 
@@ -1039,7 +1090,7 @@ git commit -m "feat(settings): open the cardio toggle to all users, add the card
 ## Task 8: Delete Obsolete Wizard/OCR/Dashboard Code
 
 **Files:**
-- Modify: `public/index.html` — delete `runShowStep1/2/3`, `runSelectType`, `runHandleOcr`, `parseOcrText`, `translateTypeName`, `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `runBackFromForm`, `renderRunDashboard`, `runToggleHistoryRow`, the dedicated running `popstate` listener, `calcRunStreak`/`calcRunPRs`/`filterRunByRange`/`renderRunCharts`/`RUN_CHARTS_CONFIG`/`runSetRange` (relocated, not deleted — moved verbatim into `2026-08-31-C-history-unification-and-cleanup.md`, do not delete their *logic*, only their current call sites/location — see Step 4), `renderRunHistory` (superseded by Plan C's unified history view).
+- Modify: `public/index.html` — delete `runShowStep1/2/3`, `runSelectType`, `runHandleOcr`, `parseOcrText`, `translateTypeName`, `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `renderRunDashboard`, `runToggleHistoryRow`, `renderRunHistory` (superseded by Plan C's unified history view), and — router amendment, see Step 3b — `_renderRunState`/`_renderRunStep`/`_renderRunStep3Form` plus the `/running/add`/`/running/history` `ROUTES` entries and `_renderRoute`'s running-specific line. `runBackFromForm` and the old dedicated running `popstate` listener were already removed by the now-merged unified-navigation-history plan — nothing to do for those two, see Steps 2-3. `calcRunStreak`/`calcRunPRs`/`filterRunByRange`/`renderRunCharts`/`RUN_CHARTS_CONFIG`/`runSetRange` relocated, not deleted — moved verbatim into `2026-08-31-C-history-unification-and-cleanup.md`, do not delete their *logic*, only their current call sites/location — see Step 4.
 
 **Interfaces:** none — deletion only.
 
@@ -1051,19 +1102,44 @@ Also delete the Tesseract.js lazy-load `<script>`/dynamic-import code that `runH
 
 - [ ] **Step 2: Delete the dashboard + old sub-view navigation functions**
 
-Delete `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `runBackFromForm`, `renderRunDashboard`, `runToggleHistoryRow`, `renderRunHistory` in full (all superseded by Task 3/4's new page or relocated to Plan C).
+**Router amendment:** `runBackFromForm` no longer exists (the unified-navigation-history plan already deleted it when it landed) — skip it, it's not an error that it's missing. Delete `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `renderRunDashboard`, `runToggleHistoryRow`, `renderRunHistory` in full (all superseded by Task 3/4's new page or relocated to Plan C).
 
-- [ ] **Step 3: Delete the dedicated running `popstate` listener**
+- [ ] **Step 3: The dedicated running `popstate` listener no longer exists — confirm, don't search for it**
 
-Find and delete:
+**Router amendment:** this step originally targeted a dedicated `window.addEventListener('popstate', () => { if (currentSection === 'running') runShowDashboard(); });` block — the unified-navigation-history plan already removed it (running navigation now goes through the single unified `popstate` listener that plan installed). Run `grep -n "currentSection === 'running'" public/index.html` to confirm zero matches, then move on — nothing to delete here.
+
+- [ ] **Step 3b (router amendment — not in the original brief): delete the router's now-dead running-specific rendering layer**
+
+The unified-navigation-history plan added running-specific code to the router that this plan's new single-page cardio design has no use for (no sub-routes needed — the daily page behaves like strength's plain tab-switching). Delete, in full: `_renderRunState`, `_renderRunStep`, `_renderRunStep3Form` (search `grep -n "^function _renderRunState\|^function _renderRunStep\b\|^function _renderRunStep3Form" public/index.html`).
+
+Then find the `ROUTES` table (`public/index.html`, near the `NAVIGATION`/`ROUTER` block) and simplify the running-related entries:
 
 ```js
-window.addEventListener('popstate', () => {
-  if (currentSection === 'running') runShowDashboard();
-});
+  '/running':                    { section: 'running', runSubView: null },
 ```
 
-(References `runShowDashboard`, already deleted in Step 2 — leaving this listener in place would throw on every browser back-navigation.)
+replace with:
+
+```js
+  '/running':                    { section: 'running' },
+```
+
+and delete these two lines entirely:
+
+```js
+  '/running/add':                { section: 'running', runSubView: 'add', runStep: 1 },
+  '/running/history':            { section: 'running', runSubView: 'history' },
+```
+
+Then find `_renderRoute` and delete its running-specific line:
+
+```js
+  if (state.section === 'running') _renderRunState(state.runSubView, state.runStep);
+```
+
+(Just delete this one line — the rest of `_renderRoute`'s body, handling `editPanel`/`measurementTypesPanel`, is untouched.)
+
+**Leave `pushSubState` alone** — it's a generic router primitive (not running-specific), and even though this plan removes its only current caller, it's not this plan's job to delete shared router infrastructure it didn't create. Harmless unused code, not a regression risk.
 
 - [ ] **Step 4: Cut (do not delete) the streak/PR/chart functions, hand off to Plan C**
 
