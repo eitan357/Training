@@ -236,15 +236,19 @@ let _runPrefill        = {};
 let _runDataPromise    = null;  // holds the in-flight or resolved prefetch promise
 ```
 
-replace with (drops `_runAddStep`/`_runSelectedTypeId`/`_runPrefill` — wizard-only state deleted in Task 8; `runWorkouts`/`runWorkoutTypes` renamed to match the new schema; `_runCharts`/`_runCurrentRange` stay, relocated to History in Plan C but the variables themselves are unaffected by this task):
+replace with (drops only `_runAddStep` — confirmed unused, already superseded by the router work's `runStep`/`pushSubState` history-state mechanism, safe to drop; `runWorkouts`/`runWorkoutTypes` renamed to match the new schema; `_runCharts`/`_runCurrentRange` stay, relocated to History in Plan C but the variables themselves are unaffected by this task):
+
+**Plan defect, fixed after Task 2's own review caught it in practice — corrected here for the record:** an earlier version of this replace block also dropped `_runSelectedTypeId`/`_runPrefill`, on the incorrect assumption they were wizard-only state already made inert. They are NOT inert — `runShowStep1`, `runSelectType` (wired to every workout-type button), `_renderRunStep3Form` (wired to the live "manual entry" button), and `runSaveWorkout` all still read/write them, and none of those functions are deleted until Task 8. Dropping them here throws a live `ReferenceError` one click into the still-shipped "Add Workout" wizard for real gated users. **Keep both declared, unchanged, alongside the new cardio state:**
 
 ```js
 let runningEnabled     = false;
 let allRunWorkouts     = [];   // was runWorkouts — renamed for symmetry with allSessions/allMeasurements
-let runningTypes       = [];   // was runWorkoutTypes' .name list — now plain strings, like workoutTypes
+let runningTypes       = [];   // was runWorkoutTypes — array of {id, name} objects (same shape as before), NOT plain strings
 let cardioSelectedType = null;
 let cardioEditTab      = null;
 let cardioEditTemplates = {};
+let _runSelectedTypeId = null;  // still live — read/written by runShowStep1/runSelectType/_renderRunStep3Form/runSaveWorkout until Task 8 deletes those functions
+let _runPrefill        = {};    // still live — same reason
 let _runCharts         = {};
 let _runCurrentRange   = 'year';
 let _runDataPromise    = null;  // holds the in-flight or resolved prefetch promise
@@ -1090,7 +1094,7 @@ git commit -m "feat(settings): open the cardio toggle to all users, add the card
 ## Task 8: Delete Obsolete Wizard/OCR/Dashboard Code
 
 **Files:**
-- Modify: `public/index.html` — delete `runShowStep1/2/3`, `runSelectType`, `runHandleOcr`, `parseOcrText`, `translateTypeName`, `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `renderRunDashboard`, `runToggleHistoryRow`, `renderRunHistory` (superseded by Plan C's unified history view), and — router amendment, see Step 3b — `_renderRunState`/`_renderRunStep`/`_renderRunStep3Form` plus the `/running/add`/`/running/history` `ROUTES` entries and `_renderRoute`'s running-specific line. `runBackFromForm` and the old dedicated running `popstate` listener were already removed by the now-merged unified-navigation-history plan — nothing to do for those two, see Steps 2-3. `calcRunStreak`/`calcRunPRs`/`filterRunByRange`/`renderRunCharts`/`RUN_CHARTS_CONFIG`/`runSetRange` relocated, not deleted — moved verbatim into `2026-08-31-C-history-unification-and-cleanup.md`, do not delete their *logic*, only their current call sites/location — see Step 4.
+- Modify: `public/index.html` — delete `runShowStep1/2/3`, `runSelectType`, `runHandleOcr`, `parseOcrText`, `translateTypeName`, `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `renderRunDashboard`, `runToggleHistoryRow`, `renderRunHistory` (superseded by Plan C's unified history view), `runSaveWorkout` (superseded by Task 4's `submitCardioData` — a gap this plan's own text originally missed, caught during Task 2's review), and — router amendment, see Step 3b — `_renderRunState`/`_renderRunStep`/`_renderRunStep3Form` plus the `/running/add`/`/running/history` `ROUTES` entries and `_renderRoute`'s running-specific line. Once all of the above are gone, also delete the now-truly-unused `_runSelectedTypeId`/`_runPrefill` declarations (kept alive since Task 2 specifically because these functions still read/wrote them — see Task 2's Step 1 note). `runBackFromForm` and the old dedicated running `popstate` listener were already removed by the now-merged unified-navigation-history plan — nothing to do for those two, see Steps 2-3. `calcRunStreak`/`calcRunPRs`/`filterRunByRange`/`renderRunCharts`/`RUN_CHARTS_CONFIG`/`runSetRange` relocated, not deleted — moved verbatim into `2026-08-31-C-history-unification-and-cleanup.md`, do not delete their *logic*, only their current call sites/location — see Step 4.
 
 **Interfaces:** none — deletion only.
 
@@ -1102,7 +1106,7 @@ Also delete the Tesseract.js lazy-load `<script>`/dynamic-import code that `runH
 
 - [ ] **Step 2: Delete the dashboard + old sub-view navigation functions**
 
-**Router amendment:** `runBackFromForm` no longer exists (the unified-navigation-history plan already deleted it when it landed) — skip it, it's not an error that it's missing. Delete `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `renderRunDashboard`, `runToggleHistoryRow`, `renderRunHistory` in full (all superseded by Task 3/4's new page or relocated to Plan C).
+**Router amendment:** `runBackFromForm` no longer exists (the unified-navigation-history plan already deleted it when it landed) — skip it, it's not an error that it's missing. Delete `runShowDashboard`, `runShowAdd`, `runShowHistory`, `runGoBack`, `renderRunDashboard`, `runToggleHistoryRow`, `renderRunHistory`, `runSaveWorkout` in full (all superseded by Task 3/4's new page or relocated to Plan C). Once `runShowStep1`/`runSelectType`/`_renderRunStep3Form`/`runSaveWorkout` are all deleted (this step + Step 1's wizard-function deletions), also delete the now-genuinely-unused `let _runSelectedTypeId = null;` and `let _runPrefill = {};` declarations from the `RUNNING STATE` block (kept alive since Task 2 specifically because these functions still referenced them — confirm via `grep -n "_runSelectedTypeId\|_runPrefill" public/index.html` that zero references remain outside the declarations themselves before deleting the declarations).
 
 - [ ] **Step 3: The dedicated running `popstate` listener no longer exists — confirm, don't search for it**
 
