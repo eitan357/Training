@@ -130,6 +130,10 @@ export const TRANSLATIONS = {
     'edit.min_one_type': 'חייב להישאר לפחות סוג אימון אחד',
     'edit.saved_ok':     'תבניות האימון נשמרו בהצלחה',
     'edit.no_items':     'אין תרגילים לשמור.',
+    'edit.field_label_ph': 'שם השדה',
+    'edit.ftype_text':     'טקסט',
+    'edit.ftype_number':   'מספר',
+    'edit.ftype_checkbox': 'סימון',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'הוסף מדידה חדשה',
@@ -409,6 +413,10 @@ export const TRANSLATIONS = {
     'edit.min_one_type': 'Must keep at least one workout type',
     'edit.saved_ok':     'Workout templates saved',
     'edit.no_items':     'No exercises to save.',
+    'edit.field_label_ph': 'Field name',
+    'edit.ftype_text':     'Text',
+    'edit.ftype_number':   'Number',
+    'edit.ftype_checkbox': 'Checkbox',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'Add New Measurement',

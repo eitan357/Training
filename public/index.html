@@ -512,6 +512,24 @@
     .btn-sm-primary { background: var(--primary); color: white; }
     .btn-sm-ghost   { background: var(--bg); color: var(--sub); border: 1.5px solid var(--border); }
 
+    /* ── Cardio template editor: field-type picker ── */
+    .cardio-field-label-input {
+      width: 100%; padding: 9px 10px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 15px; font-weight: 700; color: var(--text);
+      background: var(--bg); margin-bottom: 6px;
+    }
+    .cardio-field-label-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+    .cardio-field-label-input:disabled { opacity: .6; }
+    .field-type-picker { display: flex; gap: 6px; }
+    .ftype-btn {
+      flex: 1; padding: 7px 6px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 12px; font-weight: 700; color: var(--sub); background: var(--bg); cursor: pointer;
+      transition: all .15s;
+    }
+    .ftype-btn.active { border-color: var(--primary); color: var(--primary); background: var(--surface); }
+    .ftype-btn:disabled { opacity: .5; cursor: default; }
+
     /* ── SESSION EDIT ── */
     .edit-session-wrap  { padding: 4px 0 8px; }
     .edit-session-name-row { margin-bottom: 12px; }
@@ -1086,6 +1104,19 @@
     <button class="run-btn run-btn-secondary" style="width:100%;margin-top:10px;" onclick="addCustomCardioField()" data-i18n="cardio.add_field_btn">+ הוסף שדה</button>
     <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="cardioSaveBtn" onclick="submitCardioData()" data-i18n="btn.save_workout">שמור אימון</button>
   </div>
+</div>
+
+<!-- ══ CARDIO TEMPLATE EDITOR (in-page panel, mirrors #mainEditPanel) ══ -->
+<div id="cardioEditPanel" style="display:none;">
+  <div id="cardioEditTabs" class="edit-tabs"></div>
+  <div id="cardioAddTypeForm" class="add-type-form" style="display:none;">
+    <input type="text" id="cardioNewTypeName" placeholder="שם סוג אימון">
+    <button class="btn-primary" onclick="confirmAddCardioType()" data-i18n="btn.add">הוסף</button>
+    <button class="btn-ghost" onclick="document.getElementById('cardioAddTypeForm').style.display='none'" data-i18n="btn.cancel">ביטול</button>
+  </div>
+  <div id="cardioEditListContainer"></div>
+  <button class="btn-ghost" onclick="addCardioEditField()" data-i18n="edit.add_exercise">+ הוסף שדה</button>
+  <button class="btn-primary" onclick="saveCardioTemplates()" data-i18n="edit.save">שמור שינויים</button>
 </div>
 
 <!-- ══════════ SETTINGS ══════════ -->
@@ -2806,6 +2837,48 @@ const WORKOUT_DOMAINS = {
     typeRowId:             'cardioTypeRow',
     entriesCollection: 'runWorkouts',
     getSelectedType: () => cardioSelectedType,
+    newItem: () => ({ id: genId(), label: '', fieldType: 'text' }),
+    renderItemRow: (f, idx) => `
+      ${f.fieldType === 'date' ? '' : '<span class="drag-handle">⠿</span>'}
+      <div class="edit-fields">
+        <input class="cardio-field-label-input" value="${escHtml(f.label)}" placeholder="${t('edit.field_label_ph')}" ${f.fieldType === 'date' ? 'disabled' : ''}>
+        <div class="field-type-picker" data-idx="${idx}">
+          <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(${idx},'text')" ${f.fieldType==='date'?'disabled':''}>${t('edit.ftype_text')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(${idx},'number')" ${f.fieldType==='date'?'disabled':''}>${t('edit.ftype_number')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(${idx},'checkbox')" ${f.fieldType==='date'?'disabled':''}>${t('edit.ftype_checkbox')}</button>
+        </div>
+      </div>
+      ${f.fieldType === 'date' ? '' : `<button class="edit-remove" onclick="removeCardioEditField(${idx})">✕</button>`}`,
+    collectItemFromRow: c => {
+      const labelInput = c.querySelector('.cardio-field-label-input');
+      // The date field's picker never renders an `.active` ftype-btn (none of the
+      // text/number/checkbox buttons match fieldType 'date'), so falling through to
+      // the field-type-picker lookup would silently rewrite it to 'text' on every
+      // collectEdits() call — defeating removeCardioEditField's date-is-protected
+      // guard entirely. renderItemRow's own `disabled` marker on this input is the
+      // one reliable signal that survives the round-trip, so read fieldType off of it.
+      const fieldType = labelInput.disabled ? 'date' : (c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text');
+      return {
+        id:    c.dataset.id || '',
+        label: labelInput.value,
+        fieldType,
+      };
+    },
+    buildSaveDoc: (types, templates) => {
+      const templateData = { types };
+      types.forEach(type => {
+        templateData[type] = (templates[type] || []).filter(f => f.label.trim());
+      });
+      return templateData;
+    },
+    // Generic editor-shell accessors (mirrors strength's getTemplates/getEditTab/
+    // setEditTab/getTypes above) — renderEditList/collectEdits dispatch through
+    // these rather than hardcoding editTemplates/editTab, which is what lets the
+    // same shared shell serve both the strength and cardio editors.
+    getTemplates: () => cardioEditTemplates,
+    getEditTab:   () => cardioEditTab,
+    setEditTab:   v => { cardioEditTab = v; },
+    getTypes:     () => runningTypes,
   },
 };
 
@@ -3806,7 +3879,7 @@ function renderEditAll() {
 function renderEditList(domain, type) {
   const D     = WORKOUT_DOMAINS[domain];
   const el    = document.getElementById(D.editListContainerId);
-  const items = editTemplates[type] || [];
+  const items = D.getTemplates()[type] || [];
   if (!items.length) {
     el.innerHTML = `<div class="empty"><div class="empty-text">${t('edit.no_exercises')}</div></div>`;
     return;
@@ -3845,7 +3918,7 @@ function collectEdits(domain) {
   const D     = WORKOUT_DOMAINS[domain];
   const cards = document.getElementById(D.editListContainerId).querySelectorAll('.edit-card');
   if (!cards.length) return;
-  editTemplates[editTab] = [...cards].map(D.collectItemFromRow);
+  D.getTemplates()[D.getEditTab()] = [...cards].map(D.collectItemFromRow);
 }
 
 function showAddTypeForm() {
@@ -3890,6 +3963,107 @@ async function saveTemplates() {
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'templates'), templateData);
     try { localStorage.setItem(_cacheKeyTemplates(), JSON.stringify(templateData)); } catch(e) {}
+    toast(t('edit.saved_ok'), 'success');
+    await reloadAppData();
+  } catch (err) {
+    toast(t('error.save') + err.message, 'error');
+  }
+  if (btn) { btn.disabled = false; btn.innerText = t('edit.save'); }
+}
+
+// ─── CARDIO TEMPLATE EDITOR ─────────────────────────────────────
+let cardioEditPanelOpen = false;
+
+function _setCardioEditPanel(open) {
+  if (open === cardioEditPanelOpen) return;
+  cardioEditPanelOpen = open;
+  document.getElementById('sec-running').style.display    = open ? 'none'  : '';
+  document.getElementById('cardioEditPanel').style.display = open ? 'block' : 'none';
+  if (open) renderCardioEditAll();
+}
+
+function openCardioEdit()  { showSection('running'); _setCardioEditPanel(true); }
+function closeCardioEdit() { _setCardioEditPanel(false); showSection('settings'); }
+
+function renderCardioEditTabs() {
+  const canRemove = runningTypes.length > 1;
+  document.getElementById('cardioEditTabs').innerHTML =
+    runningTypes.map(type =>
+      `<div class="tab-item${type===cardioEditTab?' active':''}">
+        <button class="tab-btn" onclick="switchCardioEditTab('${escHtml(type)}')">
+          <span class="count-pill">${(cardioEditTemplates[type]||[]).length}</span>
+          ${escHtml(type)}
+        </button>
+        ${canRemove ? `<button class="tab-remove" onclick="removeCardioType('${escHtml(type)}')" title="✕">✕</button>` : ''}
+      </div>`
+    ).join('') +
+    `<div class="tab-item add-tab-item"><button class="tab-btn add-tab-btn" onclick="document.getElementById('cardioAddTypeForm').style.display='flex';document.getElementById('cardioNewTypeName').focus();">+</button></div>`;
+}
+
+function renderCardioEditAll() {
+  if (!runningTypes.includes(cardioEditTab)) cardioEditTab = runningTypes[0];
+  renderCardioEditTabs();
+  if (cardioEditTab) renderEditList('cardio', cardioEditTab);
+  renderCardioTypeButtons();
+}
+
+function switchCardioEditTab(type) { collectEdits('cardio'); cardioEditTab = type; renderCardioEditTabs(); renderEditList('cardio', type); }
+
+function addCardioEditField() {
+  collectEdits('cardio');
+  if (!cardioEditTemplates[cardioEditTab]) cardioEditTemplates[cardioEditTab] = [];
+  cardioEditTemplates[cardioEditTab].push(WORKOUT_DOMAINS.cardio.newItem());
+  renderCardioEditTabs();
+  renderEditList('cardio', cardioEditTab);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function removeCardioEditField(idx) {
+  collectEdits('cardio');
+  if (cardioEditTemplates[cardioEditTab][idx]?.fieldType === 'date') return; // date field is protected
+  cardioEditTemplates[cardioEditTab].splice(idx, 1);
+  renderCardioEditTabs();
+  renderEditList('cardio', cardioEditTab);
+}
+
+function setCardioFieldType(idx, ftype) {
+  const container = document.getElementById('cardioEditListContainer');
+  const card = container.querySelectorAll('.edit-card')[idx];
+  card.querySelectorAll('.ftype-btn').forEach(b => b.classList.toggle('active', b.dataset.ftype === ftype));
+}
+
+function confirmAddCardioType() {
+  const val = document.getElementById('cardioNewTypeName').value.trim();
+  if (!val) return;
+  if (runningTypes.map(t => t.toLowerCase()).includes(val.toLowerCase())) { toast(t('edit.type_exists'), 'error'); return; }
+  collectEdits('cardio');
+  runningTypes.push(val);
+  cardioEditTemplates[val] = CARDIO_MIGRATION_FIELD_MAP.map(f => ({ ...f })); // seed with the 8 default fields (spec §4.2)
+  cardioEditTab = val;
+  document.getElementById('cardioAddTypeForm').style.display = 'none';
+  renderCardioEditAll();
+  toast(t('edit.type_added'), 'success');
+}
+
+function removeCardioType(type) {
+  if (runningTypes.length <= 1) { toast(t('edit.min_one_type'), 'error'); return; }
+  collectEdits('cardio');
+  runningTypes = runningTypes.filter(t => t !== type);
+  delete cardioEditTemplates[type];
+  if (cardioEditTab === type) cardioEditTab = runningTypes[0];
+  renderCardioEditAll();
+  toast(t('edit.type_removed'), 'success');
+}
+
+async function saveCardioTemplates() {
+  collectEdits('cardio');
+  const templateData = WORKOUT_DOMAINS.cardio.buildSaveDoc(runningTypes, cardioEditTemplates);
+  const total = runningTypes.reduce((n, type) => n + (templateData[type]||[]).length, 0);
+  if (!total) { toast(t('edit.no_items'), 'error'); return; }
+  const btn = document.querySelector('#cardioEditPanel .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerText = t('saving'); }
+  try {
+    await setDoc(doc(db, 'users', currentUser.uid, 'config', 'runningTemplates'), templateData);
     toast(t('edit.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
@@ -4738,6 +4912,11 @@ Object.assign(window, {
   // by name, so they must be global exactly like every other export in this file;
   // missing here means every button on the cardio page throws ReferenceError.
   selectCardioType, clearCardioForm, copyLastCardioWorkout, addCustomCardioField, submitCardioData,
+  // Cardio template editor (Task 6) — same story as the daily-entry page above:
+  // every one of these is called from an onclick="..." attribute in the editor
+  // markup, so they must be exported here rather than waiting for Task 8.
+  openCardioEdit, closeCardioEdit, switchCardioEditTab, addCardioEditField, removeCardioEditField,
+  setCardioFieldType, confirmAddCardioType, removeCardioType, saveCardioTemplates,
 });
 
 // ─── ANDROID HARDWARE BACK BUTTON ──────────────────────────────
