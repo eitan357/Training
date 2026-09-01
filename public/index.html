@@ -1528,6 +1528,7 @@ async function initRunSection() {
   await _runDataPromise;
   renderCardioTypeButtons();
   selectCardioType(cardioSelectedType || runningTypes[0]);
+  _draftStartFirestoreTimer('cardio', () => WORKOUT_DOMAINS.cardio.getSelectedType());
 }
 
 // Pure DOM primitive: makes the running section's 3 top-level views
