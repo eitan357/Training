@@ -1448,12 +1448,6 @@ let cardioEditTab      = null;
 let cardioEditTemplates = {};
 let _runCharts         = {};
 let _runCurrentRange   = 'year';
-// _runSelectedTypeId/_runPrefill are still read/assigned by the old Add-Workout
-// wizard (runShowStep1/runSelectType/_renderRunStep3Form/runSaveWorkout), which
-// stays live and onclick-wired until Task 8 deletes it — kept declared here
-// (not dropped) so those existing call sites don't throw ReferenceError.
-let _runSelectedTypeId = null;
-let _runPrefill        = {};
 let _runDataPromise    = null;  // holds the in-flight or resolved prefetch promise
 
 // ─── RUNNING DATA LAYER ──────────────────────────────────────
@@ -1562,71 +1556,6 @@ async function initRunSection() {
   _draftStartFirestoreTimer('cardio', () => WORKOUT_DOMAINS.cardio.getSelectedType());
 }
 
-// Pure DOM primitive: makes the running section's 3 top-level views
-// (dashboard/add/history) AND the add-wizard's 3 steps match the given
-// arguments. Never touches history — called by _renderRoute() (Task 1).
-function _renderRunState(runSubView, runStep) {
-  document.getElementById('run-view-dashboard').classList.toggle('active', !runSubView);
-  document.getElementById('run-view-add').classList.toggle('active', runSubView === 'add');
-  document.getElementById('run-view-history').classList.toggle('active', runSubView === 'history');
-
-  if (!runSubView) { renderRunDashboard(); renderRunCharts(); }
-  else if (runSubView === 'history') { renderRunHistory(); }
-  else if (runSubView === 'add') { _renderRunStep(runStep || 1); }
-}
-
-// runShowDashboard/runShowAdd/runShowHistory stay as the PUBLIC entry
-// points wired to onclick attributes (their exact names are asserted by
-// tests/running.spec.ts) — each now just navigates through the router
-// instead of touching the DOM directly.
-function runShowDashboard() { navigateTo('/running'); }
-function runShowAdd()       { navigateTo('/running/add'); }
-function runShowHistory()   { navigateTo('/running/history'); }
-
-// One code path for "back" everywhere in the running section — same
-// history.back() the settings page and edit panels use. Because
-// runShowAdd/runShowHistory push real routes on top of /running, and
-// each wizard step pushes a sub-state on top of /running/add (Step 2
-// below), history.back() alone always lands on the correct previous
-// screen with no special-casing needed.
-function runGoBack() { history.back(); }
-
-function renderRunDashboard() {
-  const streak = calcRunStreak(allRunWorkouts);
-  document.getElementById('run-streak-card').innerHTML = `
-    <div class="run-streak-badge">
-      <div class="run-streak-num">${streak}</div>
-      <div class="run-streak-lbl">${t('run.streak_label')}</div>
-    </div>`;
-
-  const prs = calcRunPRs(allRunWorkouts);
-  document.getElementById('run-prs-card').innerHTML = `
-    <div class="run-card-title">${t('run.prs_title')}</div>
-    <div class="run-stat-row">
-      <div class="run-stat"><div class="run-stat-val">${prs.bestDistanceKm > 0 ? prs.bestDistanceKm.toFixed(1) : '--'}</div><div class="run-stat-lbl">${t('run.best_distance')}</div></div>
-      <div class="run-stat"><div class="run-stat-val">${prs.bestPaceMinPerKm > 0 ? formatPace(prs.bestPaceMinPerKm) : '--'}</div><div class="run-stat-lbl">${t('run.best_pace')}</div></div>
-      <div class="run-stat"><div class="run-stat-val">${prs.lowestHeartRate > 0 ? prs.lowestHeartRate : '--'}</div><div class="run-stat-lbl">${t('run.lowest_hr')}</div></div>
-    </div>`;
-
-  const last = allRunWorkouts[0];
-  if (last) {
-    const rawLastType = runningTypes.find(tp => tp.id === last.workoutTypeId)?.name;
-    const typeName = rawLastType ? escHtml(translateTypeName(rawLastType)) : t('run.default_type');
-    document.getElementById('run-last-card').innerHTML = `
-      <div class="run-card-title">${t('run.last_title')}</div>
-      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">${last.date} — ${typeName}</div>
-      <div class="run-stat-row">
-        <div class="run-stat"><div class="run-stat-val">${(last.distanceKm ?? 0).toFixed(1)}</div><div class="run-stat-lbl">${t('run.km')}</div></div>
-        <div class="run-stat"><div class="run-stat-val">${last.durationMinutes ?? '--'}</div><div class="run-stat-lbl">${t('run.minutes')}</div></div>
-        <div class="run-stat"><div class="run-stat-val">${last.paceMinPerKm ? formatPace(last.paceMinPerKm) : '--'}</div><div class="run-stat-lbl">${t('run.pace')}</div></div>
-      </div>`;
-  } else {
-    document.getElementById('run-last-card').innerHTML = `
-      <div class="run-card-title">${t('run.last_title')}</div>
-      <div style="text-align:center;color:var(--sub);padding:12px;">${t('run.no_workouts')}</div>`;
-  }
-}
-
 // Colors are hand-muted to the app's existing pastel palette (roughly
 // S 30-45%, matching --primary/--green/--red in the CSS custom
 // properties above) — the originals here were 2-3x more saturated than
@@ -1700,219 +1629,6 @@ function renderRunCharts() {
 
   if (container.innerHTML === '') {
     container.innerHTML = `<div style="text-align:center;color:var(--sub);padding:20px;">${t('run.no_data')}</div>`;
-  }
-}
-
-// ─── RUNNING ADD WORKOUT ─────────────────────────────────────
-function translateTypeName(name) {
-  if (name === 'Running')    return t('run.type.running');
-  if (name === 'Elliptical') return t('run.type.elliptical');
-  return name;
-}
-
-// _renderRunStep(n) is the pure DOM primitive for "show wizard step n
-// with whatever _runPrefill/_runSelectedTypeId already hold" — no
-// history writes. runShowStep1/2/3 (below) are the PUBLIC entry points
-// that render AND push a sub-state; _renderRunState (Step 1) calls this
-// directly (no push) when responding to an already-changed history
-// position (back button, popstate, boot).
-function _renderRunStep(n) {
-  document.getElementById('run-add-step1').style.display = n === 1 ? '' : 'none';
-  document.getElementById('run-add-step2').style.display = n === 2 ? '' : 'none';
-  document.getElementById('run-add-step3').style.display = n === 3 ? '' : 'none';
-  if (n === 1) {
-    const list = document.getElementById('run-type-list');
-    list.innerHTML = runningTypes.map(type =>
-      `<button class="run-type-btn" onclick="runSelectType('${type.id}','${escHtml(type.name)}')">${escHtml(translateTypeName(type.name))}</button>`
-    ).join('');
-  } else if (n === 2) {
-    document.getElementById('runOcrZoneText').textContent = '';
-    document.getElementById('runOcrError').style.display = 'none';
-  } else if (n === 3) {
-    _renderRunStep3Form();
-  }
-}
-
-function runShowStep1() { _runSelectedTypeId = null; _renderRunStep(1); pushSubState({ runStep: 1 }); }
-
-function runSelectType(id, name) {
-  _runSelectedTypeId = id;
-  if (name === 'Elliptical') { _renderRunStep(2); pushSubState({ runStep: 2 }); }
-  else                       { runShowStep3({}); }
-}
-
-// _renderRunStep3Form(prefill) is the pure DOM-filling half of the old
-// runShowStep3 body — unchanged logic, just split out so _renderRunStep
-// (no-history-write path) and runShowStep3 (history-writing path) can
-// both reach it. `prefill` defaults to whatever runShowStep3 last set on
-// _runPrefill so popstate/back re-renders the same values.
-function _renderRunStep3Form(prefill = _runPrefill) {
-  _runPrefill = prefill;
-  const selectedType = runningTypes.find(tp => tp.id === _runSelectedTypeId);
-  document.getElementById('run-step3-type').textContent = selectedType ? translateTypeName(selectedType.name) : '';
-
-  document.getElementById('run-f-date').value  = prefill.date              ?? new Date().toISOString().slice(0, 10);
-  document.getElementById('run-f-dist').value  = prefill.distanceKm        ?? '';
-  document.getElementById('run-f-dur').value   = prefill.durationMinutes   ?? '';
-  document.getElementById('run-f-cal').value   = prefill.calories          ?? '';
-  document.getElementById('run-f-spm').value   = prefill.avgStridesPerMin  ?? '';
-  document.getElementById('run-f-hr').value    = prefill.avgHeartRate      ?? '';
-  document.getElementById('run-f-tired').checked = prefill.feltTired ?? false;
-  document.getElementById('run-f-notes').value = prefill.notes ?? '';
-  document.getElementById('runFormError').style.display = 'none';
-  document.getElementById('runSaveBtn').disabled = false;
-  document.getElementById('runSaveBtn').textContent = t('run.save_btn');
-}
-
-function runShowStep3(prefill) { _renderRunStep3Form(prefill); pushSubState({ runStep: 3 }); }
-
-async function runHandleOcr(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  input.value = '';
-  document.getElementById('runOcrZoneText').textContent = t('run.ocr_scanning');
-  document.getElementById('runOcrError').style.display = 'none';
-
-  try {
-    if (!window.Tesseract) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-        s.onload = resolve; s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
-    const { data: { text } } = await Tesseract.recognize(file, 'eng');
-    const prefill = parseOcrText(text);
-    runShowStep3(prefill);
-  } catch {
-    document.getElementById('runOcrZoneText').textContent = '';
-    document.getElementById('runOcrError').textContent = t('run.ocr_error');
-    document.getElementById('runOcrError').style.display = '';
-  }
-}
-
-function parseOcrText(rawText) {
-  console.log('[OCR raw]', rawText);
-
-  // Normalize decimal commas (European format: 5,32 → 5.32)
-  const text = rawText.replace(/(\d),(\d)/g, '$1.$2');
-  const lines = text.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
-
-  // Try multiple regex patterns, return first match
-  function tryPatterns(patterns) {
-    for (const p of patterns) {
-      const m = text.match(p);
-      if (m) return parseFloat(m[1]);
-    }
-    return undefined;
-  }
-
-  // Search for a number on the same line or ±radius lines from a keyword match
-  function nearKeyword(keywords, radius = 1) {
-    const kws = Array.isArray(keywords) ? keywords : [keywords];
-    for (let i = 0; i < lines.length; i++) {
-      const lc = lines[i].toLowerCase();
-      if (kws.some(k => lc.includes(k.toLowerCase()))) {
-        for (let j = Math.max(0, i - radius); j <= Math.min(lines.length - 1, i + radius); j++) {
-          const m = lines[j].match(/(\d+\.?\d*)/);
-          if (m && parseFloat(m[1]) > 0) return parseFloat(m[1]);
-        }
-      }
-    }
-    return undefined;
-  }
-
-  // Duration: hh:mm:ss or mm:ss → decimal minutes
-  function parseDuration() {
-    let m = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
-    if (m) return Math.round((+m[1] * 60 + +m[2] + +m[3] / 60) * 10) / 10;
-    m = text.match(/\b(\d{1,2}):(\d{2})\b/);
-    if (m && +m[1] < 99 && +m[2] < 60) return Math.round((+m[1] + +m[2] / 60) * 10) / 10;
-    m = text.match(/(\d+\.?\d*)\s*min/i);
-    if (m) return parseFloat(m[1]);
-    return nearKeyword(['time', 'duration', 'elapsed', 'moving', 'זמן', 'משך']);
-  }
-
-  const result = {
-    distanceKm: tryPatterns([
-      /(\d+\.?\d*)\s*km/i,
-      /(\d+\.?\d*)\s*ק"מ/,
-      /dist(?:ance)?[:\s]+(\d+\.?\d*)/i,
-    ]) ?? nearKeyword(['km', 'distance', 'dist', 'מרחק']),
-
-    durationMinutes: parseDuration(),
-
-    calories: tryPatterns([
-      /(\d+)\s*(?:kcal|cal\b)/i,
-      /(?:calories?|energy)[:\s]+(\d+)/i,
-      /(\d+)\s*קל/,
-    ]) ?? nearKeyword(['cal', 'kcal', 'calories', 'energy', 'קלוריות']),
-
-    avgStridesPerMin: tryPatterns([
-      /(\d+)\s*spm/i,
-      /cadence[:\s]+(\d+)/i,
-      /(\d+)\s*strides?\s*\/\s*min/i,
-    ]) ?? nearKeyword(['cadence', 'spm', 'strides', 'stride', 'steps']),
-
-    avgHeartRate: tryPatterns([
-      /(\d{2,3})\s*bpm/i,
-      /(?:avg\s*)?h\.?r\.?[:\s]+(\d{2,3})/i,
-      /(?:heart\s*rate)[:\s]+(\d{2,3})/i,
-      /(\d{2,3})\s*דופק/,
-    ]) ?? nearKeyword(['bpm', 'heart', 'hr', 'pulse', 'דופק']),
-  };
-
-  console.log('[OCR parsed]', result);
-  return result;
-}
-
-async function runSaveWorkout() {
-  const date    = document.getElementById('run-f-date').value;
-  const distStr = document.getElementById('run-f-dist').value;
-  const durStr  = document.getElementById('run-f-dur').value;
-  const errEl   = document.getElementById('runFormError');
-
-  if (!date || !distStr || !durStr) {
-    errEl.textContent = t('run.fill_required');
-    errEl.style.display = '';
-    return;
-  }
-
-  const distanceKm      = parseFloat(distStr);
-  const durationMinutes = parseFloat(durStr);
-  if (!(distanceKm > 0) || !(durationMinutes > 0)) {
-    errEl.textContent = t('run.positive_values');
-    errEl.style.display = '';
-    return;
-  }
-
-  const btn = document.getElementById('runSaveBtn');
-  btn.disabled = true;
-  btn.textContent = t('run.save_btn');
-
-  const workout = {
-    date,
-    workoutTypeId:    _runSelectedTypeId,
-    distanceKm,
-    durationMinutes,
-    paceMinPerKm:     calcPace(durationMinutes, distanceKm),
-    calories:         document.getElementById('run-f-cal').value  ? parseFloat(document.getElementById('run-f-cal').value)  : null,
-    avgStridesPerMin: document.getElementById('run-f-spm').value  ? parseFloat(document.getElementById('run-f-spm').value)  : null,
-    avgHeartRate:     document.getElementById('run-f-hr').value   ? parseFloat(document.getElementById('run-f-hr').value)   : null,
-    feltTired:        document.getElementById('run-f-tired').checked,
-    notes:            document.getElementById('run-f-notes').value.trim() || null,
-  };
-
-  try {
-    await addRunWorkout(workout);
-    toast(t('run.saved_ok'));
-    navigateTo('/running');
-  } catch (err) {
-    btn.disabled = false;
-    btn.textContent = t('run.save_btn');
-    errEl.textContent = t('run.save_error') + err.message;
-    errEl.style.display = '';
   }
 }
 
@@ -2057,42 +1773,6 @@ async function submitCardioData() {
   btn.disabled = false; btn.innerText = t('btn.save_workout');
 }
 
-// ─── RUNNING HISTORY ─────────────────────────────────────────
-function renderRunHistory() {
-  const list = document.getElementById('run-history-list');
-  if (!list) return;
-  if (allRunWorkouts.length === 0) {
-    list.innerHTML = `<div style="text-align:center;color:var(--sub);padding:20px;">${t('run.no_workouts')}</div>`;
-    return;
-  }
-  list.innerHTML = allRunWorkouts.map(w => {
-    const rawHistType = runningTypes.find(tp => tp.id === w.workoutTypeId)?.name ?? '';
-    const typeName = escHtml(translateTypeName(rawHistType));
-    const pace     = w.paceMinPerKm ? formatPace(w.paceMinPerKm) : '--';
-    const tired    = w.feltTired ? '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-tired"/></svg>' : '';
-    return `
-      <div class="run-history-row" onclick="runToggleHistoryRow('${w.id}')">
-        <div>
-          <div class="run-history-date">${w.date} ${tired}</div>
-          <div class="run-history-meta">${typeName} · ${(w.distanceKm ?? 0).toFixed(1)} ${t('run.km')} · ${pace} ${t('run.pace')}</div>
-        </div>
-        <span style="color:var(--sub);">›</span>
-      </div>
-      <div class="run-history-detail" id="rhd-${w.id}">
-        ${w.durationMinutes != null ? `<div>${t('run.dur_label')}: ${w.durationMinutes}</div>` : ''}
-        ${w.calories        != null ? `<div>${t('run.cal_label')}: ${w.calories}</div>` : ''}
-        ${w.avgHeartRate    != null ? `<div>${t('run.hr_label')}: ${w.avgHeartRate} bpm</div>` : ''}
-        ${w.avgStridesPerMin!= null ? `<div>${t('run.spm_label')}: ${w.avgStridesPerMin}</div>` : ''}
-        ${w.notes           ? `<div>${t('run.notes_label')}: ${escHtml(w.notes)}</div>` : ''}
-      </div>`;
-  }).join('');
-}
-
-function runToggleHistoryRow(id) {
-  const el = document.getElementById('rhd-' + id);
-  if (el) el.classList.toggle('open');
-}
-
 // ─── DRAFT STATE ──────────────────────────────────────────────
 let _draftDirty          = {};   // { "domain:type": boolean }
 let _draftSaveDebounce   = {};   // { "domain:type": timeoutId }
@@ -2139,8 +1819,6 @@ onAuthStateChanged(auth, async user => {
     cardioSelectedType = null;
     cardioEditTab      = null;
     cardioEditTemplates = {};
-    _runSelectedTypeId = null;
-    _runPrefill        = {};
     _runDataPromise    = null;
     Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
     _draftFirestoreTimer = {};
@@ -2573,13 +2251,11 @@ const ROUTES = {
   '/':                           { section: 'main' },
   '/timer':                      { section: 'timer' },
   '/measurements':               { section: 'measurements' },
-  '/running':                    { section: 'running', runSubView: null },
+  '/running':                    { section: 'running' },
   '/history':                    { section: 'history' },
   '/settings':                   { section: 'settings' },
   '/settings/workout-plan':      { section: 'main', editPanel: 'workout' },
   '/settings/measurement-types': { section: 'measurements', editPanel: 'measurementTypes' },
-  '/running/add':                { section: 'running', runSubView: 'add', runStep: 1 },
-  '/running/history':            { section: 'running', runSubView: 'history' },
 };
 
 let currentSection = 'main';
@@ -2663,7 +2339,6 @@ function _renderRoute(state) {
   showSection(state.section);
   _setWorkoutEditPanel(state.section === 'main' && state.editPanel === 'workout');
   _setMeasurementTypesPanel(state.section === 'measurements' && state.editPanel === 'measurementTypes');
-  if (state.section === 'running') _renderRunState(state.runSubView, state.runStep);
 }
 
 function goBack() { history.back(); }
@@ -4903,11 +4578,7 @@ Object.assign(window, {
 
 // ─── RUNNING EXPORTS ─────────────────────────────────────────
 Object.assign(window, {
-  runShowDashboard, runShowAdd, runShowHistory,
-  runShowStep1, runSelectType, runShowStep3,
-  runHandleOcr, runSaveWorkout,
-  runGoBack,
-  runSetRange, runToggleHistoryRow,
+  runSetRange,
   saveRunningEnabled,
   // Cardio daily-entry page (Task 4) — onclick handlers in the markup call these
   // by name, so they must be global exactly like every other export in this file;
