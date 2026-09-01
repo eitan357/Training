@@ -133,7 +133,11 @@ test.describe('Workout — Edit Plan', () => {
     // Open workout edit via settings → Edit Workout Plan button
     await page.locator('#mainGearBtn').click();
     await expect(page.locator('#sec-settings')).toHaveClass(/active/);
-    await page.locator('button.settings-item', { hasText: 'עריכת תוכנית' }).click();
+    // Scoped to the strength-plan row's onclick handler, not just its text:
+    // the cardio template editor's settings row (added alongside this one)
+    // shares the substring 'עריכת תוכנית' in its Hebrew label, which made a
+    // plain hasText filter ambiguous (matched both rows).
+    await page.locator('button.settings-item[onclick="openWorkoutEdit()"]').click();
     // Edit panel becomes visible in main section
     await expect(page.locator('#mainEditPanel')).toBeVisible({ timeout: 8000 });
   });

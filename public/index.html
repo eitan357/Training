@@ -1136,6 +1136,14 @@
       </div>
       <span class="settings-item-arrow">›</span>
     </button>
+    <button class="settings-item" onclick="openCardioEdit()">
+      <span class="settings-item-icon"><svg class="icon" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></span>
+      <div class="settings-item-text">
+        <div class="settings-item-title" data-i18n="settings.cardio_edit">לעריכת תוכנית אימוני אירובי</div>
+        <div class="settings-item-sub" data-i18n="settings.cardio_edit_sub">הוסף, הסר וערוך סוגי אימון ושדות</div>
+      </div>
+      <span class="settings-item-arrow">›</span>
+    </button>
     <button class="settings-item" onclick="openMeasurementsEdit()">
       <span class="settings-item-icon"><svg class="icon" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-ruler"/></svg></span>
       <div class="settings-item-text">
@@ -1182,7 +1190,7 @@
           <!-- populated by renderLangSelector() -->
         </div>
       </div>
-      <div class="settings-row" id="runningGateRow" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:none;">
+      <div class="settings-row" id="runningGateRow" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
         <div class="settings-item-text">
           <div class="settings-row-label" data-i18n="settings.running_show">הצג עמוד אירובי</div>
           <div class="settings-item-sub" data-i18n="settings.running_show_sub">מחליף את עמוד המדידות בנב-בר</div>
@@ -1357,14 +1365,8 @@ function initSettingsUI() {
   renderLangSelector();
   document.getElementById('displayNameInput').value = localStorage.getItem('displayName_' + (currentUser?.uid || '')) || '';
 
-  // Running gate
-  const RUN_ALLOWED = RUNNING_ALLOWED_EMAILS;
-  const gateRow = document.getElementById('runningGateRow');
-  if (gateRow) {
-    gateRow.style.display = RUN_ALLOWED.includes(currentUser?.email) ? 'flex' : 'none';
-    const tog = document.getElementById('runningEnabledToggle');
-    if (tog) tog.checked = runningEnabled;
-  }
+  const tog = document.getElementById('runningEnabledToggle');
+  if (tog) tog.checked = runningEnabled;
 }
 
 // ─── RUNNING SETTINGS ────────────────────────────────────────
@@ -1438,7 +1440,6 @@ let editMeasureTypes = [];
 let lastWorkouts     = {};
 
 // ─── RUNNING STATE ────────────────────────────────────────────
-const RUNNING_ALLOWED_EMAILS = ['eitan357@gmail.com', 'test@gmail.com'];
 let runningEnabled     = false;
 let allRunWorkouts     = [];   // was runWorkouts — renamed for symmetry with allSessions/allMeasurements
 let runningTypes       = [];   // was runWorkoutTypes — {id, name} objects loaded from Firestore, same shape as before the rename
@@ -2506,12 +2507,12 @@ async function initApp() {
   navigateTo(bootPath, { replace: true, isRoot: true });
 }
 
-// Re-checks the exact same gate initSettingsUI already applies (hard-coded
-// email allow-list + the runningEnabled flag) so a direct/bookmarked
-// /running URL can't show the section to a user it isn't meant for. This
-// is UI convenience, not a security boundary — see docs/product/12-security-and-privacy.md.
+// Now only checks the on/off toggle — the email allowlist this used to
+// also check is gone (the cardio page is open to every user, spec §1).
+// Kept as its own named function (not inlined at call sites) because
+// boot-time route resolution and navigateTo() both call it.
 function _isRunningAllowed() {
-  return RUNNING_ALLOWED_EMAILS.includes(currentUser?.email) && runningEnabled === true;
+  return runningEnabled === true;
 }
 
 async function reloadAppData() {

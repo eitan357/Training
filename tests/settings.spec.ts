@@ -81,6 +81,20 @@ test.describe('Settings Section', () => {
     await expect(page.locator('#auth-screen')).toBeVisible();
   });
 
+  test('cardio toggle row is visible for every user, not gated by email', async ({ page }) => {
+    // beforeEach already navigated to settings via #mainGearBtn; that button
+    // lives inside #sec-main, which is inactive/hidden once we're on
+    // settings, so clicking it again here would time out. No re-click needed.
+    await expect(page.locator('#runningGateRow')).toBeVisible();
+  });
+
+  test('settings has a cardio template editor link under the strength one', async ({ page }) => {
+    const strengthRow = page.locator('.settings-item', { hasText: 'אימוני כוח' });
+    const cardioRow   = page.locator('.settings-item', { hasText: 'אימוני אירובי' });
+    await expect(cardioRow).toBeVisible();
+    expect(await strengthRow.boundingBox()).toBeTruthy();
+  });
+
   test('switching language changes page direction', async ({ page }) => {
     const langBtns = page.locator('#langBtns button');
     const count = await langBtns.count();
