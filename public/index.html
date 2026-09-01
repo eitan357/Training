@@ -1428,23 +1428,21 @@ let _runDataPromise    = null;  // holds the in-flight or resolved prefetch prom
 async function loadRunData() {
   if (!currentUser) return;
   try {
-    const typesRef = collection(db, 'users', currentUser.uid, 'runWorkoutTypes');
-    const typesSnap = await getDocs(query(typesRef, orderBy('order')));
-    if (typesSnap.empty) {
-      await Promise.all([
-        addDoc(typesRef, { name: 'Running',    order: 0 }),
-        addDoc(typesRef, { name: 'Elliptical', order: 1 }),
-      ]);
-      const fresh = await getDocs(query(typesRef, orderBy('order')));
-      runningTypes = fresh.docs.map(d => ({ id: d.id, ...d.data() }));
-    } else {
-      runningTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    }
+    const tmplSnap = await getDoc(doc(db, 'users', currentUser.uid, 'config', 'runningTemplates'));
+    const tmpl = tmplSnap.exists() ? tmplSnap.data() : { types: [] };
+    runningTypes = tmpl.types && tmpl.types.length ? tmpl.types : [];
+    cardioEditTemplates = {};
+    runningTypes.forEach(type => { cardioEditTemplates[type] = tmpl[type] || []; });
+    if (!cardioSelectedType || !runningTypes.includes(cardioSelectedType)) cardioSelectedType = runningTypes[0] || null;
+    if (!cardioEditTab || !runningTypes.includes(cardioEditTab)) cardioEditTab = runningTypes[0] || null;
+
     const wRef  = collection(db, 'users', currentUser.uid, 'runWorkouts');
-    const wSnap = await getDocs(query(wRef, orderBy('date', 'desc')));
+    const wSnap = await getDocs(query(wRef, orderBy('dateISO', 'desc')));
     allRunWorkouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lastCardioWorkouts = {};
+    allRunWorkouts.forEach(w => { if (!lastCardioWorkouts[w.workoutType]) lastCardioWorkouts[w.workoutType] = w; });
   } catch (err) {
-    toast('שגיאה בטעינת נתוני ריצה: ' + err.message, 'error');
+    toast(t('error.update') + err.message, 'error');
   }
 }
 
@@ -1453,13 +1451,6 @@ async function loadRunData() {
 function prefetchRunData() {
   if (!currentUser || _runDataPromise) return;
   _runDataPromise = loadRunData();
-}
-
-async function addRunWorkout(workout) {
-  const ref = collection(db, 'users', currentUser.uid, 'runWorkouts');
-  await addDoc(ref, { ...workout, createdAt: serverTimestamp() });
-  const snap = await getDocs(query(ref, orderBy('date', 'desc')));
-  allRunWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 // ─── RUNNING CALCULATIONS ────────────────────────────────────
@@ -1527,7 +1518,15 @@ async function initRunSection() {
   if (!_runDataPromise) _runDataPromise = loadRunData();  // fallback if prefetch didn't run
   await _runDataPromise;
   renderCardioTypeButtons();
-  selectCardioType(cardioSelectedType || runningTypes[0]);
+  // loadRunData() already normalizes cardioSelectedType to a valid type (Task 5), so by
+  // the time we get here it usually already equals the type we're about to select —
+  // selectCardioType()'s same-type guard exists to skip redundant work on a user
+  // re-clicking the active tab, but it would wrongly no-op this initial render too
+  // (leaving field list/history preview/active-tab class unset). Clear it first so
+  // the section always fully renders on open, same as before loadRunData set defaults.
+  const typeToSelect = cardioSelectedType || runningTypes[0];
+  cardioSelectedType = null;
+  selectCardioType(typeToSelect);
   _draftStartFirestoreTimer('cardio', () => WORKOUT_DOMAINS.cardio.getSelectedType());
 }
 
@@ -4735,6 +4734,10 @@ Object.assign(window, {
   runGoBack,
   runSetRange, runToggleHistoryRow,
   saveRunningEnabled,
+  // Cardio daily-entry page (Task 4) — onclick handlers in the markup call these
+  // by name, so they must be global exactly like every other export in this file;
+  // missing here means every button on the cardio page throws ReferenceError.
+  selectCardioType, clearCardioForm, copyLastCardioWorkout, addCustomCardioField, submitCardioData,
 });
 
 // ─── ANDROID HARDWARE BACK BUTTON ──────────────────────────────
