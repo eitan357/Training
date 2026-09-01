@@ -747,11 +747,25 @@ Extend the `cardio` entry added in Task 2 with:
         </div>
       </div>
       ${f.fieldType === 'date' ? '' : `<button class="edit-remove" onclick="removeCardioEditField(${idx})">✕</button>`}`,
-    collectItemFromRow: c => ({
-      id:        c.dataset.id || '',
-      label:     c.querySelector('.cardio-field-label-input').value,
-      fieldType: c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text',
-    }),
+    // Plan defect, caught and fixed by Task 6's own implementer via live
+    // testing — corrected here for the record. `renderItemRow`'s active-class
+    // logic above has no branch for fieldType==='date' (only text/number/
+    // checkbox), so a date row's picker NEVER has an .active button. The
+    // naive `.ftype-btn.active` lookup below would therefore silently fall
+    // back to 'text' on every collect, defeating the "date field is
+    // protected/type-locked" requirement on the row's very first save — not
+    // on initial render, so casual smoke-testing misses it. Fix: check the
+    // one signal renderItemRow reliably sets ONLY for the date row (the
+    // label input's `disabled` attribute) before ever consulting the picker.
+    collectItemFromRow: c => {
+      const labelInput = c.querySelector('.cardio-field-label-input');
+      if (labelInput.disabled) return { id: c.dataset.id || '', label: labelInput.value, fieldType: 'date' };
+      return {
+        id:        c.dataset.id || '',
+        label:     labelInput.value,
+        fieldType: c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text',
+      };
+    },
     buildSaveDoc: (types, templates) => {
       const templateData = { types };
       types.forEach(type => {
