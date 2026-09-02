@@ -82,6 +82,7 @@ export const TRANSLATIONS = {
     'workout.fill_first':      'מלא נתונים לפני השמירה.',
     'copy.success':            'תרגילים הועתקו מ-',
     'copy.from':               '',
+    'cardio.copy.success':     'אימון הועתק מ-',
 
     // ── Draft / auto-save ─────────────────────────────────────────
     'draft.saving':            'שומר...',
@@ -367,6 +368,7 @@ export const TRANSLATIONS = {
     'workout.fill_first':      'Fill in data before saving.',
     'copy.success':            'exercises copied from',
     'copy.from':               '',
+    'cardio.copy.success':     'workout copied from',
 
     // ── Draft / auto-save ─────────────────────────────────────────
     'draft.saving':            'Saving...',

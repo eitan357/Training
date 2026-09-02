@@ -1083,9 +1083,12 @@
 <div id="sec-running" class="section">
   <div class="topbar">
     <div><div class="topbar-title" data-i18n="title.running">אירובי <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-pulse"/></svg></div><div class="topbar-sub topbar-email"></div></div>
-    <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="topbar-back-btn" id="cardioBackBtn" style="display:none;" onclick="closeCardioEdit()" data-i18n="btn.back">← חזרה</button>
+      <button class="topbar-icon-btn" id="cardioGearBtn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
+    </div>
   </div>
-  <div style="padding:16px;">
+  <div id="cardioMainContent" style="padding:16px;">
     <div id="cardioTypeRow" class="type-row"></div>
 
     <div id="cardioHistoryPreview" class="history-preview" style="display:none;"></div>
@@ -1104,19 +1107,19 @@
     <button class="run-btn run-btn-secondary" style="width:100%;margin-top:10px;" onclick="addCustomCardioField()" data-i18n="cardio.add_field_btn">+ הוסף שדה</button>
     <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="cardioSaveBtn" onclick="submitCardioData()" data-i18n="btn.save_workout">שמור אימון</button>
   </div>
-</div>
 
-<!-- ══ CARDIO TEMPLATE EDITOR (in-page panel, mirrors #mainEditPanel) ══ -->
-<div id="cardioEditPanel" style="display:none;">
-  <div id="cardioEditTabs" class="edit-tabs"></div>
-  <div id="cardioAddTypeForm" class="add-type-form" style="display:none;">
-    <input type="text" id="cardioNewTypeName" placeholder="שם סוג אימון">
-    <button class="btn-primary" onclick="confirmAddCardioType()" data-i18n="btn.add">הוסף</button>
-    <button class="btn-ghost" onclick="document.getElementById('cardioAddTypeForm').style.display='none'" data-i18n="btn.cancel">ביטול</button>
+  <!-- ══ CARDIO TEMPLATE EDITOR (in-page panel, mirrors #mainEditPanel) ══ -->
+  <div id="cardioEditPanel" style="display:none; padding:16px;">
+    <div id="cardioEditTabs" class="edit-tabs"></div>
+    <div id="cardioAddTypeForm" class="add-type-form" style="display:none;">
+      <input type="text" id="cardioNewTypeName" data-i18n-ph="edit.add_type_ph" placeholder="שם סוג אימון">
+      <button class="btn-primary" onclick="confirmAddCardioType()" data-i18n="btn.add">הוסף</button>
+      <button class="btn-ghost" onclick="document.getElementById('cardioAddTypeForm').style.display='none'" data-i18n="btn.cancel">ביטול</button>
+    </div>
+    <div id="cardioEditListContainer"></div>
+    <button class="btn-ghost" onclick="addCardioEditField()" data-i18n="edit.add_exercise">+ הוסף שדה</button>
+    <button class="btn-primary" onclick="saveCardioTemplates()" data-i18n="edit.save">שמור שינויים</button>
   </div>
-  <div id="cardioEditListContainer"></div>
-  <button class="btn-ghost" onclick="addCardioEditField()" data-i18n="edit.add_exercise">+ הוסף שדה</button>
-  <button class="btn-primary" onclick="saveCardioTemplates()" data-i18n="edit.save">שמור שינויים</button>
 </div>
 
 <!-- ══════════ SETTINGS ══════════ -->
@@ -1442,7 +1445,7 @@ let lastWorkouts     = {};
 // ─── RUNNING STATE ────────────────────────────────────────────
 let runningEnabled     = false;
 let allRunWorkouts     = [];   // was runWorkouts — renamed for symmetry with allSessions/allMeasurements
-let runningTypes       = [];   // was runWorkoutTypes — {id, name} objects loaded from Firestore, same shape as before the rename
+let runningTypes       = [];   // plain type-name strings (e.g. "Running"), sourced from config/runningTemplates.types
 let cardioSelectedType = null;
 let cardioEditTab      = null;
 let cardioEditTemplates = {};
@@ -1724,7 +1727,7 @@ function copyLastCardioWorkout() {
   );
   if (hasData && !confirm(t('target.overwrite_confirm'))) return;
   renderCardioFieldList(cardioSelectedType, last.fields);
-  toast(`✓ ${t('copy.success')} ${t('copy.from')}${sessionDisplayDate(last)}`, 'success');
+  toast(`✓ ${t('cardio.copy.success')} ${sessionDisplayDate(last)}`, 'success');
   _draftOnInput('cardio');
 }
 
@@ -1822,8 +1825,9 @@ onAuthStateChanged(auth, async user => {
     _runDataPromise    = null;
     Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
     _draftFirestoreTimer = {};
-    if (editPanelOpen)   toggleEditPanel();
-    if (typesEditorOpen) toggleTypesEditor();
+    if (editPanelOpen)      toggleEditPanel();
+    if (typesEditorOpen)    toggleTypesEditor();
+    if (cardioEditPanelOpen) _setCardioEditPanel(false);
 
     // Remember what the user was trying to reach (if it's a real route)
     // so a fresh login can return them there, then reset the address bar
@@ -2256,6 +2260,7 @@ const ROUTES = {
   '/settings':                   { section: 'settings' },
   '/settings/workout-plan':      { section: 'main', editPanel: 'workout' },
   '/settings/measurement-types': { section: 'measurements', editPanel: 'measurementTypes' },
+  '/settings/cardio-plan':       { section: 'running', editPanel: 'cardio' },
 };
 
 let currentSection = 'main';
@@ -2339,6 +2344,7 @@ function _renderRoute(state) {
   showSection(state.section);
   _setWorkoutEditPanel(state.section === 'main' && state.editPanel === 'workout');
   _setMeasurementTypesPanel(state.section === 'measurements' && state.editPanel === 'measurementTypes');
+  _setCardioEditPanel(state.section === 'running' && state.editPanel === 'cardio');
 }
 
 function goBack() { history.back(); }
@@ -2758,14 +2764,26 @@ async function migrateCardioDataV2() {
     }
     const oldTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
 
-    const templateData = { types: oldTypes.map(t => t.name) };
-    // Every old type gets the identical 8-field CARDIO_MIGRATION_FIELD_MAP template —
-    // intentional, not an oversight: the old fixed-schema runWorkoutTypes/runWorkouts
-    // shape had no per-type field customization to preserve, so there's nothing to
-    // differentiate between types here. Later features (e.g. confirmAddCardioType)
-    // are what let a NEW type diverge from this seed template.
-    oldTypes.forEach(t => { templateData[t.name] = CARDIO_MIGRATION_FIELD_MAP.map(f => ({ ...f })); });
-    await setDoc(doc(db, 'users', currentUser.uid, 'config', 'runningTemplates'), templateData);
+    // Idempotency guard, same rationale as the runWorkouts loop's guard below: a
+    // prior partial run of this migration may have already written runningTemplates
+    // before failing on a later step (leaving the overall flag unset and
+    // runWorkoutTypes undeleted). Or the user may have opened the cardio editor and
+    // saved real edits to runningTemplates in the meantime. Either way, an existing
+    // doc here means this write already happened / is no longer ours to make —
+    // re-deriving and overwriting it from the (possibly stale) old runWorkoutTypes
+    // docs would silently destroy real state. Only write when nothing exists yet.
+    const templatesRef  = doc(db, 'users', currentUser.uid, 'config', 'runningTemplates');
+    const templatesSnap = await getDoc(templatesRef);
+    if (!templatesSnap.exists()) {
+      const templateData = { types: oldTypes.map(t => t.name) };
+      // Every old type gets the identical 8-field CARDIO_MIGRATION_FIELD_MAP template —
+      // intentional, not an oversight: the old fixed-schema runWorkoutTypes/runWorkouts
+      // shape had no per-type field customization to preserve, so there's nothing to
+      // differentiate between types here. Later features (e.g. confirmAddCardioType)
+      // are what let a NEW type diverge from this seed template.
+      oldTypes.forEach(t => { templateData[t.name] = CARDIO_MIGRATION_FIELD_MAP.map(f => ({ ...f })); });
+      await setDoc(templatesRef, templateData);
+    }
 
     const oldWorkoutsSnap = await getDocs(collection(db, 'users', currentUser.uid, 'runWorkouts'));
     for (const wDoc of oldWorkoutsSnap.docs) {
@@ -3653,13 +3671,17 @@ let cardioEditPanelOpen = false;
 function _setCardioEditPanel(open) {
   if (open === cardioEditPanelOpen) return;
   cardioEditPanelOpen = open;
-  document.getElementById('sec-running').style.display    = open ? 'none'  : '';
-  document.getElementById('cardioEditPanel').style.display = open ? 'block' : 'none';
-  if (open) renderCardioEditAll();
+  document.getElementById('cardioMainContent').style.display = cardioEditPanelOpen ? 'none' : 'block';
+  document.getElementById('cardioEditPanel').style.display   = cardioEditPanelOpen ? 'block' : 'none';
+  document.getElementById('cardioBackBtn').style.display     = cardioEditPanelOpen ? '' : 'none';
+  document.getElementById('cardioGearBtn').style.display     = cardioEditPanelOpen ? 'none' : '';
+  if (cardioEditPanelOpen) document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  else document.getElementById('nav-running')?.classList.add('active');
+  if (cardioEditPanelOpen) renderCardioEditAll();
 }
 
-function openCardioEdit()  { showSection('running'); _setCardioEditPanel(true); }
-function closeCardioEdit() { _setCardioEditPanel(false); showSection('settings'); }
+function openCardioEdit()  { navigateTo('/settings/cardio-plan'); }
+function closeCardioEdit() { history.back(); }
 
 function renderCardioEditTabs() {
   const canRemove = runningTypes.length > 1;
