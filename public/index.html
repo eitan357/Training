@@ -986,6 +986,10 @@
       <button class="topbar-icon-btn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
     </div>
   </div>
+  <div class="history-domain-toggle" style="display:flex;gap:8px;padding:0 16px;margin-top:12px;">
+    <button class="run-btn run-btn-secondary history-domain-btn active" data-domain="strength" onclick="switchHistoryDomain('strength')" data-i18n="nav.workout">כוח</button>
+    <button class="run-btn run-btn-secondary history-domain-btn" data-domain="cardio" onclick="switchHistoryDomain('cardio')" data-i18n="title.running">אירובי</button>
+  </div>
   <div style="padding:16px;">
     <div id="filterRow" class="filter-row"></div>
     <div class="history-hint" data-i18n="history.long_press_hint">לחיצה ארוכה על שורה פותחת אפשרויות עריכה ומחיקה</div>
@@ -1434,6 +1438,16 @@ let editTab          = 'A';
 let editTemplates    = {};
 let allSessions      = [];
 let activeFilter     = 'all';
+let historyActiveDomain = 'strength';   // 'strength' | 'cardio' — which dataset the History page renders
+
+function switchHistoryDomain(domain) {
+  if (historyActiveDomain === domain) return;
+  historyActiveDomain = domain;
+  activeFilter = 'all';
+  document.querySelectorAll('.history-domain-btn').forEach(b => b.classList.toggle('active', b.dataset.domain === domain));
+  renderFilterButtons();
+  renderHistory();
+}
 let selectedSessions = new Set();
 let selectedMeasures = new Set();
 let allMeasurements  = [];
@@ -3252,7 +3266,9 @@ function renderHistory() {
   updateHistBulkBar();
   const list = document.getElementById('historyList');
   _attachHistLongPress();
-  const data = activeFilter === 'all' ? allSessions : allSessions.filter(s => s.type === activeFilter);
+  const sourceData = historyActiveDomain === 'cardio' ? allRunWorkouts : allSessions;
+  const typeKey    = historyActiveDomain === 'cardio' ? 'workoutType' : 'type';
+  const data = activeFilter === 'all' ? sourceData : sourceData.filter(s => s[typeKey] === activeFilter);
   if (!data.length) {
     list.innerHTML = `<div class="empty"><div class="empty-icon"><svg class="icon" style="width:48px;height:48px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-runner"/></svg></div><div class="empty-text">${t('workout.no_results')}</div></div>`;
     return;
@@ -3274,7 +3290,7 @@ function renderHistory() {
 
     if (isLatest) {
       html += `<div class="month-label">${label}</div>`;
-      sessions.forEach(s => { html += buildSessionCard('strength', s, si++); });
+      sessions.forEach(s => { html += buildSessionCard(historyActiveDomain, s, si++); });
     } else {
       html += `<div class="month-group-header" onclick="toggleMonthGroup('${gid}',this)">
         <span class="month-group-title">${label}</span>
@@ -3284,7 +3300,7 @@ function renderHistory() {
         </span>
       </div>
       <div class="month-group-body" id="${gid}">`;
-      sessions.forEach(s => { html += buildSessionCard('strength', s, si++); });
+      sessions.forEach(s => { html += buildSessionCard(historyActiveDomain, s, si++); });
       html += `</div>`;
     }
   });
@@ -3538,10 +3554,12 @@ function renderTypeButtons() {
 }
 
 function renderFilterButtons() {
+  const types = historyActiveDomain === 'cardio' ? runningTypes : workoutTypes;
+  const label = wtype => historyActiveDomain === 'cardio' ? escHtml(wtype) : escHtml(t('workout.badge') + ' ' + wtype);
   document.getElementById('filterRow').innerHTML =
     `<button class="filter-btn${activeFilter==='all'?' active':''}" data-filter="all" onclick="filterHistory('all')">${t('filter.all')}</button>` +
-    workoutTypes.map(wtype =>
-      `<button class="filter-btn${activeFilter===wtype?' active':''}" data-filter="${escHtml(wtype)}" onclick="filterHistory('${escHtml(wtype)}')">${escHtml(t('workout.badge') + ' ' + wtype)}</button>`
+    types.map(wtype =>
+      `<button class="filter-btn${activeFilter===wtype?' active':''}" data-filter="${escHtml(wtype)}" onclick="filterHistory('${escHtml(wtype)}')">${label(wtype)}</button>`
     ).join('');
 }
 
