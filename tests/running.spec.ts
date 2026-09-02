@@ -1,6 +1,72 @@
 import { test, expect } from '@playwright/test';
 import { loginWithEmailPassword, waitForAppReady, requiresCredentials } from './helpers/auth';
 
+// ─── Cardio Data Migration ──────────────────────────────────────────────
+// NOTE on fixture seeding: this repo has no Firestore emulator and no
+// Firebase Admin fixture-seeding script (see tests/fixtures/ — it only holds
+// a Playwright storageState and a plain test-data.json, no seed mechanism).
+// These tests instead run against the real `test@gmail.com` account's real
+// production Firestore data via the app's own client SDK, exactly as every
+// other spec in this file already does through loginWithEmailPassword().
+//
+// `test@gmail.com` genuinely had old-schema data (a `runWorkoutTypes`
+// collection with 'Running' and 'Elliptical' docs, no `runWorkouts` docs) the
+// first time this migration code ran against it during implementation of
+// this task. That one real run was independently verified (via temporary
+// read-only debug hooks, since removed) to migrate correctly: it produced
+// `config/runningTemplates` with the exact expected shape, deleted the old
+// `runWorkoutTypes` docs, and set `config/settings.cardioMigratedV2 = true`.
+// Because the migration is one-time and guarded, that state is now
+// permanent for this account — the assertions below keep passing on every
+// subsequent run, but from this point on they exercise the idempotent
+// guard-flag path (fast early-return), not the "processes real old-schema
+// docs" path. See task-1-report.md for the full account of what was and
+// wasn't verified end-to-end, and why the `runWorkouts` per-doc rewrite
+// (date format, fields[], deleteField() of old keys) could not be exercised
+// against real data (the account had zero old-schema workout docs).
+test.describe('Cardio Data Migration', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+  });
+
+  test('migrates old runWorkoutTypes/runWorkouts into runningTemplates + fields[] shape', async ({ page }) => {
+    await page.waitForFunction(() => (window as any).__cardioMigrationDone === true, { timeout: 15000 });
+    const result = await page.evaluate(async () => {
+      return await (window as any).__debugGetDoc(['config', 'runningTemplates']);
+    });
+    expect(result).toBeTruthy();
+    expect(result.types).toContain('Running');
+    expect(result['Running'].some((f: any) => f.fieldType === 'date')).toBe(true);
+    expect(result['Running'].some((f: any) => f.label === 'מרחק')).toBe(true);
+  });
+
+  test('migration guard flag is set and idempotent across reloads', async ({ page }) => {
+    await page.waitForFunction(() => (window as any).__cardioMigrationDone === true, { timeout: 15000 });
+    const settingsAfterFirstLoad = await page.evaluate(async () => {
+      return await (window as any).__debugGetDoc(['config', 'settings']);
+    });
+    expect(settingsAfterFirstLoad.cardioMigratedV2).toBe(true);
+
+    // Reload — migration must re-run (it's called from _backgroundSync on
+    // every load) but the guard flag must make it a no-op: same flag value,
+    // no thrown error surfaced to the page, and the previously-migrated
+    // runningTemplates doc must be unchanged.
+    await page.reload();
+    await waitForAppReady(page);
+    await page.waitForFunction(() => (window as any).__cardioMigrationDone === true, { timeout: 15000 });
+    const [settingsAfterReload, templatesAfterReload] = await page.evaluate(async () => {
+      return [
+        await (window as any).__debugGetDoc(['config', 'settings']),
+        await (window as any).__debugGetDoc(['config', 'runningTemplates']),
+      ];
+    });
+    expect(settingsAfterReload.cardioMigratedV2).toBe(true);
+    expect(templatesAfterReload.types).toContain('Running');
+  });
+});
+
 async function enableRunningSection(page: import('@playwright/test').Page) {
   await page.locator('#mainGearBtn').click();
   await expect(page.locator('#sec-settings')).toHaveClass(/active/);

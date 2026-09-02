@@ -82,6 +82,7 @@ export const TRANSLATIONS = {
     'workout.fill_first':      'מלא נתונים לפני השמירה.',
     'copy.success':            'תרגילים הועתקו מ-',
     'copy.from':               '',
+    'cardio.copy.success':     'אימון הועתק מ-',
 
     // ── Draft / auto-save ─────────────────────────────────────────
     'draft.saving':            'שומר...',
@@ -130,6 +131,10 @@ export const TRANSLATIONS = {
     'edit.min_one_type': 'חייב להישאר לפחות סוג אימון אחד',
     'edit.saved_ok':     'תבניות האימון נשמרו בהצלחה',
     'edit.no_items':     'אין תרגילים לשמור.',
+    'edit.field_label_ph': 'שם השדה',
+    'edit.ftype_text':     'טקסט',
+    'edit.ftype_number':   'מספר',
+    'edit.ftype_checkbox': 'סימון',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'הוסף מדידה חדשה',
@@ -173,6 +178,8 @@ export const TRANSLATIONS = {
     'settings.timer_sound_sub':   'השמע צליל כאשר הטיימר מסתיים',
     'settings.workout_edit':      'עריכת תוכנית אימוני כוח',
     'settings.workout_edit_sub':  'הוסף, הסר וערוך סוגי אימון ותרגילים',
+    'settings.cardio_edit':       'לעריכת תוכנית אימוני אירובי',
+    'settings.cardio_edit_sub':   'הוסף, הסר וערוך סוגי אימון ושדות',
     'settings.meas_edit':         'עריכת סוגי מדידות',
     'settings.meas_edit_sub':     'הוסף והסר סוגי מדידה',
     'settings.display_name':      'שם תצוגה',
@@ -277,6 +284,13 @@ export const TRANSLATIONS = {
     'settings.running_show':     'הצג עמוד אירובי',
     'settings.running_show_sub': 'מחליף את עמוד המדידות בנב-בר',
 
+    // ── Cardio (dynamic fields) ─────────────────────────────────────
+    'copy.last_btn':                  'העתקת אימון אחרון',
+    'clear.btn':                      'נקה טופס',
+    'cardio.add_field_btn':           '+ הוסף שדה',
+    'cardio.new_field_default_label': 'שדה חדש',
+    'cardio.date_required':           'יש למלא תאריך',
+
     // ── Target copy/bump ──────────────────────────────────────────
     'target.copy_hint':       'לחץ להעתיק ערכי יעד לטופס',
     'target.overwrite_confirm':'שדות מלאים יידרסו. להמשיך?',
@@ -354,6 +368,7 @@ export const TRANSLATIONS = {
     'workout.fill_first':      'Fill in data before saving.',
     'copy.success':            'exercises copied from',
     'copy.from':               '',
+    'cardio.copy.success':     'workout copied from',
 
     // ── Draft / auto-save ─────────────────────────────────────────
     'draft.saving':            'Saving...',
@@ -402,6 +417,10 @@ export const TRANSLATIONS = {
     'edit.min_one_type': 'Must keep at least one workout type',
     'edit.saved_ok':     'Workout templates saved',
     'edit.no_items':     'No exercises to save.',
+    'edit.field_label_ph': 'Field name',
+    'edit.ftype_text':     'Text',
+    'edit.ftype_number':   'Number',
+    'edit.ftype_checkbox': 'Checkbox',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'Add New Measurement',
@@ -445,6 +464,8 @@ export const TRANSLATIONS = {
     'settings.timer_sound_sub':   'Play a sound when the timer finishes',
     'settings.workout_edit':      'Edit Strength Plan',
     'settings.workout_edit_sub':  'Add, remove and edit workout types and exercises',
+    'settings.cardio_edit':       'Edit Cardio Workout Plan',
+    'settings.cardio_edit_sub':   'Add, remove, and edit workout types and fields',
     'settings.meas_edit':         'Edit Measurement Types',
     'settings.meas_edit_sub':     'Add and remove measurement types',
     'settings.display_name':      'Display Name',
@@ -548,6 +569,13 @@ export const TRANSLATIONS = {
     'run.chart.spm':        'Steps/min',
     'settings.running_show':     'Show Cardio Page',
     'settings.running_show_sub': 'Replaces the Measurements tab in the nav bar',
+
+    // ── Cardio (dynamic fields) ─────────────────────────────────────
+    'copy.last_btn':                  'Copy Last Workout',
+    'clear.btn':                      'Clear Form',
+    'cardio.add_field_btn':           '+ Add Field',
+    'cardio.new_field_default_label': 'New Field',
+    'cardio.date_required':           'Date is required',
 
     // ── Target copy/bump ──────────────────────────────────────────
     'target.copy_hint':       'Tap to copy target values to form',
