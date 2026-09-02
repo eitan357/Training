@@ -83,6 +83,7 @@ export const TRANSLATIONS = {
     'copy.success':            'תרגילים הועתקו מ-',
     'copy.from':               '',
     'cardio.copy.success':     'אימון הועתק מ-',
+    'cardio.fields_count':     'שדות',
 
     // ── Draft / auto-save ─────────────────────────────────────────
     'draft.saving':            'שומר...',
@@ -369,6 +370,7 @@ export const TRANSLATIONS = {
     'copy.success':            'exercises copied from',
     'copy.from':               '',
     'cardio.copy.success':     'workout copied from',
+    'cardio.fields_count':     'fields',
 
     // ── Draft / auto-save ─────────────────────────────────────────
     'draft.saving':            'Saving...',

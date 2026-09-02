@@ -2576,6 +2576,18 @@ const WORKOUT_DOMAINS = {
     getEditTab:   () => cardioEditTab,
     setEditTab:   v => { cardioEditTab = v; },
     getTypes:     () => runningTypes,
+    colorClass: s => typeColorClass(runningTypes, s.workoutType),
+    renderCardMeta: s => `${(s.fields||[]).length} ${t('cardio.fields_count')}`,
+    badgeText: s => escHtml(s.workoutType),
+    renderCardBody: s => `
+      <table class="hist-table">
+        <tbody>
+          ${(s.fields||[]).map(f => `<tr>
+            <td><div class="td-name">${escHtml(f.label)}</div></td>
+            <td class="td-num">${f.fieldType === 'checkbox' ? (f.value ? '✓' : '—') : (f.value ?? '—')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`,
   },
 };
 
