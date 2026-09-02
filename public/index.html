@@ -2584,7 +2584,7 @@ const WORKOUT_DOMAINS = {
         <tbody>
           ${(s.fields||[]).map(f => `<tr>
             <td><div class="td-name">${escHtml(f.label)}</div></td>
-            <td class="td-num">${f.fieldType === 'checkbox' ? (f.value ? '✓' : '—') : (f.value ?? '—')}</td>
+            <td class="td-num">${f.fieldType === 'checkbox' ? (f.value ? '✓' : '—') : escHtml(String(f.value ?? '—'))}</td>
           </tr>`).join('')}
         </tbody>
       </table>`,
