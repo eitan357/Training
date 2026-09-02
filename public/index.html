@@ -2588,6 +2588,17 @@ const WORKOUT_DOMAINS = {
           </tr>`).join('')}
         </tbody>
       </table>`,
+    renderEditRow: f => `
+      <div class="edit-ex-row" data-id="${escHtml(f.id)}" data-label="${escHtml(f.label)}" data-field-type="${escHtml(f.fieldType)}">
+        <div class="edit-ex-title">${escHtml(f.label)}</div>
+        ${f.fieldType === 'checkbox'
+          ? `<label class="toggle-switch"><input type="checkbox" class="edit-cardio-field-input"${f.value ? ' checked' : ''}><span class="toggle-slider"></span></label>`
+          : `<input type="${f.fieldType === 'number' ? 'number' : 'text'}" class="edit-num-input edit-cardio-field-input" value="${escHtml(String(f.value ?? ''))}" placeholder="—">`}
+      </div>`,
+    collectEditRow: row => ({
+      id: row.dataset.id, label: row.dataset.label, fieldType: row.dataset.fieldType,
+      value: row.dataset.fieldType === 'checkbox' ? row.querySelector('.edit-cardio-field-input').checked : row.querySelector('.edit-cardio-field-input').value,
+    }),
   },
 };
 
@@ -3447,24 +3458,20 @@ function toggleMonthGroup(id, header) {
 }
 
 // ─── SESSION EDIT ─────────────────────────────────────────────
-function editSession(sessionId) {
-  const session = allSessions.find(s => s.id === sessionId);
+function editSession(domain, sessionId) {
+  const sourceData = domain === 'cardio' ? allRunWorkouts : allSessions;
+  const session = sourceData.find(s => s.id === sessionId);
   if (!session) return;
 
   const card = document.querySelector(`.session-card[data-sid="${sessionId}"]`);
   if (!card) return;
-  toggleSess(allSessions.indexOf(session), card.querySelector('.session-header'));
+  toggleSess(sourceData.indexOf(session), card.querySelector('.session-header'));
   const body = card.querySelector('.session-body');
   body.classList.add('open');
 
-  body.innerHTML = `
-    <div class="edit-session-wrap">
-      <div class="divider"></div>
-      <div class="edit-session-name-row">
-        <label data-i18n="sess.name_label">${t('sess.name_label')}</label>
-        <input type="text" class="edit-session-name-input" value="${escHtml(session.sessionName||'')}" data-i18n-ph="sess.name_ph" placeholder="${t('sess.name_ph')}">
-      </div>
-      ${(session.exercises||[]).map(e => `
+  const itemsHtml = domain === 'cardio'
+    ? (session.fields || []).map(f => WORKOUT_DOMAINS.cardio.renderEditRow(f)).join('')
+    : (session.exercises || []).map(e => `
         <div class="edit-ex-row"
              data-id="${escHtml(String(e.id))}"
              data-name="${escHtml(String(e.name))}"
@@ -3479,31 +3486,47 @@ function editSession(sessionId) {
             <div class="field"><label data-i18n="col.reps">${t('col.reps')}</label><input type="text" class="edit-num-input edit-reps"  value="${escHtml(String(e.reps||''))}"   placeholder="—"></div>
           </div>
           <input type="text" class="edit-notes-input" value="${escHtml(String(e.notes||''))}" data-i18n-ph="sess.notes_ph" placeholder="${t('sess.notes_ph')}">
-        </div>
-      `).join('')}
+        </div>`).join('');
+
+  body.innerHTML = `
+    <div class="edit-session-wrap">
+      <div class="divider"></div>
+      <div class="edit-session-name-row">
+        <label data-i18n="sess.name_label">${t('sess.name_label')}</label>
+        <input type="text" class="edit-session-name-input" value="${escHtml(session.sessionName||'')}" data-i18n-ph="sess.name_ph" placeholder="${t('sess.name_ph')}">
+      </div>
+      ${itemsHtml}
       <div class="edit-save-row">
-        <button class="btn-primary" data-i18n="sess.save_btn" onclick="saveSessionEdit(this,'${escHtml(sessionId)}')">${t('sess.save_btn')}</button>
+        <button class="btn-primary" data-i18n="sess.save_btn" onclick="saveSessionEdit(this,'${domain}','${escHtml(sessionId)}')">${t('sess.save_btn')}</button>
         <button class="btn-ghost"   data-i18n="sess.cancel_btn" onclick="cancelSessionEdit(this)">${t('sess.cancel_btn')}</button>
       </div>
     </div>`;
 }
 
-async function saveSessionEdit(saveBtn, sessionId) {
+async function saveSessionEdit(saveBtn, domain, sessionId) {
   const body = saveBtn.closest('.session-body');
   const sessionName = body.querySelector('.edit-session-name-input')?.value.trim() || '';
-  const exercises = [...body.querySelectorAll('.edit-ex-row:not([data-deleted])')].map(row => ({
-    id:     row.dataset.id,
-    name:   row.dataset.name   || '',
-    target: row.dataset.target || '',
-    weight: row.querySelector('.edit-weight')?.value      || '',
-    sets:   row.querySelector('.edit-sets')?.value        || '',
-    reps:   row.querySelector('.edit-reps')?.value        || '',
-    notes:  row.querySelector('.edit-notes-input')?.value || '',
-  }));
+  const collection_  = WORKOUT_DOMAINS[domain].entriesCollection;
+  let payload;
+  if (domain === 'cardio') {
+    const fields = [...body.querySelectorAll('.edit-ex-row')].map(row => WORKOUT_DOMAINS.cardio.collectEditRow(row));
+    payload = { sessionName, fields };
+  } else {
+    const exercises = [...body.querySelectorAll('.edit-ex-row:not([data-deleted])')].map(row => ({
+      id:     row.dataset.id,
+      name:   row.dataset.name   || '',
+      target: row.dataset.target || '',
+      weight: row.querySelector('.edit-weight')?.value      || '',
+      sets:   row.querySelector('.edit-sets')?.value        || '',
+      reps:   row.querySelector('.edit-reps')?.value        || '',
+      notes:  row.querySelector('.edit-notes-input')?.value || '',
+    }));
+    payload = { sessionName, exercises };
+  }
 
   saveBtn.disabled = true; saveBtn.innerText = t('saving');
   try {
-    await updateDoc(doc(db, 'users', currentUser.uid, 'workouts', sessionId), { sessionName, exercises });
+    await updateDoc(doc(db, 'users', currentUser.uid, collection_, sessionId), payload);
     toast(t('sess.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
@@ -3529,10 +3552,10 @@ function removeEditRow(btn) {
 
 function cancelSessionEdit() { renderHistory(); }
 
-async function deleteSession(btn, sessionId) {
+async function deleteSession(btn, domain, sessionId) {
   armDelete(btn, async () => {
     try {
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'workouts', sessionId));
+      await deleteDoc(doc(db, 'users', currentUser.uid, WORKOUT_DOMAINS[domain].entriesCollection, sessionId));
       toast(t('sess.deleted_ok'), 'success');
       await reloadAppData();
     } catch (err) {
@@ -4606,10 +4629,10 @@ async function _bulkDelete(set, barId, collection) {
     toast(t('error.save') + err.message, 'error');
   }
 }
-async function bulkDeleteSessions() { await _bulkDelete(selectedSessions, 'histBulkBar', 'workouts'); }
+async function bulkDeleteSessions() { await _bulkDelete(selectedSessions, 'histBulkBar', WORKOUT_DOMAINS[historyActiveDomain].entriesCollection); }
 async function bulkDeleteMeasures() { await _bulkDelete(selectedMeasures,  'measBulkBar', 'measurements'); }
 
-function editSelectedSession()  { editSession([...selectedSessions][0]); }
+function editSelectedSession()  { editSession(historyActiveDomain, [...selectedSessions][0]); }
 function editSelectedMeasure()  { editMeasurement([...selectedMeasures][0]); }
 
 Object.assign(window, {
