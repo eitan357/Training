@@ -721,6 +721,7 @@
     .run-btn:active { opacity: .8; }
     .run-btn-primary { background: var(--primary); color: #fff; }
     .run-btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
+    .history-domain-btn.active { border-color: var(--primary); background: var(--primary); color: #fff; }
     .run-type-btn { width: 100%; padding: 14px; background: var(--surface);
       border: 1.5px solid var(--border); border-radius: var(--radius);
       font-size: 15px; font-weight: 700; color: var(--text); cursor: pointer;
@@ -4607,7 +4608,7 @@ Object.assign(window, {
   navigateTo, goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
-  filterHistory, toggleSess, toggleMonthGroup,
+  filterHistory, switchHistoryDomain, toggleSess, toggleMonthGroup,
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   editMeasurement, saveMeasureEdit, cancelMeasureEdit,
