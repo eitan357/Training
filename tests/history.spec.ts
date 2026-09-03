@@ -1,6 +1,32 @@
 import { test, expect } from '@playwright/test';
 import { loginWithEmailPassword, waitForAppReady, requiresCredentials } from './helpers/auth';
 
+// Fix Round 1 / Finding 3 gated the History cardio toggle behind the same
+// runningEnabled flag every other cardio entry point already respects
+// (#nav-running, boot route resolution, navigateTo()). The toggle button is
+// now hidden — and switchHistoryDomain('cardio') defensively no-ops back to
+// strength — whenever runningEnabled is off, so any test touching the
+// cardio domain must enable it first, exactly like running.spec.ts's own
+// cardio tests already do via this same pattern.
+async function ensureRunningEnabled(page: import('@playwright/test').Page) {
+  // Scoped to #sec-history: unlike #mainGearBtn (only visible from #sec-main),
+  // this test suite's beforeEach always lands on #sec-history first, and its
+  // own gear button is the one actually visible there (see the existing
+  // "gear icon in history navigates to settings" test above for the pattern).
+  await page.locator('#sec-history .topbar-icon-btn').click();
+  await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+  const toggle = page.locator('#runningEnabledToggle');
+  const isChecked = await toggle.isChecked().catch(() => false);
+  if (!isChecked) {
+    await page.locator('label.toggle-switch').filter({ has: toggle }).click();
+  }
+  // The cardio toggle button lives in #sec-history, which isn't rendered
+  // while #sec-settings is active — navigate back before asserting on it.
+  await page.locator('#nav-history').click();
+  await expect(page.locator('#sec-history')).toHaveClass(/active/);
+  await expect(page.locator('.history-domain-btn[data-domain="cardio"]')).toBeVisible({ timeout: 10000 });
+}
+
 test.describe('History Section', () => {
   test.beforeEach(async ({ page }) => {
     requiresCredentials();
@@ -179,13 +205,13 @@ test.describe('History Section', () => {
   });
 
   test('switching to אירובי shows cardio entries and the stats block', async ({ page }) => {
-    await page.locator('#nav-history').click();
+    await ensureRunningEnabled(page);
     await page.locator('.history-domain-btn[data-domain="cardio"]').click();
     await expect(page.locator('#cardioHistoryStats')).toBeVisible();
   });
 
   test('cardio history entries can be edited and deleted', async ({ page }) => {
-    await page.locator('#nav-history').click();
+    await ensureRunningEnabled(page);
     await page.locator('.history-domain-btn[data-domain="cardio"]').click();
     // switchHistoryDomain() awaits the cardio data promise before calling
     // renderHistory() (see index.html's comment on switchHistoryDomain), so

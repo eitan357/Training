@@ -994,7 +994,7 @@
   <div style="padding:16px;">
     <div id="filterRow" class="filter-row"></div>
     <div class="history-hint" data-i18n="history.long_press_hint">לחיצה ארוכה על שורה פותחת אפשרויות עריכה ומחיקה</div>
-    <div id="cardioHistoryStats" style="display:none;padding:0 16px;">
+    <div id="cardioHistoryStats" style="display:none;">
       <div id="run-streak-card" class="run-card"></div>
       <div id="run-prs-card" class="run-card"></div>
       <div id="run-charts-card" class="run-card">
@@ -1352,6 +1352,7 @@ function setLang(lang) {
   renderTypeButtons();
   renderFilterButtons();
   renderHistory();
+  if (historyActiveDomain === 'cardio') renderCardioHistoryStats();
   renderMeasurements();
   refreshExercisePills();
 
@@ -1415,6 +1416,11 @@ function applyRunningGate() {
   if (!navMeas || !navRun) return;
   navMeas.style.display = runningEnabled ? 'none' : '';
   navRun.style.display  = runningEnabled ? '' : 'none';
+  const cardioToggleBtn = document.querySelector('.history-domain-btn[data-domain="cardio"]');
+  if (cardioToggleBtn) cardioToggleBtn.style.display = runningEnabled ? '' : 'none';
+  // If the user disables cardio while History is showing it, fall back to
+  // strength rather than leaving an inaccessible-but-still-active view up.
+  if (!runningEnabled && historyActiveDomain === 'cardio') switchHistoryDomain('strength');
 }
 
 // Apply lang immediately on load
@@ -1455,6 +1461,7 @@ let activeFilter     = 'all';
 let historyActiveDomain = 'strength';   // 'strength' | 'cardio' — which dataset the History page renders
 
 async function switchHistoryDomain(domain) {
+  if (domain === 'cardio' && !_isRunningAllowed()) domain = 'strength';
   if (historyActiveDomain === domain) return;
   historyActiveDomain = domain;
   activeFilter = 'all';
@@ -1903,6 +1910,10 @@ onAuthStateChanged(auth, async user => {
     cardioEditTab      = null;
     cardioEditTemplates = {};
     _runDataPromise    = null;
+    historyActiveDomain = 'strength';
+    document.querySelectorAll('.history-domain-btn').forEach(b => b.classList.toggle('active', b.dataset.domain === 'strength'));
+    const cardioStatsEl = document.getElementById('cardioHistoryStats');
+    if (cardioStatsEl) cardioStatsEl.style.display = 'none';
     Object.values(_draftFirestoreTimer).forEach(id => clearInterval(id));
     _draftFirestoreTimer = {};
     if (editPanelOpen)      toggleEditPanel();
@@ -2327,6 +2338,7 @@ function applyAppData(data) {
   try { renderMeasureForm();  } catch(e) { console.error(e); }
   try { renderEditAll();      } catch(e) { console.error(e); }
   try { renderHistory();      } catch(e) { console.error(e); }
+  try { if (historyActiveDomain === 'cardio') renderCardioHistoryStats(); } catch(e) { console.error(e); }
   try { renderMeasurements(); } catch(e) { console.error(e); }
   setDefaultDate();
 }
@@ -2665,6 +2677,8 @@ const WORKOUT_DOMAINS = {
         <div class="edit-ex-title">${escHtml(f.label)}</div>
         ${f.fieldType === 'checkbox'
           ? `<label class="toggle-switch"><input type="checkbox" class="edit-cardio-field-input"${f.value ? ' checked' : ''}><span class="toggle-slider"></span></label>`
+          : f.fieldType === 'date'
+          ? `<input type="text" class="edit-num-input edit-cardio-field-input" value="${escHtml(String(f.value ?? ''))}" disabled>`
           : `<input type="${f.fieldType === 'number' ? 'number' : 'text'}" class="edit-num-input edit-cardio-field-input" value="${escHtml(String(f.value ?? ''))}" placeholder="—">`}
       </div>`,
     collectEditRow: row => ({
