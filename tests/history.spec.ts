@@ -177,4 +177,37 @@ test.describe('History Section', () => {
 
     await expect(page.locator('.session-card').nth(1)).toHaveClass(/sel-active/);
   });
+
+  test('switching to אירובי shows cardio entries and the stats block', async ({ page }) => {
+    await page.locator('#nav-history').click();
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await expect(page.locator('#cardioHistoryStats')).toBeVisible();
+  });
+
+  test('cardio history entries can be edited and deleted', async ({ page }) => {
+    await page.locator('#nav-history').click();
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    // switchHistoryDomain() awaits the cardio data promise before calling
+    // renderHistory() (see index.html's comment on switchHistoryDomain), so
+    // #historyList briefly shows its "Loading..." state right after the
+    // domain-button click. Without this wait, .session-header count reads 0
+    // and the test skips itself every run regardless of real data.
+    await page.waitForFunction(() => document.querySelectorAll('.session-header').length > 0 || document.querySelector('.empty'), { timeout: 15000 });
+    const header = page.locator('.session-header').first();
+    test.skip(await header.count() === 0, 'no cardio history in this test account');
+    // Cardio's history view has the streak/PR/charts block (relocated here
+    // in an earlier task) above the list, which reliably pushes the first
+    // row below the fold. page.mouse.move/down/up (unlike locator .click())
+    // does not auto-scroll, so without this the synthetic mousedown lands
+    // outside the viewport and #historyList's long-press listener never
+    // fires at all — the row silently never gets selected.
+    await header.scrollIntoViewIfNeeded();
+    const box = await header.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+    await page.locator('#histBulkEditBtn').click();
+    await expect(page.locator('.edit-session-wrap')).toBeVisible();
+  });
 });

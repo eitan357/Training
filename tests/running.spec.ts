@@ -67,129 +67,137 @@ test.describe('Cardio Data Migration', () => {
   });
 });
 
-async function enableRunningSection(page: import('@playwright/test').Page) {
+// The cardio daily-entry page and its template editor both live behind
+// the pre-existing #nav-running route, which is still gated by the
+// per-user `runningEnabled` Firestore flag (surfaced as #runningEnabledToggle
+// in settings) even though the email allow-list that used to sit next to it
+// was removed when the cardio page was opened to all users (see
+// e7b1e71 "open the cardio toggle to all users"). navigateTo() still
+// redirects both '/running' and '/settings/cardio-plan' back to '/' while
+// the flag is off (index.html:2405/2430), so every test below needs it on
+// first. The flag is a persisted per-account Firestore setting, so this is
+// a one-time cost the first time these specs run against a given account.
+async function ensureRunningEnabled(page: import('@playwright/test').Page) {
   await page.locator('#mainGearBtn').click();
   await expect(page.locator('#sec-settings')).toHaveClass(/active/);
-
   const toggle = page.locator('#runningEnabledToggle');
   const isChecked = await toggle.isChecked().catch(() => false);
   if (!isChecked) {
-    // Show the gate row first if hidden, then click
-    await page.evaluate(() => {
-      const row = document.getElementById('runningGateRow') as HTMLElement | null;
-      if (row) row.style.display = 'block';
-    });
-    const label = page.locator('label').filter({ has: page.locator('#runningEnabledToggle') });
-    await label.click().catch(() => toggle.click());
-    await page.waitForTimeout(500);
+    await page.locator('label.toggle-switch').filter({ has: toggle }).click();
   }
-  // Navigate to running section
-  await page.evaluate(() => (window as any).showSection('running'));
-  await expect(page.locator('#sec-running')).toHaveClass(/active/, { timeout: 5000 });
+  await expect(page.locator('#nav-running')).toBeVisible({ timeout: 10000 });
+  // Land back on the main section so tests that start from #mainGearBtn
+  // (which belongs to #sec-main's topbar, not a persistent nav-bar element
+  // like #nav-running) find it visible.
+  await page.locator('#nav-main').click();
+  await expect(page.locator('#sec-main')).toHaveClass(/active/);
 }
 
-test.describe('Running Section — Enable & Dashboard', () => {
+test.describe('Cardio Daily Entry Page', () => {
   test.beforeEach(async ({ page }) => {
     requiresCredentials();
     await loginWithEmailPassword(page);
     await waitForAppReady(page);
-    await page.locator('#nav-main').click();
+    await ensureRunningEnabled(page);
   });
 
-  test('running section is present in DOM', async ({ page }) => {
-    await expect(page.locator('#sec-running')).toBeAttached();
+  test('shows type tabs and saves a workout', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#cardioTypeRow .type-btn').first()).toBeVisible();
+    await page.locator('#cardioFieldList .cardio-field-row[data-field-type="date"] .cardio-field-input').fill('01/01/2026');
+    const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
+    await distRow.locator('.cardio-field-input').fill('5.2');
+    await page.locator('#cardioSaveBtn').click();
+    await expect(page.locator('#toast')).toContainText('נשמר');
   });
 
-  test('running toggle exists in settings', async ({ page }) => {
-    await page.locator('#mainGearBtn').click();
-    await expect(page.locator('#runningEnabledToggle')).toBeAttached();
+  test('+ הוסף שדה adds a one-off text field not saved to the template', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    // renderCardioFieldList() populates #cardioFieldList asynchronously
+    // after the runningTemplates fetch resolves; locator.count() is a
+    // one-shot read with no auto-wait, so without this it can capture
+    // "before" as 0 (list not rendered yet) under load, making the
+    // toHaveCount(before + 1) assertion below compare against the wrong
+    // baseline (this genuinely happened under a full-suite run).
+    await expect(page.locator('#cardioFieldList .cardio-field-row').first()).toBeVisible();
+    const before = await page.locator('#cardioFieldList .cardio-field-row').count();
+    await page.locator('button', { hasText: 'הוסף שדה' }).click();
+    await expect(page.locator('#cardioFieldList .cardio-field-row')).toHaveCount(before + 1);
   });
 
-  test('can navigate to running section programmatically', async ({ page }) => {
-    await enableRunningSection(page);
-    await expect(page.locator('#sec-running')).toHaveClass(/active/);
+  test('copy-last-workout fills fields from the most recent cardio entry of the same type', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#cardioCopyLastBtn')).toBeVisible();
+    await page.locator('#cardioCopyLastBtn').click();
+    await expect(page.locator('#toast')).toBeVisible();
   });
 
-  test('running dashboard view is visible after enable', async ({ page }) => {
-    await enableRunningSection(page);
-    await expect(page.locator('#run-view-dashboard')).toBeVisible();
+  test('clear-form resets all fields and clears the draft', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
+    await distRow.locator('.cardio-field-input').fill('9.9');
+    // Scoped to #sec-running: the strength page's own clear-form button
+    // (#clearFormBtn) shares the exact same "נקה טופס" text and is also
+    // present in the DOM, so an unscoped locator hits Playwright's strict
+    // mode (2 matches).
+    await page.locator('#sec-running button', { hasText: 'נקה טופס' }).click();
+    await expect(distRow.locator('.cardio-field-input')).toHaveValue('');
   });
 
-  test('add workout button is present in running dashboard', async ({ page }) => {
-    await enableRunningSection(page);
-    const addBtn = page.locator('button[onclick="runShowAdd()"]');
-    await expect(addBtn).toBeVisible();
-  });
-
-  test('history button is present in running dashboard', async ({ page }) => {
-    await enableRunningSection(page);
-    const histBtn = page.locator('button[onclick="runShowHistory()"]');
-    await expect(histBtn).toBeVisible();
-  });
-
-  test('running charts card is present', async ({ page }) => {
-    await enableRunningSection(page);
-    await expect(page.locator('#run-charts-card')).toBeAttached();
+  test('draft round-trips through a type switch', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    // Same async-render race as the "+ הוסף שדה" test above: without
+    // waiting for the first tab, types.count() below can read 0 before
+    // #cardioTypeRow finishes rendering and false-skip a fixture account
+    // that genuinely has >= 2 cardio types (this account's runningTemplates
+    // has both 'Running' and 'Elliptical' per the migration test above).
+    await expect(page.locator('#cardioTypeRow .type-btn').first()).toBeVisible();
+    const types = page.locator('#cardioTypeRow .type-btn');
+    test.skip(await types.count() < 2, 'needs at least 2 cardio types in the fixture account');
+    const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
+    await distRow.locator('.cardio-field-input').fill('3.3');
+    await types.nth(1).click();
+    await types.nth(0).click();
+    await expect(distRow.locator('.cardio-field-input')).toHaveValue('3.3');
   });
 });
 
-test.describe('Running Section — Add Workout Flow', () => {
+test.describe('Cardio Template Editor', () => {
   test.beforeEach(async ({ page }) => {
     requiresCredentials();
     await loginWithEmailPassword(page);
     await waitForAppReady(page);
-    await page.locator('#nav-main').click();
-    await enableRunningSection(page);
-    // Navigate to add workout
-    await page.locator('button[onclick="runShowAdd()"]').click();
-    await expect(page.locator('#run-view-add')).toBeVisible({ timeout: 5000 });
+    await ensureRunningEnabled(page);
   });
 
-  test('step 1 — type selection is visible', async ({ page }) => {
-    await expect(page.locator('#run-add-step1')).toBeVisible();
+  test('add type seeds the 8 default fields including a locked date field', async ({ page }) => {
+    await page.locator('#mainGearBtn').click();
+    await page.locator('.settings-item', { hasText: 'אימוני אירובי' }).click();
+    // Scoped to #cardioEditTabs: the strength edit panel's own (hidden but
+    // DOM-present) add-type tab button shares the same class combination,
+    // which would otherwise hit Playwright's strict mode.
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    await page.locator('#cardioNewTypeName').fill('טסט' + Date.now());
+    // Scoped to #cardioAddTypeForm: the strength edit panel's own (hidden
+    // but DOM-present) confirm-add button shares the exact same "הוסף"
+    // text, which would otherwise hit Playwright's strict mode.
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    await expect(page.locator('#cardioEditListContainer .edit-card')).toHaveCount(8);
+    await expect(page.locator('#cardioEditListContainer .edit-card').first().locator('input[disabled]')).toBeVisible();
   });
 
-  test('step 1 — run type list is populated', async ({ page }) => {
-    await page.waitForFunction(() => {
-      const list = document.getElementById('run-type-list');
-      return list && list.children.length > 0;
-    }, { timeout: 10000 });
-    const typeCount = await page.locator('#run-type-list').locator('button, .run-type-item, [onclick]').count();
-    expect(typeCount).toBeGreaterThanOrEqual(1);
+  test('field type picker toggles between text/number/checkbox', async ({ page }) => {
+    await page.locator('#mainGearBtn').click();
+    await page.locator('.settings-item', { hasText: 'אימוני אירובי' }).click();
+    const secondField = page.locator('#cardioEditListContainer .edit-card').nth(1);
+    await secondField.locator('.ftype-btn[data-ftype="checkbox"]').click();
+    await expect(secondField.locator('.ftype-btn[data-ftype="checkbox"]')).toHaveClass(/active/);
   });
 
-  test('back button in add view is visible', async ({ page }) => {
-    const backBtn = page.locator('#run-view-add button[onclick="runGoBack()"]');
-    await expect(backBtn).toBeVisible();
-  });
-
-  test('step 2 — OCR panel is attached', async ({ page }) => {
-    await expect(page.locator('#run-add-step2')).toBeAttached();
-  });
-
-  test('step 3 — date input is present in form', async ({ page }) => {
-    await expect(page.locator('#run-f-date')).toBeAttached();
-  });
-
-  test('step 3 — distance input is present in form', async ({ page }) => {
-    await expect(page.locator('#run-f-dist')).toBeAttached();
-  });
-
-  test('step 3 — duration input is present in form', async ({ page }) => {
-    await expect(page.locator('#run-f-dur')).toBeAttached();
-  });
-
-  test('manual entry button in step 2 navigates to step 3', async ({ page }) => {
-    // First click a type to get to step 2 (if that's the flow)
-    // Or go directly to step 3 via manual button if visible
-    const manualBtn = page.locator('button[onclick="runShowStep3({})"]');
-    const visible = await manualBtn.isVisible().catch(() => false);
-    if (visible) {
-      await manualBtn.click();
-      await expect(page.locator('#run-add-step3')).toBeVisible({ timeout: 5000 });
-    } else {
-      // Step 2 may only appear after type selection — skip if not reachable without step 1
-      test.skip();
-    }
+  test('date field has no remove button', async ({ page }) => {
+    await page.locator('#mainGearBtn').click();
+    await page.locator('.settings-item', { hasText: 'אימוני אירובי' }).click();
+    const dateField = page.locator('#cardioEditListContainer .edit-card').first();
+    await expect(dateField.locator('.edit-remove')).toHaveCount(0);
   });
 });
