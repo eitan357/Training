@@ -994,6 +994,19 @@
   <div style="padding:16px;">
     <div id="filterRow" class="filter-row"></div>
     <div class="history-hint" data-i18n="history.long_press_hint">לחיצה ארוכה על שורה פותחת אפשרויות עריכה ומחיקה</div>
+    <div id="cardioHistoryStats" style="display:none;padding:0 16px;">
+      <div id="run-streak-card" class="run-card"></div>
+      <div id="run-prs-card" class="run-card"></div>
+      <div id="run-charts-card" class="run-card">
+        <div class="run-card-title" data-i18n="run.charts_title">גרפים</div>
+        <div class="run-range-row">
+          <button class="run-range-btn" data-range="month" onclick="runSetRange('month')" data-i18n="run.range_month">חודש</button>
+          <button class="run-range-btn active" data-range="year" onclick="runSetRange('year')" data-i18n="run.range_year">שנה</button>
+          <button class="run-range-btn" data-range="all" onclick="runSetRange('all')" data-i18n="run.range_all">הכל</button>
+        </div>
+        <div id="run-charts-list"></div>
+      </div>
+    </div>
     <div id="historyList"><div class="loading" data-i18n="loading">טוען...</div></div>
   </div>
 </div>
@@ -1441,13 +1454,48 @@ let allSessions      = [];
 let activeFilter     = 'all';
 let historyActiveDomain = 'strength';   // 'strength' | 'cardio' — which dataset the History page renders
 
-function switchHistoryDomain(domain) {
+async function switchHistoryDomain(domain) {
   if (historyActiveDomain === domain) return;
   historyActiveDomain = domain;
   activeFilter = 'all';
   document.querySelectorAll('.history-domain-btn').forEach(b => b.classList.toggle('active', b.dataset.domain === domain));
+  document.getElementById('cardioHistoryStats').style.display = domain === 'cardio' ? '' : 'none';
+  if (domain === 'cardio') {
+    // Cardio's data layer (allRunWorkouts/runningTypes) loads in the background at boot
+    // (prefetchRunData()/_backgroundSync) and can still be in flight the first time a user
+    // opens History and taps אירובי right after login. Without this await, streak/PR/charts
+    // below — and renderFilterButtons()/renderHistory() further down, which also read
+    // allRunWorkouts/runningTypes directly — would all render against a still-empty
+    // dataset (0 streak, '--' PRs, empty type filters, "no results"), indistinguishable
+    // from a genuinely empty account, and nothing would re-render once the fetch actually
+    // resolves. Mirrors the same `await _runDataPromise` guard initRunSection() already
+    // uses for the cardio input page (found via live verification, not in the original brief).
+    if (!_runDataPromise) _runDataPromise = loadRunData();
+    await _runDataPromise;
+    renderCardioHistoryStats();
+  }
   renderFilterButtons();
   renderHistory();
+}
+
+function renderCardioHistoryStats() {
+  const streak = calcRunStreak(allRunWorkouts);
+  document.getElementById('run-streak-card').innerHTML = `
+    <div class="run-streak-badge">
+      <div class="run-streak-num">${streak}</div>
+      <div class="run-streak-lbl">${t('run.streak_label')}</div>
+    </div>`;
+
+  const prs = calcRunPRs(allRunWorkouts);
+  document.getElementById('run-prs-card').innerHTML = `
+    <div class="run-card-title">${t('run.prs_title')}</div>
+    <div class="run-stat-row">
+      <div class="run-stat"><div class="run-stat-val">${prs.bestDistanceKm > 0 ? prs.bestDistanceKm.toFixed(1) : '--'}</div><div class="run-stat-lbl">${t('run.best_distance')}</div></div>
+      <div class="run-stat"><div class="run-stat-val">${prs.bestPaceMinPerKm > 0 ? formatPace(prs.bestPaceMinPerKm) : '--'}</div><div class="run-stat-lbl">${t('run.best_pace')}</div></div>
+      <div class="run-stat"><div class="run-stat-val">${prs.lowestHeartRate > 0 ? prs.lowestHeartRate : '--'}</div><div class="run-stat-lbl">${t('run.lowest_hr')}</div></div>
+    </div>`;
+
+  renderRunCharts();
 }
 let selectedSessions = new Set();
 let selectedMeasures = new Set();
@@ -1532,12 +1580,25 @@ function calcRunStreak(workouts) {
   return streak;
 }
 
+// Reads by field LABEL now (dynamic templates have no fixed keys) — a
+// distance-equivalent field is whichever field has label==='מרחק' on that
+// entry; pace is derived client-side from distance+duration since the new
+// schema no longer precomputes paceMinPerKm server-side per entry.
+function _fieldVal(entry, label) {
+  const f = (entry.fields || []).find(x => x.label === label);
+  return f ? Number(f.value) : null;
+}
+
 function calcRunPRs(workouts) {
   let bestDistanceKm = 0, bestPaceMinPerKm = Infinity, lowestHeartRate = Infinity;
   for (const w of workouts) {
-    if ((w.distanceKm ?? 0) > bestDistanceKm) bestDistanceKm = w.distanceKm;
-    if ((w.paceMinPerKm ?? 0) > 0 && w.paceMinPerKm < bestPaceMinPerKm) bestPaceMinPerKm = w.paceMinPerKm;
-    if ((w.avgHeartRate ?? 0) > 0 && w.avgHeartRate < lowestHeartRate) lowestHeartRate = w.avgHeartRate;
+    const dist = _fieldVal(w, 'מרחק'), dur = _fieldVal(w, 'זמן'), hr = _fieldVal(w, 'דופק ממוצע');
+    if (dist != null && dist > bestDistanceKm) bestDistanceKm = dist;
+    if (dist && dur) {
+      const pace = dur / dist;
+      if (pace > 0 && pace < bestPaceMinPerKm) bestPaceMinPerKm = pace;
+    }
+    if (hr != null && hr > 0 && hr < lowestHeartRate) lowestHeartRate = hr;
   }
   return {
     bestDistanceKm,
@@ -1581,11 +1642,10 @@ async function initRunSection() {
 // were already in-family (paceMinPerKm literally reuses --green-d) and
 // are unchanged. See docs/superpowers/specs/2026-08-30-ui-polish-settings-history-charts-design.md §3.
 const RUN_CHARTS_CONFIG = [
-  { key: 'distanceKm',       tKey: 'run.chart.distance', color: '#536fac', fmt: v => v.toFixed(1) },
-  { key: 'avgHeartRate',     tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
-  { key: 'paceMinPerKm',     tKey: 'run.chart.pace',     color: '#3c7a54', fmt: formatPace },
-  { key: 'calories',         tKey: 'run.chart.calories', color: '#aa7941', fmt: v => Math.round(v) },
-  { key: 'avgStridesPerMin', tKey: 'run.chart.spm',      color: '#9b5aaf', fmt: v => Math.round(v) },
+  { label: 'מרחק',       tKey: 'run.chart.distance', color: '#536fac', fmt: v => v.toFixed(1) },
+  { label: 'דופק ממוצע', tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
+  { label: 'קלוריות',    tKey: 'run.chart.calories', color: '#aa7941', fmt: v => Math.round(v) },
+  { label: 'צעדים',      tKey: 'run.chart.spm',      color: '#9b5aaf', fmt: v => Math.round(v) },
 ];
 
 function runSetRange(range) {
@@ -1607,19 +1667,24 @@ function renderRunCharts() {
   container.innerHTML = '';
 
   for (const cfg of RUN_CHARTS_CONFIG) {
-    const rows   = sorted.filter(w => w[cfg.key] != null);
+    const rows = sorted.filter(w => _fieldVal(w, cfg.label) != null);
     if (rows.length === 0) continue;
 
     const labels = rows.map(w => w.date.slice(5));
-    const data   = rows.map(w => w[cfg.key]);
+    const data   = rows.map(w => _fieldVal(w, cfg.label));
 
+    // DOM id / chart-instance-map key use cfg.tKey (e.g. "run.chart.distance"), not
+    // cfg.label — labels are Hebrew strings that can contain spaces (e.g. 'דופק
+    // ממוצע'), which are invalid in an HTML id and would collide across charts if
+    // used as an object key here. tKey is already unique per chart and ASCII-safe.
+    const domKey = cfg.tKey;
     const wrap = document.createElement('div');
     wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px;">${t(cfg.tKey)}</div>
-      <div class="run-chart-wrap"><canvas id="rChart-${cfg.key}"></canvas></div>`;
+      <div class="run-chart-wrap"><canvas id="rChart-${domKey}"></canvas></div>`;
     container.appendChild(wrap);
 
-    const ctx = document.getElementById('rChart-' + cfg.key).getContext('2d');
-    _runCharts[cfg.key] = new Chart(ctx, {
+    const ctx = document.getElementById('rChart-' + domKey).getContext('2d');
+    _runCharts[domKey] = new Chart(ctx, {
       type: 'line',
       data: {
         labels,
