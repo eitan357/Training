@@ -345,6 +345,11 @@
     .ex-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
     .ex-name-row > div { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
     .ex-name-text   { font-size: 15px; font-weight: 700; color: var(--text); }
+    input.ex-name-input {
+      border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 8px;
+      background: var(--bg); font-family: inherit; flex: 1; min-width: 0;
+    }
+    input.ex-name-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .ex-target-text {
       font-size: 12px; color: var(--primary); font-weight: 600;
       background: #ede9fe; padding: 4px 10px; border-radius: 8px; direction: ltr; line-height: 1.4;
@@ -1725,20 +1730,48 @@ function renderRunCharts() {
 // ─── CARDIO FIELD RENDERING ─────────────────────────────────────
 let lastCardioWorkouts = {};   // mirrors lastWorkouts, keyed by cardio type name
 
-function renderCardioFieldRow(field, value) {
+// Default cardio field ids → translation key, for the 8 fields every
+// account is seeded with (migration or fresh-type creation both use
+// CARDIO_MIGRATION_FIELD_MAP). Only applied when the stored label still
+// matches the untouched default — a user rename must never be silently
+// overwritten by a translation.
+const CARDIO_FIELD_LABEL_KEYS = {
+  date:              'cardio.field.date',
+  distanceKm:        'cardio.field.distance',
+  durationMinutes:   'cardio.field.duration',
+  calories:          'cardio.field.calories',
+  avgStridesPerMin:  'cardio.field.spm',
+  avgHeartRate:      'cardio.field.heart_rate',
+  feltTired:         'cardio.field.felt_tired',
+  notes:             'cardio.field.notes',
+};
+
+function cardioFieldDisplayLabel(field) {
+  const key = CARDIO_FIELD_LABEL_KEYS[field.id];
+  if (!key) return field.label; // custom/ad-hoc field — never translated
+  const original = CARDIO_MIGRATION_FIELD_MAP.find(f => f.id === field.id)?.label;
+  if (field.label !== original) return field.label; // user renamed it — respect their text
+  return t(key);
+}
+
+function renderCardioFieldRow(field, value, isAdhoc) {
   const val = value ?? '';
+  const inputId = `cardio-field-${field.id}`;
   let inputHtml;
   if (field.fieldType === 'date') {
-    inputHtml = `<input type="text" class="cardio-field-input" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off" value="${escHtml(String(val))}">`;
+    inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off" value="${escHtml(String(val))}">`;
   } else if (field.fieldType === 'number') {
-    inputHtml = `<input type="number" class="cardio-field-input" step="any" value="${escHtml(String(val))}" placeholder="--">`;
+    inputHtml = `<input type="number" id="${escHtml(inputId)}" class="cardio-field-input" step="any" min="0" value="${escHtml(String(val))}" placeholder="--">`;
   } else if (field.fieldType === 'checkbox') {
-    inputHtml = `<label class="toggle-switch"><input type="checkbox" class="cardio-field-input"${val ? ' checked' : ''}><span class="toggle-slider"></span></label>`;
+    inputHtml = `<label class="toggle-switch"><input type="checkbox" id="${escHtml(inputId)}" class="cardio-field-input" aria-label="${escHtml(cardioFieldDisplayLabel(field))}"${val ? ' checked' : ''}><span class="toggle-slider"></span></label>`;
   } else {
-    inputHtml = `<input type="text" class="cardio-field-input" value="${escHtml(String(val))}" placeholder="--">`;
+    inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" value="${escHtml(String(val))}" placeholder="--">`;
   }
+  const labelHtml = isAdhoc
+    ? `<input type="text" class="run-form-label run-form-label-input" placeholder="${t('edit.field_label_ph')}" oninput="this.closest('.cardio-field-row').dataset.label=this.value">`
+    : `<label class="run-form-label" for="${escHtml(inputId)}">${escHtml(cardioFieldDisplayLabel(field))}</label>`;
   return `<div class="run-form-field cardio-field-row" data-id="${escHtml(field.id)}" data-label="${escHtml(field.label)}" data-field-type="${escHtml(field.fieldType)}">
-    <label class="run-form-label">${escHtml(field.label)}</label>
+    ${labelHtml}
     ${inputHtml}
   </div>`;
 }
@@ -1821,20 +1854,26 @@ function copyLastCardioWorkout() {
 function addCustomCardioField() {
   const id = 'adhoc_' + genId();
   document.getElementById('cardioFieldList').insertAdjacentHTML('beforeend',
-    renderCardioFieldRow({ id, label: t('cardio.new_field_default_label'), fieldType: 'text' }, ''));
+    renderCardioFieldRow({ id, label: '', fieldType: 'text' }, '', true));
   window.scrollTo(0, document.body.scrollHeight);
 }
 
 async function submitCardioData() {
   const btn = document.getElementById('cardioSaveBtn');
   const fields = [];
+  let hasUnnamedField  = false;
+  let hasNegativeValue = false;
   document.querySelectorAll('#cardioFieldList .cardio-field-row').forEach(row => {
     const ft = row.dataset.fieldType;
     const input = row.querySelector('.cardio-field-input');
     let value = ft === 'checkbox' ? input.checked : input.value.trim();
     if (ft !== 'checkbox' && value === '') return; // skip empty non-checkbox fields, same convention as saveMeasurement
+    if (!row.dataset.label.trim()) { hasUnnamedField = true; return; }
+    if (ft === 'number' && Number(value) < 0) { hasNegativeValue = true; return; }
     fields.push({ id: row.dataset.id, label: row.dataset.label, fieldType: ft, value });
   });
+  if (hasUnnamedField)  { toast(t('workout.name_required'), 'error'); return; }
+  if (hasNegativeValue) { toast(t('cardio.negative_value'), 'error'); return; }
   const dateField = fields.find(f => f.fieldType === 'date');
   if (!dateField || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) {
     toast(t('cardio.date_required'), 'error'); return;
@@ -2206,7 +2245,10 @@ function parseTargetString(targetStr) {
   }
 
   if (!weight && !repsArr) return null;
-  return { weight, reps: repsArr ? repsArr.join(',') : null };
+  // repsArr already has exactly one entry per set in every branch above
+  // (that's what "expanding" a rep range across N sets means) — its own
+  // length is the sets count, nothing new to parse.
+  return { weight, sets: repsArr ? String(repsArr.length) : null, reps: repsArr ? repsArr.join(',') : null };
 }
 
 const MONTHS = {
@@ -2472,7 +2514,7 @@ function _strengthDraftSerialize() {
   const exercises = [];
   document.querySelectorAll('#exerciseList .card').forEach(card => {
     exercises.push({
-      name:   card.querySelector('.ex-name-text')?.innerText?.trim()   || '',
+      name:   _readExName(card),
       target: card.querySelector('.ex-target-text')?.innerText?.trim() || '',
       weight: card.querySelector('.ex-weight').value,
       sets:   card.querySelector('.ex-sets').value,
@@ -2495,7 +2537,7 @@ function _strengthDraftApplyToForm(draft) {
   const nameInput = document.getElementById('sessionNameInput');
   if (nameInput) nameInput.value = draft.workoutName || '';
   document.querySelectorAll('#exerciseList .card').forEach(card => {
-    const name = card.querySelector('.ex-name-text')?.innerText?.trim();
+    const name = _readExName(card);
     const ex   = (draft.exercises || []).find(e => e.name === name);
     if (!ex) return;
     if (ex.weight) card.querySelector('.ex-weight').value = ex.weight;
@@ -3200,6 +3242,16 @@ function refreshExercisePills() {
   });
 }
 
+// Reads an exercise card's name whether it's the static, non-editable
+// <div> (a real template exercise) or the editable <input> (an ad-hoc
+// exercise added via "+ Add Exercise" — see makeExCard's isAdhoc branch).
+// A <div> has no .value (undefined, falls through to .innerText); an
+// <input> has no meaningful .innerText but always has .value, even ''.
+function _readExName(card) {
+  const el = card.querySelector('.ex-name-text');
+  return (el?.value ?? el?.innerText ?? '').trim();
+}
+
 function makeExCard(name, targetWeight, targetSets, targetReps, legacyTarget) {
   const id        = exerciseCount++;
   const tw        = (targetWeight  || '').trim();
@@ -3208,34 +3260,41 @@ function makeExCard(name, targetWeight, targetSets, targetReps, legacyTarget) {
   const lt        = (legacyTarget  || '').trim();
   const hasTarget = tw || ts || tr;
   const pillText  = hasTarget ? buildTargetPillText(tw, ts, tr) : '';
+  const isAdhoc   = !name;
   return `
   <div class="card" id="card_${id}">
     <div class="card-body">
       <div class="ex-name-row">
-        <div class="ex-name-text">${escHtml(name)}</div>
+        ${isAdhoc
+          ? `<input type="text" class="ex-name-text ex-name-input" placeholder="${t('edit.ex_name_ph')}" autocomplete="off">`
+          : `<div class="ex-name-text">${escHtml(name)}</div>`}
         <button class="remove-btn" onclick="document.getElementById('card_${id}').remove()">✕</button>
       </div>
       ${hasTarget ? `
       <div class="ex-target-row">
         <div class="ex-target-text ex-target-clickable"
+             role="button" tabindex="0"
              data-label="${escHtml(t('col.target'))}"
              data-tw="${escHtml(tw)}" data-ts="${escHtml(ts)}" data-tr="${escHtml(tr)}"
              onclick="copyTargetToCard(this.closest('.card'))"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyTargetToCard(this.closest('.card'));}"
              title="${t('target.copy_hint')}">${escHtml(pillText)}</div>
       </div>` : lt ? `
       <div class="ex-target-row">
         <div class="ex-target-text ex-target-legacy ex-target-clickable"
+             role="button" tabindex="0"
              data-legacy="${escHtml(lt)}"
              onclick="copyTargetToCard(this.closest('.card'))"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyTargetToCard(this.closest('.card'));}"
              title="${t('target.copy_hint')}">${escHtml(lt)}</div>
       </div>` : ''}
       <div class="field-group">
-        <div class="field"><label data-i18n="col.weight">${t('col.weight')}</label><input type="text" class="ex-weight" placeholder="—" autocomplete="off"></div>
-        <div class="field"><label data-i18n="col.sets">${t('col.sets')}</label><input type="text" class="ex-sets"   placeholder="—" autocomplete="off"></div>
-        <div class="field"><label data-i18n="col.reps">${t('col.reps')}</label><input type="text" class="ex-reps"  placeholder="—" autocomplete="off"></div>
+        <div class="field"><label data-i18n="col.weight" for="ex-weight-${id}">${t('col.weight')}</label><input type="text" id="ex-weight-${id}" class="ex-weight" placeholder="—" autocomplete="off"></div>
+        <div class="field"><label data-i18n="col.sets" for="ex-sets-${id}">${t('col.sets')}</label><input type="text" id="ex-sets-${id}" class="ex-sets"   placeholder="—" autocomplete="off"></div>
+        <div class="field"><label data-i18n="col.reps" for="ex-reps-${id}">${t('col.reps')}</label><input type="text" id="ex-reps-${id}" class="ex-reps"  placeholder="—" autocomplete="off"></div>
       </div>
       <div class="field-group field-notes" style="margin-top:8px;">
-        <div class="field" style="flex:1;"><label data-i18n="col.notes">${t('col.notes')}</label><input type="text" class="ex-notes" data-i18n-ph="ex.notes_ph" placeholder="${t('ex.notes_ph')}"></div>
+        <div class="field" style="flex:1;"><label data-i18n="col.notes" for="ex-notes-${id}">${t('col.notes')}</label><input type="text" id="ex-notes-${id}" class="ex-notes" data-i18n-ph="ex.notes_ph" placeholder="${t('ex.notes_ph')}"></div>
       </div>
     </div>
   </div>`;
@@ -3246,21 +3305,43 @@ function addCustomExercise() {
   window.scrollTo(0, document.body.scrollHeight);
 }
 
+// Weight/sets/reps are intentionally free text (bilateral "14+14",
+// per-set "6,6,6,6"), so validation only rejects the clearly-wrong
+// patterns QA actually reproduced — not a blanket numeric-only rule that
+// would break those documented formats.
+function _hasNoDigits(str) { return !/\d/.test(str); }
+function _hasNegativeToken(str) {
+  return str.split(/[,+]/).some(tok => {
+    const n = parseFloat(tok.trim());
+    return !isNaN(n) && n < 0;
+  });
+}
+
 async function submitData() {
   const btn = document.getElementById('saveBtn');
   const exercises = [];
+  let hasUnnamedData = false;
+  let hasInvalidData = false;
   document.querySelectorAll('#exerciseList .card').forEach(card => {
     const w = card.querySelector('.ex-weight').value;
     const s = card.querySelector('.ex-sets').value;
     const r = card.querySelector('.ex-reps').value;
-    if (w || s || r) exercises.push({
+    if (!(w || s || r)) return;
+    const name = _readExName(card);
+    if (!name) { hasUnnamedData = true; return; }
+    if ((w && (_hasNoDigits(w) || _hasNegativeToken(w))) ||
+        (s && _hasNegativeToken(s)) ||
+        (r && _hasNegativeToken(r))) { hasInvalidData = true; return; }
+    exercises.push({
       id:     genId(),
-      name:   card.querySelector('.ex-name-text')?.innerText  || '',
+      name,
       target: card.querySelector('.ex-target-text')?.innerText || '',
       weight: w, sets: s, reps: r,
       notes:  card.querySelector('.ex-notes').value
     });
   });
+  if (hasUnnamedData) { toast(t('workout.name_required'), 'error'); return; }
+  if (hasInvalidData) { toast(t('workout.invalid_values'), 'error'); return; }
   if (!exercises.length) { toast(t('workout.fill_first'), 'error'); return; }
 
   // Check if any exercise exceeded its target weight → offer to update
@@ -3276,7 +3357,7 @@ async function submitData() {
     const actualTotal = evalWeight(actualText);
     if (isNaN(actualTotal) || actualTotal <= twTotal) return;
     exceeded.push({
-      name: card.querySelector('.ex-name-text')?.innerText?.trim() || '',
+      name: _readExName(card),
       actualText,
       targetText: rawTw,
       tEl,
@@ -3808,7 +3889,7 @@ async function saveTemplates() {
 // ─── CARDIO TEMPLATE EDITOR ─────────────────────────────────────
 let cardioEditPanelOpen = false;
 
-function _setCardioEditPanel(open) {
+async function _setCardioEditPanel(open) {
   if (open === cardioEditPanelOpen) return;
   cardioEditPanelOpen = open;
   document.getElementById('cardioMainContent').style.display = cardioEditPanelOpen ? 'none' : 'block';
@@ -3817,7 +3898,17 @@ function _setCardioEditPanel(open) {
   document.getElementById('cardioGearBtn').style.display     = cardioEditPanelOpen ? 'none' : '';
   if (cardioEditPanelOpen) document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   else document.getElementById('nav-running')?.classList.add('active');
-  if (cardioEditPanelOpen) renderCardioEditAll();
+  if (cardioEditPanelOpen) {
+    // On a fresh boot straight into this route (deep link / refresh / new
+    // tab), runningTypes/cardioEditTemplates are still empty until
+    // loadRunData()'s async fetch resolves — without this await the panel
+    // renders with zero tabs/fields and never self-corrects once the data
+    // does arrive. Mirrors switchHistoryDomain's identical guard.
+    if (!_runDataPromise) _runDataPromise = loadRunData();
+    await _runDataPromise;
+    if (!cardioEditPanelOpen) return; // closed again while we were waiting
+    renderCardioEditAll();
+  }
 }
 
 function openCardioEdit()  { navigateTo('/settings/cardio-plan'); }
@@ -4324,10 +4415,12 @@ function copyTargetToCard(cardEl) {
     const parsed = parseTargetString(lt);
     if (!parsed) { toast(t('target.parse_error'), 'error'); return; }
     const weightInput = cardEl.querySelector('.ex-weight');
+    const setsInput   = cardEl.querySelector('.ex-sets');
     const repsInput   = cardEl.querySelector('.ex-reps');
-    const hasData     = weightInput.value.trim() || repsInput.value.trim();
+    const hasData     = weightInput.value.trim() || setsInput.value.trim() || repsInput.value.trim();
     if (hasData && !confirm(t('target.overwrite_confirm'))) return;
     if (parsed.weight !== null) weightInput.value = parsed.weight;
+    if (parsed.sets   !== null) setsInput.value   = parsed.sets;
     if (parsed.reps   !== null) repsInput.value   = parsed.reps;
     if (parsed.weight === null && parsed.reps === null) {
       toast(t('target.parse_error'), 'error');
@@ -4354,7 +4447,7 @@ function copyLastWorkout() {
   if (hasData && !confirm(t('target.overwrite_confirm'))) return;
   let copied = 0;
   document.querySelectorAll('#exerciseList .card').forEach(card => {
-    const name   = card.querySelector('.ex-name-text')?.innerText?.trim();
+    const name   = _readExName(card);
     const lastEx = last.exercises?.find(e => String(e.name).trim() === name);
     if (lastEx) {
       if (lastEx.weight !== '' && lastEx.weight !== undefined) card.querySelector('.ex-weight').value = lastEx.weight;
