@@ -160,6 +160,108 @@ test.describe('Cardio Daily Entry Page', () => {
     await types.nth(0).click();
     await expect(distRow.locator('.cardio-field-input')).toHaveValue('3.3');
   });
+
+  // ── QA fixes 2026-09-03 ──────────────────────────────────────────
+  test('negative numeric value is rejected on save', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    await page.locator('#cardioFieldList .cardio-field-row[data-field-type="date"] .cardio-field-input').fill('01/01/2026');
+    const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
+    await distRow.locator('.cardio-field-input').fill('-5');
+    await page.locator('#cardioSaveBtn').click();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    // Value is still there — the save was blocked, not silently accepted.
+    await expect(distRow.locator('.cardio-field-input')).toHaveValue('-5');
+  });
+
+  test('ad-hoc field ("+ הוסף שדה") gets an editable label, required to save', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#cardioFieldList .cardio-field-row').first()).toBeVisible();
+    await page.locator('button', { hasText: 'הוסף שדה' }).click();
+    const labelInput = page.locator('.run-form-label-input').last();
+    await expect(labelInput).toBeVisible();
+    await expect(labelInput).toHaveValue('');
+
+    // Fill the ad-hoc field's value but leave its label blank, plus the
+    // required date field — save must be blocked.
+    await page.locator('#cardioFieldList .cardio-field-row[data-field-type="date"] .cardio-field-input').fill('01/01/2026');
+    await page.locator('.cardio-field-row').last().locator('.cardio-field-input').fill('123');
+    await page.locator('#cardioSaveBtn').click();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.cardio-field-row').last().locator('.cardio-field-input')).toHaveValue('123');
+  });
+
+  test('default field labels are associated with their inputs (for/id), checkbox has an accessible name', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    const distInput = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' }).locator('.cardio-field-input');
+    await expect(distInput).toBeVisible();
+    const linked = await distInput.evaluate(el => !!el.id && !!document.querySelector(`label[for="${el.id}"]`));
+    expect(linked).toBe(true);
+
+    const checkboxRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'הרגשתי עייפות' });
+    const checkboxAriaLabel = await checkboxRow.locator('input[type="checkbox"]').getAttribute('aria-label');
+    expect(checkboxAriaLabel).toBeTruthy();
+  });
+
+  test('default field labels translate to English, a renamed field does not', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#cardioFieldList .cardio-field-row').first()).toBeVisible();
+
+    await page.locator('#cardioGearBtn').click();
+    await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+    const langBtns = page.locator('#langBtns button');
+    await langBtns.nth(1).click(); // English
+    await page.waitForTimeout(500);
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#cardioFieldList .cardio-field-row', { hasText: 'Distance' })).toBeVisible({ timeout: 5000 });
+
+    // restore Hebrew for any later test in this run
+    await page.locator('#cardioGearBtn').click();
+    await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+    await langBtns.first().click();
+    await page.waitForTimeout(500);
+  });
+});
+
+// H1's fix (docs/superpowers/specs/2026-09-03-strength-cardio-qa-fixes-design.md
+// §2) is specifically about a fresh boot straight into the cardio template
+// editor route — a normal in-app navigation to it (already covered by
+// running.spec.ts's other tests reaching it via a click) never exercised the
+// race, since by the time a click is possible the app has already finished
+// loading. This describe block deliberately reloads the page ON that route
+// after first caching `runningEnabled` locally (matching a real returning
+// user, not a pristine never-configured device — see the spec's H1 section
+// for why that distinction matters).
+test.describe('Cardio Template Editor — Deep Link', () => {
+  test('editor renders tabs and fields when the route is loaded fresh (not via in-app click)', async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+    await ensureRunningEnabled(page);
+
+    // saveRunningEnabled() (index.html) writes the flag to Firestore
+    // immediately but does NOT cache it to localStorage until the next full
+    // _backgroundSync() cycle — a separate, pre-existing gap unrelated to
+    // H1. One reload here lets that cycle run once, so the deep-link
+    // navigation below tests H1's actual fix (the runningTypes/
+    // cardioEditTemplates race) on its own, matching a real returning
+    // user's second session rather than the same-session edge case.
+    // waitForAppReady() only confirms Phase 1 (the loading overlay hides as
+    // soon as the synchronous localStorage cache is applied) — Phase 2
+    // (_backgroundSync, which is what actually re-caches runningEnabled)
+    // is explicitly non-blocking and can still be in flight at that point,
+    // so wait for #nav-running to reflect the fully-synced state too.
+    await page.reload();
+    await waitForAppReady(page);
+    await expect(page.locator('#nav-running')).toBeVisible({ timeout: 10000 });
+
+    await page.goto('/settings/cardio-plan');
+    await page.waitForFunction(() => {
+      const overlay = document.getElementById('loading-overlay');
+      return !overlay || (overlay as HTMLElement).style.display === 'none' || overlay.classList.contains('fade-out');
+    }, { timeout: 20000 });
+    await expect(page.locator('#cardioEditTabs .tab-item').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#cardioEditListContainer .edit-card').first()).toBeVisible({ timeout: 15000 });
+  });
 });
 
 test.describe('Cardio Template Editor', () => {

@@ -6,8 +6,22 @@ async function selectFirstWorkoutType(page: import('@playwright/test').Page) {
     const row = document.getElementById('typeRow');
     return row && row.children.length > 0;
   }, { timeout: 10000 });
-  const firstType = page.locator('#typeRow button, #typeRow .type-btn').first();
-  await firstType.click();
+  const buttons = page.locator('#typeRow button, #typeRow .type-btn');
+  const count = await buttons.count();
+  // Clicking an already-active type button is a no-op (selectType()
+  // early-returns when unchanged) — on a fresh boot where Phase 1 had no
+  // local cache yet, the initially-active type can render zero exercise
+  // cards, and nothing re-renders until a REAL type change happens. This
+  // was the root cause of this helper's known flakiness (documented in
+  // project memory as a pre-existing baseline failure predating any of
+  // this repo's recent initiatives) — click whichever button ISN'T
+  // already active to guarantee a real selectType() call.
+  let target = buttons.first();
+  for (let i = 0; i < count; i++) {
+    const isActive = await buttons.nth(i).evaluate(el => el.classList.contains('active'));
+    if (!isActive) { target = buttons.nth(i); break; }
+  }
+  await target.click();
   await expect(page.locator('#exerciseList .card').first()).toBeVisible({ timeout: 8000 });
 }
 
@@ -63,6 +77,69 @@ test.describe('Workout — Log Session', () => {
     const nameInput = page.locator('#sessionNameInput');
     await nameInput.fill('Morning QA Session');
     await expect(nameInput).toHaveValue('Morning QA Session');
+  });
+
+  // ── QA fixes 2026-09-03 ──────────────────────────────────────────
+  test('ad-hoc exercise ("+ הוסף תרגיל") gets an editable name input, required to save', async ({ page }) => {
+    await selectFirstWorkoutType(page);
+    await page.locator('#addBtn').click();
+    const newCard = page.locator('#exerciseList .card').last();
+    const nameInput = newCard.locator('.ex-name-input');
+    await expect(nameInput).toBeVisible();
+    await expect(nameInput).toHaveValue('');
+
+    await newCard.locator('.ex-weight').fill('20');
+    await page.locator('#saveBtn').click();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    await expect(newCard.locator('.ex-weight')).toHaveValue('20'); // save was blocked, value untouched
+  });
+
+  test('non-numeric weight is rejected on save', async ({ page }) => {
+    await selectFirstWorkoutType(page);
+    const card = page.locator('#exerciseList .card').first();
+    await card.locator('.ex-weight').fill('abc');
+    await page.locator('#saveBtn').click();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    await expect(card.locator('.ex-weight')).toHaveValue('abc');
+  });
+
+  test('negative sets value is rejected on save', async ({ page }) => {
+    await selectFirstWorkoutType(page);
+    const card = page.locator('#exerciseList .card').first();
+    await card.locator('.ex-weight').fill('60');
+    await card.locator('.ex-sets').fill('-3');
+    await page.locator('#saveBtn').click();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    await expect(card.locator('.ex-sets')).toHaveValue('-3');
+  });
+
+  test('target pill is keyboard-reachable (role=button, tabindex=0)', async ({ page }) => {
+    await selectFirstWorkoutType(page);
+    const pill = page.locator('.ex-target-clickable').first();
+    test.skip(await pill.count() === 0, 'no target pill on this template to test with');
+    await expect(pill).toHaveAttribute('role', 'button');
+    await expect(pill).toHaveAttribute('tabindex', '0');
+  });
+
+  test('weight/sets/reps/notes inputs are associated with their labels (for/id)', async ({ page }) => {
+    await selectFirstWorkoutType(page);
+    const weightInput = page.locator('#exerciseList .card').first().locator('.ex-weight');
+    const linked = await weightInput.evaluate(el => !!el.id && !!document.querySelector(`label[for="${el.id}"]`));
+    expect(linked).toBe(true);
+  });
+
+  test('legacy target pill fills Sets (not just Weight/Reps)', async ({ page }) => {
+    await selectFirstWorkoutType(page);
+    // Legacy targets aren't present in the Phase 1 localStorage cache — give
+    // the Phase 2 background Firestore sync time to populate them (see
+    // docs/superpowers/specs/2026-09-03-strength-cardio-qa-fixes-design.md).
+    await page.waitForTimeout(2000);
+    const pill = page.locator('.ex-target-legacy').first();
+    test.skip(await pill.count() === 0, 'no legacy-target exercise on this template to test with');
+    const card = page.locator('#exerciseList .card').filter({ has: page.locator('.ex-target-legacy') }).first();
+    await pill.click();
+    const sets = await card.locator('.ex-sets').inputValue();
+    expect(sets.trim()).not.toBe('');
   });
 
   test('history preview panel is attached in DOM', async ({ page }) => {

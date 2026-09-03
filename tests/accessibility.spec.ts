@@ -98,7 +98,19 @@ test.describe('Accessibility — Authenticated App', () => {
       return row && row.children.length > 0;
     }, { timeout: 10000 });
 
-    const firstType = page.locator('#typeRow button, #typeRow .type-btn').first();
+    // Clicking an already-active type button is a no-op (selectType()
+    // early-returns when unchanged) — on a fresh boot with no local cache
+    // yet, the initially-active type can render zero exercise cards with
+    // nothing to trigger a render until a REAL type change happens (a
+    // pre-existing, documented baseline flake in this suite's helpers).
+    // Click whichever button isn't already active to guarantee one.
+    const typeButtons = page.locator('#typeRow button, #typeRow .type-btn');
+    const typeCount = await typeButtons.count();
+    let firstType = typeButtons.first();
+    for (let i = 0; i < typeCount; i++) {
+      const isActive = await typeButtons.nth(i).evaluate(el => el.classList.contains('active'));
+      if (!isActive) { firstType = typeButtons.nth(i); break; }
+    }
     await firstType.click();
     const firstCard = page.locator('#exerciseList .card').first();
     await expect(firstCard).toBeVisible({ timeout: 8000 });
