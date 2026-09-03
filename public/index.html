@@ -2214,7 +2214,14 @@ function _isRunningAllowed() {
 
 async function reloadAppData() {
   try {
-    const data = await loadAllData();
+    // loadRunData() runs alongside loadAllData() so cardio's data layer
+    // (allRunWorkouts/runningTypes) is just as fresh as strength's by the
+    // time applyAppData() calls renderHistory() — otherwise a cardio
+    // edit/delete succeeds in Firestore but the History page keeps
+    // showing stale data until a hard reload (loadRunData() is the only
+    // thing that repopulates allRunWorkouts, and it was never wired into
+    // this shared post-mutation refresh path).
+    const [data] = await Promise.all([loadAllData(), loadRunData()]);
     applyAppData(data);
     if (selectedType) selectType(selectedType);
   } catch (err) {
