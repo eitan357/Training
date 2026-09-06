@@ -302,4 +302,26 @@ test.describe('Cardio Template Editor', () => {
     const dateField = page.locator('#cardioEditListContainer .edit-card').first();
     await expect(dateField.locator('.edit-remove')).toHaveCount(0);
   });
+
+  // Regression test for A3 (addendum QA report): the same initDragSort(el, type)
+  // bug that broke strength's drag-and-drop also broke cardio's, since both
+  // editors share renderEditList()/initDragSort(). The date field is first
+  // and has no drag handle (locked position), so this drags the SECOND
+  // field's handle down past the third and asserts order changed.
+  test('drag handle reorders fields in the cardio edit panel', async ({ page }) => {
+    await page.locator('#mainGearBtn').click();
+    await page.locator('.settings-item', { hasText: 'אימוני אירובי' }).click();
+    const handles = page.locator('#cardioEditListContainer .drag-handle');
+    await expect(handles.first()).toBeVisible();
+    const count = await handles.count();
+    test.skip(count < 2, 'need at least 2 draggable (non-date) fields to test reordering');
+    const labelsBefore = await page.locator('#cardioEditListContainer .edit-card .cardio-field-label-input').evaluateAll(els => (els as HTMLInputElement[]).map(e => e.value));
+    const box = await handles.first().boundingBox();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height + 80, { steps: 8 });
+    await page.mouse.up();
+    const labelsAfter = await page.locator('#cardioEditListContainer .edit-card .cardio-field-label-input').evaluateAll(els => (els as HTMLInputElement[]).map(e => e.value));
+    expect(labelsAfter).not.toEqual(labelsBefore);
+  });
 });

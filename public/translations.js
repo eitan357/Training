@@ -133,6 +133,7 @@ export const TRANSLATIONS = {
     // ── Workout template editor ───────────────────────────────────
     'edit.save':         'שמור שינויים',
     'edit.add_exercise': '+ הוסף תרגיל',
+    'edit.add_field':    '+ הוסף שדה',
     'edit.add_type_ph':  'שם האימון (C, D, כוח...)',
     'edit.no_exercises': 'אין תרגילים. לחץ "+ הוסף תרגיל".',
     'edit.ex_name_ph':   'שם תרגיל',
@@ -190,7 +191,7 @@ export const TRANSLATIONS = {
     'settings.timer_sound_sub':   'השמע צליל כאשר הטיימר מסתיים',
     'settings.workout_edit':      'עריכת תוכנית אימוני כוח',
     'settings.workout_edit_sub':  'הוסף, הסר וערוך סוגי אימון ותרגילים',
-    'settings.cardio_edit':       'לעריכת תוכנית אימוני אירובי',
+    'settings.cardio_edit':       'עריכת תוכנית אימוני אירובי',
     'settings.cardio_edit_sub':   'הוסף, הסר וערוך סוגי אימון ושדות',
     'settings.meas_edit':         'עריכת סוגי מדידות',
     'settings.meas_edit_sub':     'הוסף והסר סוגי מדידה',
@@ -431,6 +432,7 @@ export const TRANSLATIONS = {
     // ── Workout template editor ───────────────────────────────────
     'edit.save':         'Save Changes',
     'edit.add_exercise': '+ Add Exercise',
+    'edit.add_field':    '+ Add Field',
     'edit.add_type_ph':  'Workout name (C, D, Strength...)',
     'edit.no_exercises': 'No exercises. Tap "+ Add Exercise".',
     'edit.ex_name_ph':   'Exercise name',

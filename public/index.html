@@ -2,7 +2,7 @@
 <html dir="rtl" lang="he">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Training Diary</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#6d64a8">
@@ -22,7 +22,7 @@
       --surface:   #ffffff;
       --border:    #e2e8f0;
       --text:      #1e293b;
-      --sub:       #64748b;
+      --sub:       #5c6b82;
       --radius:    14px;
       --shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
     }
@@ -248,6 +248,7 @@
                      color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer;
                      transition: all .15s; }
     .copy-last-btn:active { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+    [data-theme="dark"] .copy-last-btn { color: #9686d1; border-color: #9686d1; }
     .clear-form-btn { border-color: var(--red); color: var(--red); }
     .clear-form-btn:active { background: color-mix(in srgb, var(--red) 10%, transparent); }
     #topActionRow { display: none; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
@@ -351,9 +352,9 @@
     }
     input.ex-name-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .ex-target-text {
-      font-size: 12px; color: var(--primary); font-weight: 600;
+      font-size: 12px; color: var(--primary-d); font-weight: 600;
       background: #ede9fe; padding: 4px 10px; border-radius: 8px; direction: ltr; line-height: 1.4;
-      border: 1.5px solid var(--primary); flex: 0 0 auto;
+      border: 1.5px solid var(--primary-d); flex: 0 0 auto;
     }
     .ex-target-text[data-label]::before {
       content: attr(data-label) ': ';
@@ -635,8 +636,10 @@
     /* ── HISTORY PREVIEW ── */
     .history-preview { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden; }
     .history-preview-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; background: #f8fafc; }
+    [data-theme="dark"] .history-preview-header { background: #1a2338; }
     .history-preview-title { font-size: 13px; font-weight: 700; color: var(--sub); }
     .history-preview-date  { font-size: 12px; color: var(--primary); font-weight: 600; }
+    [data-theme="dark"] .history-preview-date { color: #9686d1; }
     .history-preview-body  { display: none; padding: 0 14px 12px; }
     .history-preview-body.open { display: block; }
 
@@ -771,7 +774,6 @@
     .theme-btn .icon { width: 15px; height: 15px; }
     .theme-btn.active { background: var(--card); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.18); }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <svg id="icons" xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
@@ -909,7 +911,7 @@
   <div class="lo-sub" data-i18n="auth.loading">טוען נתונים...</div>
 </div>
 
-<div id="main-content">
+<main id="main-content">
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
@@ -934,7 +936,7 @@
     <div id="typeRow" class="type-row"></div>
 
     <div id="historyPreview" style="display:none;" class="history-preview">
-      <div class="history-preview-header" onclick="toggleHistPreview()">
+      <div class="history-preview-header" role="button" tabindex="0" onclick="toggleHistPreview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleHistPreview();}">
         <div>
           <span class="history-preview-title" data-i18n="preview.last"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> אימון אחרון</span>
           <span id="histPreviewName" class="hist-preview-session-name"></span>
@@ -1140,7 +1142,7 @@
       <button class="btn-ghost" onclick="document.getElementById('cardioAddTypeForm').style.display='none'" data-i18n="btn.cancel">ביטול</button>
     </div>
     <div id="cardioEditListContainer"></div>
-    <button class="btn-ghost" onclick="addCardioEditField()" data-i18n="edit.add_exercise">+ הוסף שדה</button>
+    <button class="btn-ghost" onclick="addCardioEditField()" data-i18n="edit.add_field">+ הוסף שדה</button>
     <button class="btn-primary" onclick="saveCardioTemplates()" data-i18n="edit.save">שמור שינויים</button>
   </div>
 </div>
@@ -1248,7 +1250,7 @@
 </div>
 
 <div id="toast"></div>
-</div>
+</main>
 
 <nav class="bottomnav">
   <button class="nav-item active" id="nav-main"         onclick="navigateTo('/')">
@@ -1668,11 +1670,37 @@ function runSetRange(range) {
   renderRunCharts();
 }
 
-function renderRunCharts() {
+// Chart.js is only ever used by History's cardio-stats charts (the only
+// `new Chart(` call site in this file) — Strength and Cardio's own
+// daily-entry pages never reference it, so it no longer loads
+// unconditionally in <head>. Loaded once, on first actual use.
+// Pinned to the exact version the old floating `@4` tag resolved to
+// (4.5.1) plus its SHA-384 integrity hash — pinning is required for SRI
+// to be meaningful (an unpinned `@4` could resolve to a different file
+// on a future jsdelivr update, breaking the hash); computed via:
+//   curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A
+let _chartJsPromise = null;
+function _ensureChartJsLoaded() {
+  if (window.Chart) return Promise.resolve();
+  if (_chartJsPromise) return _chartJsPromise;
+  _chartJsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+    script.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+    script.crossOrigin = 'anonymous';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Chart.js'));
+    document.head.appendChild(script);
+  });
+  return _chartJsPromise;
+}
+
+async function renderRunCharts() {
   const filtered  = filterRunByRange(allRunWorkouts, _runCurrentRange);
   const sorted    = [...filtered].sort((a, b) => a.date.localeCompare(b.date));
   const container = document.getElementById('run-charts-list');
   if (!container) return;
+  try { await _ensureChartJsLoaded(); } catch (e) { return; } // charts are an enhancement, not critical — fail silently
 
   Object.values(_runCharts).forEach(c => c.destroy());
   _runCharts = {};
@@ -3004,7 +3032,18 @@ async function _backgroundSync(hadCache) {
     const data = await loadAllData();
     _backgroundApplyData(data);
     _saveCacheFromData(data);
-    if (!hadCache) selectType(selectedType || workoutTypes[0] || 'A');
+    if (!hadCache) {
+      // selectType() early-returns when the target type already matches
+      // selectedType — but Phase 1 (initApp) already called selectType with
+      // this same default before any real template data existed, so
+      // selectedType is already set and this call would otherwise be a
+      // silent no-op, permanently leaving the exercise list empty on a
+      // cold-cache first visit even though real data just arrived.
+      // Resetting selectedType first forces the equality check to fail,
+      // guaranteeing the real re-render this branch exists to trigger.
+      selectedType = null;
+      selectType(workoutTypes[0] || 'A');
+    }
   } catch(e) { /* silent — Phase 1 data remains visible */ }
 }
 
@@ -3808,7 +3847,7 @@ function renderEditList(domain, type) {
     card.innerHTML = D.renderItemRow(ex, idx);
     el.appendChild(card);
   });
-  initDragSort(el, type);
+  initDragSort(el, startEditDrag(domain));
 }
 
 function switchEditTab(type) { collectEdits('strength'); editTab = type; renderEditTabs(); renderEditList('strength', type); }
@@ -4003,11 +4042,22 @@ async function saveCardioTemplates() {
 
 // ─── DRAG & DROP ──────────────────────────────────────────────
 function initDragSort(container, startFn) {
-  const fn = startFn || startDrag;
   container.querySelectorAll('.drag-handle').forEach(h => {
-    h.addEventListener('mousedown', e => fn(e, h.closest('.edit-card'), container));
-    h.addEventListener('touchstart', e => fn(e, h.closest('.edit-card'), container), { passive: true });
+    h.addEventListener('mousedown', e => startFn(e, h.closest('.edit-card'), container));
+    h.addEventListener('touchstart', e => startFn(e, h.closest('.edit-card'), container), { passive: true });
   });
+}
+
+// Domain-aware drag-start factory for the shared strength/cardio template
+// editors. collectEdits(domain) already reads the current .edit-card DOM
+// order back into WORKOUT_DOMAINS[domain]'s template array — exactly what
+// both the "snapshot before drag" and "commit new order after drop" steps
+// need, so both callbacks below are the same call. Verified byte-for-byte
+// equivalent to the old hardcoded startDrag's onDrop logic for strength.
+function startEditDrag(domain) {
+  return (e, card, container) => {
+    startGenericDrag(e, card, container, () => collectEdits(domain), () => collectEdits(domain));
+  };
 }
 
 function startGenericDrag(e, card, container, collectAtStart, onDrop) {
@@ -4036,19 +4086,6 @@ function startGenericDrag(e, card, container, collectAtStart, onDrop) {
   document.addEventListener('mouseup',   up);
   document.addEventListener('touchmove', move, { passive: true });
   document.addEventListener('touchend',  up);
-}
-
-function startDrag(e, card, container) {
-  startGenericDrag(e, card, container, collectEdits, cnt => {
-    editTemplates[editTab] = [...cnt.querySelectorAll('.edit-card')].map(c => ({
-      name:          c.querySelector('.ex-name-input').value,
-      targetWeight:  c.querySelector('.target-weight-input')?.value || '',
-      targetSets:    c.querySelector('.target-sets-input')?.value   || '',
-      targetReps:    c.querySelector('.target-reps-input')?.value   || '',
-      id:            c.dataset.id           || '',
-      _legacyTarget: c.dataset.legacyTarget || '',
-    }));
-  });
 }
 
 // ─── MEASUREMENTS ─────────────────────────────────────────────

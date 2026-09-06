@@ -255,4 +255,52 @@ test.describe('Workout — Edit Plan', () => {
     await expect(page.locator('#sec-settings')).toHaveClass(/active/, { timeout: 5000 });
     await expect(page.locator('#mainEditPanel')).not.toBeVisible();
   });
+
+  // Regression test for A3 (addendum QA report): renderEditList() called
+  // initDragSort(el, type) — a string, not a function — so the drag handler
+  // threw a TypeError on first pointerdown and reordering silently did
+  // nothing. Fixed by threading the drag handler through initDragSort/
+  // startEditDrag properly; this test drags the first handle down past the
+  // second card and asserts the DOM order actually changed.
+  test('drag handle reorders exercises in the edit panel', async ({ page }) => {
+    const handles = page.locator('#editListContainer .drag-handle');
+    await expect(handles.first()).toBeVisible();
+    const count = await handles.count();
+    test.skip(count < 2, 'need at least 2 exercises in this type to test reordering');
+    const nameBefore = await page.locator('#editListContainer .edit-card').first().locator('.ex-name-input').inputValue();
+    const box = await handles.first().boundingBox();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height + 80, { steps: 8 });
+    await page.mouse.up();
+    const nameAfter = await page.locator('#editListContainer .edit-card').first().locator('.ex-name-input').inputValue();
+    expect(nameAfter).not.toBe(nameBefore);
+  });
+});
+
+// Regression test for A4 (addendum QA report): on a genuinely cold boot
+// (no localStorage cache), _backgroundSync's `if (!hadCache) selectType(...)`
+// was a no-op because selectedType already equaled workoutTypes[0] — the
+// exercise list stayed permanently empty until the user manually clicked a
+// type button. Fixed by forcing selectedType = null before the call so
+// selectType() can't early-return. Uses a fresh, isolated browser context
+// (no storageState) to guarantee zero localStorage cache, unlike every
+// other test in this file which reuses the logged-in storageState.
+test.describe('Cold-Cache Boot', () => {
+  test('exercise cards render on a fresh browser context with no local cache', async ({ browser }) => {
+    requiresCredentials();
+    // playwright.config.ts sets a project-wide storageState (a logged-in
+    // session with an already-populated localStorage cache) — passing
+    // `storageState: undefined` here would NOT override that default, since
+    // an explicit `undefined` value is indistinguishable from omitting the
+    // key. An empty-but-defined state is required to force a genuinely cold,
+    // logged-out context.
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+    await page.locator('#nav-main').click();
+    await expect(page.locator('#exerciseList .card').first()).toBeVisible({ timeout: 15000 });
+    await context.close();
+  });
 });
