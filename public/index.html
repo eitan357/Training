@@ -1119,8 +1119,8 @@
     <div id="cardioHistoryPreview" class="history-preview" style="display:none;"></div>
 
     <div style="display:flex;gap:8px;margin:10px 0;">
-      <button class="run-btn run-btn-secondary" style="flex:1;display:none;" id="cardioCopyLastBtn" onclick="copyLastCardioWorkout()" data-i18n="copy.last_btn">העתקת אימון אחרון</button>
-      <button class="run-btn run-btn-secondary" style="flex:1;" onclick="clearCardioForm()" data-i18n="clear.btn">נקה טופס</button>
+      <button class="copy-last-btn" style="display:none;" id="cardioCopyLastBtn" onclick="copyLastCardioWorkout()" data-i18n="copy.last_btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> העתקת אימון אחרון</button>
+      <button class="copy-last-btn clear-form-btn" onclick="clearCardioForm()" data-i18n="clear.btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg> נקה טופס</button>
     </div>
 
     <div style="margin-bottom:16px;">
@@ -1130,8 +1130,8 @@
 
     <div id="cardioFieldList"></div>
 
-    <button class="run-btn run-btn-secondary" style="width:100%;margin-top:10px;" onclick="addCustomCardioField()" data-i18n="cardio.add_field_btn">+ הוסף שדה</button>
-    <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="cardioSaveBtn" onclick="submitCardioData()" data-i18n="btn.save_workout">שמור אימון</button>
+    <button class="btn-ghost" onclick="addCustomCardioField()" data-i18n="cardio.add_field_btn">+ הוסף שדה</button>
+    <button class="btn-primary green" id="cardioSaveBtn" onclick="submitCardioData()" data-i18n="btn.save_workout">שמור אימון</button>
   </div>
 
   <!-- ══ CARDIO TEMPLATE EDITOR (in-page panel, mirrors #mainEditPanel) ══ -->
