@@ -47,9 +47,6 @@ export const TRANSLATIONS = {
     'btn.cancel':         'ביטול',
     'btn.delete_confirm': 'מחק?',
 
-    // ── App-level (hardware back button) ────────────────────────────
-    'app.press_back_exit': 'לחץ שוב ליציאה',
-
     // ── Timer ─────────────────────────────────────────────────────
     'btn.timer_start':   '▶ התחל',
     'btn.timer_pause':   '⏸ השהה',
@@ -70,6 +67,7 @@ export const TRANSLATIONS = {
     'btn.add_exercise':        '+ הוסף תרגיל',
     'btn.copy_last':           'העתקת אימון אחרון',
     'workout.name_label':      'שם האימון',
+    'workout.date_label':      'תאריך',
     'workout.name_ph':         'שם האימון',
     'workout.name_last_ph':    'אחרון: ',
     'workout.name_default_ph': 'שם האימון (ראשון, שני, דלואד...)',
@@ -148,6 +146,7 @@ export const TRANSLATIONS = {
     'edit.ftype_text':     'טקסט',
     'edit.ftype_number':   'מספר',
     'edit.ftype_checkbox': 'סימון',
+    'edit.date_show_label': 'הצג בטופס היומי',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'הוסף מדידה חדשה',
@@ -346,9 +345,6 @@ export const TRANSLATIONS = {
     'btn.cancel':         'Cancel',
     'btn.delete_confirm': 'Delete?',
 
-    // ── App-level (hardware back button) ────────────────────────────
-    'app.press_back_exit': 'Press back again to exit',
-
     // ── Timer ─────────────────────────────────────────────────────
     'btn.timer_start':   '▶ Start',
     'btn.timer_pause':   '⏸ Pause',
@@ -369,6 +365,7 @@ export const TRANSLATIONS = {
     'btn.add_exercise':        '+ Add Exercise',
     'btn.copy_last':           'Copy last workout',
     'workout.name_label':      'Workout Name',
+    'workout.date_label':      'Date',
     'workout.name_ph':         'Workout Name',
     'workout.name_last_ph':    'Last: ',
     'workout.name_default_ph': 'Workout name (Push, Pull, Deload...)',
@@ -447,6 +444,7 @@ export const TRANSLATIONS = {
     'edit.ftype_text':     'Text',
     'edit.ftype_number':   'Number',
     'edit.ftype_checkbox': 'Checkbox',
+    'edit.date_show_label': 'Show on daily entry page',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'Add New Measurement',

@@ -104,7 +104,6 @@ test.describe('Cardio Daily Entry Page', () => {
   test('shows type tabs and saves a workout', async ({ page }) => {
     await page.locator('#nav-running').click();
     await expect(page.locator('#cardioTypeRow .type-btn').first()).toBeVisible();
-    await page.locator('#cardioFieldList .cardio-field-row[data-field-type="date"] .cardio-field-input').fill('01/01/2026');
     const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
     await distRow.locator('.cardio-field-input').fill('5.2');
     await page.locator('#cardioSaveBtn').click();
@@ -168,7 +167,6 @@ test.describe('Cardio Daily Entry Page', () => {
   // ── QA fixes 2026-09-03 ──────────────────────────────────────────
   test('negative numeric value is rejected on save', async ({ page }) => {
     await page.locator('#nav-running').click();
-    await page.locator('#cardioFieldList .cardio-field-row[data-field-type="date"] .cardio-field-input').fill('01/01/2026');
     const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
     await distRow.locator('.cardio-field-input').fill('-5');
     await page.locator('#cardioSaveBtn').click();
@@ -187,9 +185,9 @@ test.describe('Cardio Daily Entry Page', () => {
     await expect(labelInput).toBeVisible();
     await expect(labelInput).toHaveValue('');
 
-    // Fill the ad-hoc field's value but leave its label blank, plus the
-    // required date field — save must be blocked.
-    await page.locator('#cardioFieldList .cardio-field-row[data-field-type="date"] .cardio-field-input').fill('01/01/2026');
+    // Fill the ad-hoc field's value but leave its label blank — save must
+    // be blocked. The date field no longer needs filling: it's a readonly,
+    // picker-driven input (2026-09-08) that defaults to today on its own.
     await page.locator('.cardio-field-row').last().locator('.cardio-field-input').fill('123');
     await page.locator('#cardioSaveBtn').click();
     await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
@@ -349,9 +347,15 @@ test.describe('Cardio Template Editor', () => {
     test.skip(count < 2, 'need at least 2 draggable (non-date) fields to test reordering');
     const labelsBefore = await page.locator('#cardioEditListContainer .edit-card .cardio-field-label-input').evaluateAll(els => (els as HTMLInputElement[]).map(e => e.value));
     const box = await handles.first().boundingBox();
+    // Offset relative to the ROW's own height (not the drag-handle's own
+    // much-shorter boundingBox, ~33px vs a ~137px row) — rows grew taller
+    // once the per-field target input (2026-09-08) was added for
+    // text/number fields, and a handle-sized offset that used to clear a
+    // shorter row no longer reliably crosses into the next one.
+    const rowBox = await page.locator('#cardioEditListContainer .edit-card').first().boundingBox();
     await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
     await page.mouse.down();
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height + 80, { steps: 8 });
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + rowBox!.height * 1.5, { steps: 8 });
     await page.mouse.up();
     const labelsAfter = await page.locator('#cardioEditListContainer .edit-card .cardio-field-label-input').evaluateAll(els => (els as HTMLInputElement[]).map(e => e.value));
     expect(labelsAfter).not.toEqual(labelsBefore);

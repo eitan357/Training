@@ -251,6 +251,10 @@
     [data-theme="dark"] .copy-last-btn { color: #9686d1; border-color: #9686d1; }
     .clear-form-btn { border-color: var(--red); color: var(--red); }
     .clear-form-btn:active { background: color-mix(in srgb, var(--red) 10%, transparent); }
+    /* Same specificity as the dark .copy-last-btn rule above (both classes
+       are present on this button) — must come AFTER it in source order to
+       win the cascade and stay red instead of inheriting copy-last's purple. */
+    [data-theme="dark"] .clear-form-btn { color: var(--red); border-color: var(--red); }
     #topActionRow { display: none; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
     .top-action-row { justify-content: space-between; flex-wrap: wrap; }
     /* ── DRAFT AUTO-SAVE ── */
@@ -280,6 +284,27 @@
       width: 100%; padding: 8px; border: none; background: none;
       font-size: 13px; color: var(--sub); cursor: pointer; text-decoration: underline;
     }
+    /* ── DATE PICKER (Task 6) ── forced LTR: dates read the same digit order
+       regardless of app language, matching every other date display in this app. */
+    .date-picker-popover {
+      position: fixed; z-index: 600; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,.18); padding: 12px; width: 264px;
+      direction: ltr;
+    }
+    .dp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .dp-header-label { font-size: 14px; font-weight: 700; color: var(--text); }
+    .dp-nav { background: none; border: none; font-size: 20px; line-height: 1; color: var(--primary);
+      cursor: pointer; padding: 4px 12px; border-radius: 8px; }
+    .dp-nav:active { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+    .dp-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center;
+      font-size: 11px; font-weight: 600; color: var(--sub); margin-bottom: 4px; }
+    .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .dp-cell { aspect-ratio: 1; }
+    .dp-day { background: none; border: none; border-radius: 8px; font-size: 13px;
+      color: var(--text); cursor: pointer; }
+    .dp-day:active { background: color-mix(in srgb, var(--primary) 15%, transparent); }
+    .dp-today { border: 1.5px solid var(--primary); font-weight: 700; color: var(--primary); }
     .topbar-edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px;
       padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--sub); cursor: pointer; transition: all .15s; }
     .topbar-edit-btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -370,6 +395,9 @@
     .target-fields { display: flex; gap: 6px; margin-top: 6px; }
     .target-fields .target-field-input { flex: 1; min-width: 0; padding: 7px 6px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px; color: var(--primary); background: var(--bg); text-align: center; direction: ltr; font-family: inherit; box-sizing: border-box; }
     .target-fields .target-field-input:focus { outline: none; border-color: var(--primary); }
+    .cardio-field-target-input { width: 100%; margin-top: 6px; padding: 7px 6px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 12px; color: var(--primary); background: var(--bg); box-sizing: border-box; font-family: inherit; }
+    .cardio-field-target-input:focus { outline: none; border-color: var(--primary); }
     .ex-target-legacy { border: none; border-radius: 20px; padding: 2px 8px; flex: none; line-height: 1.3; text-align: right; }
     .remove-btn { background: none; border: none; color: var(--sub); font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; }
     .remove-btn:hover { color: var(--red); }
@@ -542,6 +570,8 @@
     .cardio-field-label-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .cardio-field-label-input:disabled { opacity: .6; }
     .field-type-picker { display: flex; gap: 6px; }
+    .cardio-date-visibility-toggle { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px; }
+    .cardio-date-visibility-label { font-size: 12px; font-weight: 700; color: var(--sub); }
     .ftype-btn {
       flex: 1; padding: 7px 6px; border: 1.5px solid var(--border); border-radius: 8px;
       font-size: 12px; font-weight: 700; color: var(--sub); background: var(--bg); cursor: pointer;
@@ -765,6 +795,8 @@
     .run-streak-lbl { font-size: 14px; color: var(--sub); margin-top: 4px; }
     .run-form-field { margin-bottom: 14px; }
     .run-form-label { font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 6px; display: block; }
+    .cardio-field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .cardio-field-label-row .run-form-label { margin-bottom: 0; flex: 1; }
     .run-toggle-row { display: flex; justify-content: space-between; align-items: center; }
     .run-ocr-zone { width: 100%; padding: 32px 16px; border: 2px dashed var(--primary);
       border-radius: var(--radius); text-align: center; cursor: pointer; color: var(--primary);
@@ -935,6 +967,21 @@
   </div>
 </div>
 
+<!-- Shared date-picker popover (Task 6) — same section-independent placement
+     rationale as #draftModal above: a single global instance, opened/closed
+     via _openDatePicker()/_closeDatePicker(), never nested in any .section. -->
+<div id="datePickerPopover" class="date-picker-popover" style="display:none;">
+  <div class="dp-header">
+    <button type="button" class="dp-nav" onclick="_datePickerNav(-1)" aria-label="חודש קודם">‹</button>
+    <span class="dp-header-label"></span>
+    <button type="button" class="dp-nav" onclick="_datePickerNav(1)" aria-label="חודש הבא">›</button>
+  </div>
+  <div class="dp-weekdays">
+    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+  </div>
+  <div class="dp-grid"></div>
+</div>
+
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
@@ -979,6 +1026,14 @@
       <input type="text" id="sessionNameInput" class="session-name-input" placeholder="שם האימון" data-i18n-ph="workout.name_ph" autocomplete="off">
     </div>
 
+    <!-- Optional date field (Task 8/9) — mirrors cardio's exactly (same
+         picker, same readonly-trigger pattern); shown only when
+         !strengthDateFieldHidden (toggled in the edit panel above). -->
+    <div id="strengthDateWrap" style="display:none; margin-bottom:16px;">
+      <label class="run-form-label" for="strengthDateInput" data-i18n="workout.date_label">תאריך</label>
+      <input type="text" id="strengthDateInput" class="cardio-field-input" readonly autocomplete="off" onclick="_openDatePicker(this, this.value, v => { this.value = v; this.dispatchEvent(new Event('input', {bubbles:true})); })">
+    </div>
+
     <div id="exerciseList"></div>
     <button id="addBtn"  class="btn-ghost"        style="display:none;" onclick="addCustomExercise()" data-i18n="btn.add_exercise">+ הוסף תרגיל</button>
     <button id="saveBtn" class="btn-primary green" style="display:none;" onclick="submitData()" data-i18n="btn.save_workout">שמור אימון</button>
@@ -987,6 +1042,16 @@
   <!-- edit panel (hidden by default) -->
   <div id="mainEditPanel" style="display:none; padding:16px;">
     <div id="editTabs" class="edit-tabs"></div>
+    <!-- Global toggle (Task 8/9) — one flag for all strength types, not
+         per-type like cardio's fields: strength has no per-type field
+         template to hang a per-row toggle off of. -->
+    <div class="cardio-date-visibility-toggle" style="margin-bottom:12px;">
+      <span class="cardio-date-visibility-label" data-i18n="edit.date_show_label">הצג בטופס היומי</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="strengthDateHiddenToggle" onchange="_setStrengthDateFieldHidden(!this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
     <div id="addTypeForm" class="add-type-form">
       <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off" data-i18n-ph="edit.add_type_ph">
       <div class="add-type-form-btns">
@@ -1481,6 +1546,15 @@ let editTemplates    = {};
 let allSessions      = [];
 let activeFilter     = 'all';
 let historyActiveDomain = 'strength';   // 'strength' | 'cardio' — which dataset the History page renders
+// Task 8/9 — a single flag for ALL strength types (unlike cardio's
+// per-field `hidden`, strength has no per-type field template to hang a
+// per-row toggle off). Every current account has no date-field concept at
+// all yet, so `undefined` (not yet saved) means hidden — same as the
+// existing, unconditional save-time-only dating behavior — never means
+// "visible" the way cardio's undefined-means-visible convention does for
+// its already-in-use date field.
+let strengthDateFieldHidden = true;
+function _setStrengthDateFieldHidden(hidden) { strengthDateFieldHidden = hidden; }
 
 async function switchHistoryDomain(domain) {
   if (domain === 'cardio' && !_isRunningAllowed()) domain = 'strength';
@@ -1798,23 +1872,51 @@ function cardioFieldDisplayLabel(field) {
 }
 
 function renderCardioFieldRow(field, value, isAdhoc) {
-  const val = value ?? '';
+  let val = value ?? '';
   const inputId = `cardio-field-${field.id}`;
   let inputHtml;
   if (field.fieldType === 'date') {
-    inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off" value="${escHtml(String(val))}">`;
+    if (!val) val = _todayDDMMYYYY(); // defaults to today until the user picks otherwise
+    // Picker-driven (Task 8) — readonly so the only way to change it is
+    // through _openDatePicker, which writes .value and dispatches a real
+    // 'input' event itself (keeping the generic draft-serialize/collect
+    // logic elsewhere, which just reads/writes .value, unaware anything
+    // changed here).
+    inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" readonly autocomplete="off" value="${escHtml(String(val))}" onclick="_openDatePicker(this, this.value, v => { this.value = v; this.dispatchEvent(new Event('input', {bubbles:true})); })">`;
   } else if (field.fieldType === 'number') {
-    inputHtml = `<input type="number" id="${escHtml(inputId)}" class="cardio-field-input cardio-field-input-numeric" step="any" min="0" value="${escHtml(String(val))}" placeholder="--">`;
+    inputHtml = `<input type="number" id="${escHtml(inputId)}" class="cardio-field-input cardio-field-input-numeric" step="any" min="0" value="${escHtml(String(val))}" placeholder="—">`;
   } else if (field.fieldType === 'checkbox') {
     inputHtml = `<label class="toggle-switch"><input type="checkbox" id="${escHtml(inputId)}" class="cardio-field-input" aria-label="${escHtml(cardioFieldDisplayLabel(field))}"${val ? ' checked' : ''}><span class="toggle-slider"></span></label>`;
   } else {
-    inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" value="${escHtml(String(val))}" placeholder="--">`;
+    inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" value="${escHtml(String(val))}" placeholder="${escHtml(cardioFieldDisplayLabel(field))}">`;
   }
   const labelHtml = isAdhoc
     ? `<input type="text" class="run-form-label run-form-label-input" placeholder="${t('edit.field_label_ph')}" oninput="this.closest('.cardio-field-row').dataset.label=this.value">`
     : `<label class="run-form-label" for="${escHtml(inputId)}">${escHtml(cardioFieldDisplayLabel(field))}</label>`;
+  // Date is required for the session to save at all (submitCardioData
+  // refuses to save without it) — never offer to remove it for just today.
+  const removeBtnHtml = field.fieldType === 'date' ? '' :
+    `<button class="remove-btn" onclick="this.closest('.cardio-field-row').remove()">✕</button>`;
+  // Type-aware target (Task 9) — text/number only, never checkbox/date.
+  // Mirrors strength's .ex-target-text pill exactly (same class, same
+  // click-to-fill UX via copyCardioFieldTarget), adapted to sit under this
+  // field's own label instead of inside a shared exercise-card sub-row,
+  // since cardio has no equivalent grouping to hang it off of.
+  const targetPillHtml = (field.target && String(field.target).trim())
+    ? `<div class="ex-target-row">
+        <div class="ex-target-text ex-target-clickable" role="button" tabindex="0"
+             data-label="${escHtml(t('col.target'))}" data-target="${escHtml(String(field.target).trim())}"
+             onclick="copyCardioFieldTarget(this.closest('.cardio-field-row'))"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyCardioFieldTarget(this.closest('.cardio-field-row'));}"
+             title="${t('target.copy_hint')}">${escHtml(String(field.target).trim())}</div>
+      </div>`
+    : '';
   return `<div class="run-form-field cardio-field-row" data-id="${escHtml(field.id)}" data-label="${escHtml(field.label)}" data-field-type="${escHtml(field.fieldType)}">
-    ${labelHtml}
+    <div class="cardio-field-label-row">
+      ${labelHtml}
+      ${removeBtnHtml}
+    </div>
+    ${targetPillHtml}
     ${inputHtml}
   </div>`;
 }
@@ -1824,7 +1926,7 @@ function renderCardioFieldList(type, prefillFields) {
   const byId = {};
   (prefillFields || []).forEach(f => { byId[f.id] = f.value; });
   document.getElementById('cardioFieldList').innerHTML =
-    template.map(f => renderCardioFieldRow(f, byId[f.id])).join('');
+    template.filter(f => !f.hidden).map(f => renderCardioFieldRow(f, byId[f.id])).join('');
 }
 
 function renderCardioTypeButtons() {
@@ -1936,22 +2038,27 @@ async function submitCardioData() {
   if (hasUnnamedField)  { toast(t('workout.name_required'), 'error'); return; }
   if (hasNegativeValue) { toast(t('cardio.negative_value'), 'error'); return; }
   const dateField = fields.find(f => f.fieldType === 'date');
-  if (!dateField || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) {
+  // A date row only exists in `fields` when the type's date field is shown
+  // AND has a value (Task 7/8) — hidden (the new default) or emptied falls
+  // back to today, matching strength's always-dated-by-save-time behavior.
+  // A PRESENT-but-malformed value is still a real error, not a fallback case.
+  if (dateField && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) {
     toast(t('cardio.date_required'), 'error'); return;
   }
-  const [dd, mm, yyyy] = dateField.value.split('/');
+  const dateStr = dateField ? dateField.value : _todayDDMMYYYY();
+  const [dd, mm, yyyy] = dateStr.split('/');
   const dateISO = `${yyyy}-${mm}-${dd}`;
 
   const sessionName = document.getElementById('cardioSessionNameInput')?.value.trim() || '';
   btn.disabled = true; btn.innerText = t('saving');
   try {
     await addDoc(collection(db, 'users', currentUser.uid, 'runWorkouts'), {
-      date: dateField.value, dateISO,
+      date: dateStr, dateISO,
       workoutType: cardioSelectedType,
       sessionName, fields,
       createdAt: serverTimestamp(),
     });
-    const cachedLW = { date: dateField.value, dateISO, workoutType: cardioSelectedType, sessionName, fields };
+    const cachedLW = { date: dateStr, dateISO, workoutType: cardioSelectedType, sessionName, fields };
     lastCardioWorkouts[cardioSelectedType] = cachedLW;
     await _draftDelete('cardio', cardioSelectedType);
     toast(t('workout.saved_ok'), 'success');
@@ -2368,7 +2475,7 @@ async function initApp() {
   const hadCache = _applyLocalCache();
   selectType(workoutTypes[0] || 'A');
   renderTypeButtons();
-  _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput');
+  _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput', 'strengthDateInput');
   _draftStartFirestoreTimer('strength', () => WORKOUT_DOMAINS.strength.getSelectedType());
   hideOverlay();
   // Phase 2 — background Firestore sync (non-blocking)
@@ -2419,6 +2526,7 @@ function applyAppData(data) {
   const tmpl = (data.templates && !data.templates.error) ? data.templates : { types: ['A','B'], A: [], B: [] };
 
   workoutTypes    = (tmpl.types && tmpl.types.length) ? tmpl.types : ['A','B'];
+  strengthDateFieldHidden = tmpl.dateFieldHidden !== false; // absent (every account today) or true -> hidden
   editTemplates   = {};
   workoutTypes.forEach(wtype => {
     editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
@@ -2585,6 +2693,7 @@ function _strengthDraftSerialize() {
   });
   return {
     workoutName: document.getElementById('sessionNameInput')?.value || '',
+    date:        document.getElementById('strengthDateInput')?.value || '',
     exercises,
   };
 }
@@ -2597,6 +2706,8 @@ function _strengthDraftQualifies(draft) {
 function _strengthDraftApplyToForm(draft) {
   const nameInput = document.getElementById('sessionNameInput');
   if (nameInput) nameInput.value = draft.workoutName || '';
+  const dateInput = document.getElementById('strengthDateInput');
+  if (dateInput && draft.date) dateInput.value = draft.date;
   document.querySelectorAll('#exerciseList .card').forEach(card => {
     const name = _readExName(card);
     const ex   = (draft.exercises || []).find(e => e.name === name);
@@ -2646,7 +2757,7 @@ const WORKOUT_DOMAINS = {
       _legacyTarget: c.dataset.legacyTarget || '',
     }),
     buildSaveDoc: (types, templates) => {
-      const templateData = { types };
+      const templateData = { types, dateFieldHidden: strengthDateFieldHidden };
       types.forEach(wtype => {
         templateData[wtype] = (templates[wtype] || [])
           .filter(ex => !WORKOUT_DOMAINS.strength.isEmptyItem(ex))
@@ -2668,12 +2779,18 @@ const WORKOUT_DOMAINS = {
     // it, same as before this was extracted).
     buildAutoSaveEntry: draft => {
       if (!_strengthDraftQualifies(draft)) return null;
-      const dt   = new Date(draft.createdAt);
-      const dd   = String(dt.getDate()).padStart(2,'0');
-      const mm   = String(dt.getMonth()+1).padStart(2,'0');
-      const yyyy = dt.getFullYear();
+      // Task 8/9: _strengthDraftSerialize now always captures whatever
+      // #strengthDateInput held at draft-save time (today, as of that
+      // original session — the field's own default even while hidden), so
+      // this is meaningful for both the shown and hidden cases. Only a
+      // genuinely malformed/missing value falls back to createdAt's day,
+      // matching this function's pre-existing behavior exactly.
+      const dateStr = (draft.date && /^\d{2}\/\d{2}\/\d{4}$/.test(draft.date))
+        ? draft.date
+        : _todayDDMMYYYY(new Date(draft.createdAt));
+      const [dd, mm, yyyy] = dateStr.split('/');
       return {
-        date:        `${dd}/${mm}/${yyyy}`,
+        date:        dateStr,
         dateISO:     `${yyyy}-${mm}-${dd}`,
         type:        draft.type,
         sessionName: draft.workoutName || '',
@@ -2766,25 +2883,40 @@ const WORKOUT_DOMAINS = {
         fields.push({ id: f.id, label: f.label, fieldType: f.fieldType, value: f.value });
       }
       const dateField = fields.find(f => f.fieldType === 'date');
-      if (!dateField || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) return null;
-      const [dd, mm, yyyy] = dateField.value.split('/');
+      // Present-but-malformed is a real validation failure (return null, per
+      // this function's own contract above). Absent (the type's date field
+      // is hidden — the new default) falls back to the draft's own creation
+      // day, mirroring exactly how strength's buildAutoSaveEntry has always
+      // dated a draft with no date field of its own.
+      if (dateField && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) return null;
+      const dateStr = dateField ? dateField.value : _todayDDMMYYYY(new Date(draft.createdAt));
+      const [dd, mm, yyyy] = dateStr.split('/');
       return {
-        date: dateField.value, dateISO: `${yyyy}-${mm}-${dd}`,
+        date: dateStr, dateISO: `${yyyy}-${mm}-${dd}`,
         workoutType: draft.type, sessionName: draft.workoutName || '', fields,
         autoSaved: true, createdAt: serverTimestamp(),
       };
     },
     getSelectedType: () => cardioSelectedType,
-    newItem: () => ({ id: genId(), label: '', fieldType: 'text' }),
+    newItem: () => ({ id: genId(), label: '', fieldType: 'text', target: '' }),
     renderItemRow: (f, idx) => `
       ${f.fieldType === 'date' ? '' : '<span class="drag-handle">⠿</span>'}
       <div class="edit-fields">
         <input class="cardio-field-label-input" value="${escHtml(f.label)}" placeholder="${t('edit.field_label_ph')}" ${f.fieldType === 'date' ? 'disabled' : ''}>
+        ${f.fieldType === 'date' ? `
+        <div class="cardio-date-visibility-toggle">
+          <span class="cardio-date-visibility-label">${t('edit.date_show_label')}</span>
+          <label class="toggle-switch">
+            <input type="checkbox" class="cardio-date-hidden-toggle"${f.hidden ? '' : ' checked'}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>` : `
         <div class="field-type-picker" data-idx="${idx}">
-          <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(${idx},'text')" ${f.fieldType==='date'?'disabled':''}>${t('edit.ftype_text')}</button>
-          <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(${idx},'number')" ${f.fieldType==='date'?'disabled':''}>${t('edit.ftype_number')}</button>
-          <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(${idx},'checkbox')" ${f.fieldType==='date'?'disabled':''}>${t('edit.ftype_checkbox')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(${idx},'text')">${t('edit.ftype_text')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(${idx},'number')">${t('edit.ftype_number')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(${idx},'checkbox')">${t('edit.ftype_checkbox')}</button>
         </div>
+        ${f.fieldType === 'checkbox' ? '' : `<input class="cardio-field-target-input" type="${f.fieldType === 'number' ? 'number' : 'text'}" value="${escHtml(f.target || '')}" placeholder="${t('col.target')}">`}`}
       </div>
       ${f.fieldType === 'date' ? '' : `<button class="edit-remove" onclick="removeCardioEditField(${idx})">✕</button>`}`,
     collectItemFromRow: c => {
@@ -2795,12 +2927,12 @@ const WORKOUT_DOMAINS = {
       // collectEdits() call — defeating removeCardioEditField's date-is-protected
       // guard entirely. renderItemRow's own `disabled` marker on this input is the
       // one reliable signal that survives the round-trip, so read fieldType off of it.
-      const fieldType = labelInput.disabled ? 'date' : (c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text');
-      return {
-        id:    c.dataset.id || '',
-        label: labelInput.value,
-        fieldType,
-      };
+      const isDate = labelInput.disabled;
+      const fieldType = isDate ? 'date' : (c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text');
+      const result = { id: c.dataset.id || '', label: labelInput.value, fieldType };
+      if (isDate) result.hidden = !c.querySelector('.cardio-date-hidden-toggle').checked;
+      else result.target = c.querySelector('.cardio-field-target-input')?.value || '';
+      return result;
     },
     buildSaveDoc: (types, templates) => {
       const templateData = { types };
@@ -2909,10 +3041,14 @@ function _draftOnInput(domain) {
 // every call and addEventListener de-duplicates it. clearWorkoutForm() re-attaches
 // after every successful save; a fresh closure here would stack listeners forever.
 const _draftInputHandlers = {};
-function _draftAttachListeners(domain, listId, nameInputId) {
+function _draftAttachListeners(domain, listId, nameInputId, extraInputId) {
   const h = _draftInputHandlers[domain] ||= () => _draftOnInput(domain);
   document.getElementById(listId)?.addEventListener('input', h);
   document.getElementById(nameInputId)?.addEventListener('input', h);
+  // Strength's optional date field (Task 8/9) isn't inside #exerciseList,
+  // so it needs its own listener — cardio's own date field doesn't need
+  // this since it already lives inside #cardioFieldList (listId), already covered.
+  if (extraInputId) document.getElementById(extraInputId)?.addEventListener('input', h);
 }
 
 function _draftStartFirestoreTimer(domain, getType) {
@@ -2949,6 +3085,7 @@ function _applyLocalCache() {
   const cached = JSON.parse(localStorage.getItem(_cacheKeyTemplates()) || 'null');
   if (!cached) return false;
   workoutTypes = (cached.types && cached.types.length) ? cached.types : ['A', 'B'];
+  strengthDateFieldHidden = cached.dateFieldHidden !== false;
   editTemplates = {};
   workoutTypes.forEach(wtype => {
     editTemplates[wtype] = (cached[wtype] || []).map(ex => ({
@@ -2983,6 +3120,7 @@ function _backgroundApplyData(data) {
   const tmpl = (data.templates && !data.templates.error) ? data.templates : null;
   if (tmpl) {
     workoutTypes = (tmpl.types && tmpl.types.length) ? tmpl.types : workoutTypes;
+    strengthDateFieldHidden = tmpl.dateFieldHidden !== false;
     editTemplates = {};
     workoutTypes.forEach(wtype => {
       editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
@@ -3008,6 +3146,12 @@ function _backgroundApplyData(data) {
   try { renderHistory();      } catch(e) { console.error(e); }
   try { renderMeasurements(); } catch(e) { console.error(e); }
   setDefaultDate();
+  // Phase 1's earlier selectType() call (initApp) rendered #strengthDateWrap
+  // using whatever strengthDateFieldHidden was BEFORE this Firestore fetch
+  // resolved (its module-level default, or a stale local-cache value) — sync
+  // it now that the real value is in, same as saveTemplates()'s equivalent fix.
+  const dateWrap = document.getElementById('strengthDateWrap');
+  if (dateWrap) dateWrap.style.display = strengthDateFieldHidden ? 'none' : 'block';
 }
 
 // ─── CARDIO DATA MIGRATION (V2 — runWorkoutTypes/runWorkouts → runningTemplates) ───
@@ -3016,7 +3160,7 @@ function _backgroundApplyData(data) {
 // here must never block app load, and simply retries next load since the
 // guard flag isn't set until the whole migration succeeds.
 const CARDIO_MIGRATION_FIELD_MAP = [
-  { id: 'date',              label: 'תאריך',      fieldType: 'date' },
+  { id: 'date',              label: 'תאריך',      fieldType: 'date', hidden: true },
   { id: 'distanceKm',        label: 'מרחק',        fieldType: 'number' },
   { id: 'durationMinutes',   label: 'זמן',          fieldType: 'number' },
   { id: 'calories',          label: 'קלוריות',      fieldType: 'number' },
@@ -3311,6 +3455,100 @@ async function _draftModalDiscard() {
   await _draftDelete(domain, type);
 }
 
+// ─── SHARED DATE PICKER (Task 6) ────────────────────────────────
+// A single global popover (see its markup near #draftModal) reused by every
+// date-type input across both domains, opened via _openDatePicker(anchorEl,
+// currentValueDDMMYYYY, onSelect). onSelect receives the picked date as a
+// "DD/MM/YYYY" string — callers are expected to write it into their own
+// input's .value and dispatch an 'input' event themselves (see the date
+// trigger input markup in Task 7/8), so this component has zero knowledge
+// of which domain/field it's serving.
+let _datePickerCallback = null;
+
+function _openDatePicker(anchorEl, currentValueDDMMYYYY, onSelect) {
+  _datePickerCallback = onSelect;
+  const popover = document.getElementById('datePickerPopover');
+  let viewDate = new Date();
+  if (currentValueDDMMYYYY && /^\d{2}\/\d{2}\/\d{4}$/.test(currentValueDDMMYYYY)) {
+    const [dd, mm, yyyy] = currentValueDDMMYYYY.split('/').map(Number);
+    const parsed = new Date(yyyy, mm - 1, dd);
+    if (!isNaN(parsed)) viewDate = parsed;
+  }
+  popover._viewYear  = viewDate.getFullYear();
+  popover._viewMonth = viewDate.getMonth();
+  _renderDatePickerGrid();
+
+  const r = anchorEl.getBoundingClientRect();
+  popover.style.display = 'block';
+  const top  = Math.min(r.bottom + 4, window.innerHeight - popover.offsetHeight - 8);
+  const left = Math.min(Math.max(8, r.left), window.innerWidth - popover.offsetWidth - 8);
+  popover.style.top  = Math.max(8, top) + 'px';
+  popover.style.left = left + 'px';
+
+  // Deferred so the click that opened the picker doesn't also close it via
+  // this same listener (event still bubbling at attach time otherwise).
+  setTimeout(() => {
+    document.addEventListener('click', _datePickerOutsideClick);
+    document.addEventListener('keydown', _datePickerEscape);
+  }, 0);
+}
+
+function _closeDatePicker() {
+  document.getElementById('datePickerPopover').style.display = 'none';
+  document.removeEventListener('click', _datePickerOutsideClick);
+  document.removeEventListener('keydown', _datePickerEscape);
+  _datePickerCallback = null;
+}
+
+function _datePickerOutsideClick(e) {
+  if (!document.getElementById('datePickerPopover').contains(e.target)) _closeDatePicker();
+}
+function _datePickerEscape(e) { if (e.key === 'Escape') _closeDatePicker(); }
+
+function _datePickerNav(delta) {
+  const popover = document.getElementById('datePickerPopover');
+  popover._viewMonth += delta;
+  if (popover._viewMonth < 0)  { popover._viewMonth = 11; popover._viewYear--; }
+  if (popover._viewMonth > 11) { popover._viewMonth = 0;  popover._viewYear++; }
+  _renderDatePickerGrid();
+}
+
+const _DP_MONTH_NAMES_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const _DP_MONTH_NAMES_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function _renderDatePickerGrid() {
+  const popover = document.getElementById('datePickerPopover');
+  const year = popover._viewYear, month = popover._viewMonth;
+  const monthNames = currentLang === 'he' ? _DP_MONTH_NAMES_HE : _DP_MONTH_NAMES_EN;
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+
+  let cells = '';
+  for (let i = 0; i < firstDow; i++) cells += `<div class="dp-cell"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
+    cells += `<button type="button" class="dp-cell dp-day${isToday ? ' dp-today' : ''}" onclick="_datePickerSelectDay(${year},${month},${d})">${d}</button>`;
+  }
+  popover.querySelector('.dp-header-label').textContent = `${monthNames[month]} ${year}`;
+  popover.querySelector('.dp-grid').innerHTML = cells;
+}
+
+function _datePickerSelectDay(year, month, day) {
+  const dd = String(day).padStart(2, '0');
+  const mm = String(month + 1).padStart(2, '0');
+  const cb = _datePickerCallback;
+  _closeDatePicker();
+  if (cb) cb(`${dd}/${mm}/${year}`);
+}
+
+// Shared "DD/MM/YYYY" formatter for today's date — used as the default
+// display value for a shown-but-untouched date field (Task 7/8), and as
+// the save-time fallback when a date field is hidden or cleared.
+function _todayDDMMYYYY(d = new Date()) {
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+
 // ─── MAIN — WORKOUT FORM ──────────────────────────────────────
 function clearWorkoutForm(silent = false) {
   if (!selectedType) return;
@@ -3321,10 +3559,12 @@ function clearWorkoutForm(silent = false) {
       ? t('workout.name_last_ph') + lastWorkouts[selectedType].sessionName
       : t('workout.name_default_ph');
   }
+  const dateInput = document.getElementById('strengthDateInput');
+  if (dateInput) dateInput.value = _todayDDMMYYYY();
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
     (editTemplates[selectedType] || []).map(ex => makeExCard(ex.name, ex.targetWeight, ex.targetSets, ex.targetReps, ex._legacyTarget)).join('');
-  _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput');
+  _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput', 'strengthDateInput');
   delete _tabState['strength:' + selectedType];
   delete _draftDirty['strength:' + selectedType];
   localStorage.removeItem(_draftKey('strength', selectedType));
@@ -3377,6 +3617,11 @@ function selectType(type) {
   nameInput.placeholder = (lastWorkouts[type]?.sessionName)
     ? t('workout.name_last_ph') + lastWorkouts[type].sessionName
     : t('workout.name_default_ph');
+
+  const dateWrap  = document.getElementById('strengthDateWrap');
+  const dateInput = document.getElementById('strengthDateInput');
+  dateWrap.style.display = strengthDateFieldHidden ? 'none' : 'block';
+  dateInput.value = _todayDDMMYYYY();
 
   exerciseCount = 0;
   document.getElementById('exerciseList').innerHTML =
@@ -3557,10 +3802,14 @@ async function submitData() {
   }
 
   const sessionName = document.getElementById('sessionNameInput')?.value.trim() || '';
-  const now  = new Date();
-  const dd   = String(now.getDate()).padStart(2,'0');
-  const mm   = String(now.getMonth()+1).padStart(2,'0');
-  const yyyy = now.getFullYear();
+  // Task 8/9: prefer the optional, picker-driven date field when it's
+  // actually shown and holds a valid value; otherwise dated by save-time,
+  // exactly as strength has always behaved with no date field at all.
+  const dateInputEl = document.getElementById('strengthDateInput');
+  const dateStr = (!strengthDateFieldHidden && dateInputEl && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInputEl.value))
+    ? dateInputEl.value
+    : _todayDDMMYYYY();
+  const [dd, mm, yyyy] = dateStr.split('/');
 
   btn.disabled = true; btn.innerText = t('saving');
   try {
@@ -3965,6 +4214,8 @@ function renderEditAll() {
   renderEditList('strength', editTab);
   renderTypeButtons();
   renderFilterButtons();
+  const dateToggle = document.getElementById('strengthDateHiddenToggle');
+  if (dateToggle) dateToggle.checked = !strengthDateFieldHidden;
 }
 
 function renderEditList(domain, type) {
@@ -4056,6 +4307,16 @@ async function saveTemplates() {
     try { localStorage.setItem(_cacheKeyTemplates(), JSON.stringify(templateData)); } catch(e) {}
     toast(t('edit.saved_ok'), 'success');
     await reloadAppData();
+    // reloadAppData()'s own `selectType(selectedType)` call is a same-type
+    // no-op (selectType early-returns when the target already matches) —
+    // it never re-renders anything, so the date-field visibility toggle
+    // (Task 8/9) just saved above wouldn't otherwise show up on the
+    // already-rendered daily-entry form until an unrelated real type
+    // change. Update it directly here instead of forcing a full
+    // selectType() re-render for every saveTemplates() call (which would
+    // also wipe any in-progress form state — not wanted for this one fix).
+    const dateWrap = document.getElementById('strengthDateWrap');
+    if (dateWrap) dateWrap.style.display = strengthDateFieldHidden ? 'none' : 'block';
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
   }
@@ -4203,6 +4464,15 @@ function startGenericDrag(e, card, container, collectAtStart, onDrop) {
   let last = null;
   const move = ev => {
     const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    // `last` only guards against re-triggering the SAME swap while the
+    // pointer sits still inside that row — without this reset, reversing
+    // direction mid-drag back through the row just swapped stays blocked
+    // forever (last still equals that row), since the pointer never
+    // "left" it from this variable's point of view.
+    if (last) {
+      const lr = last.getBoundingClientRect();
+      if (!(y > lr.top && y < lr.bottom)) last = null;
+    }
     [...container.querySelectorAll('.edit-card')].forEach(c => {
       if (c === card) return;
       const r = c.getBoundingClientRect();
@@ -4604,6 +4874,20 @@ function copyTargetToCard(cardEl) {
   }
 }
 
+// Cardio's equivalent of copyTargetToCard above — simpler since a cardio
+// field's target is a single value matching its own type (text or number),
+// not strength's fixed 3-part weight/sets/reps shape.
+function copyCardioFieldTarget(rowEl) {
+  const pill = rowEl.querySelector('.ex-target-text');
+  const target = pill?.dataset.target?.trim() || '';
+  if (!target) return;
+  const input = rowEl.querySelector('.cardio-field-input');
+  const hasData = input.value.trim();
+  if (hasData && !confirm(t('target.overwrite_confirm'))) return;
+  input.value = target;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  toast(t('target.copied'), 'success');
+}
 
 // ─── COPY LAST WORKOUT ────────────────────────────────────────
 function copyLastWorkout() {
@@ -4924,18 +5208,6 @@ document.getElementById('m-date').addEventListener('input', function () {
   this.value = v;
 });
 
-// #cardioFieldList's date input is created dynamically (renderCardioFieldRow),
-// so unlike #m-date above this must be event-delegated rather than a
-// one-time addEventListener.
-document.getElementById('cardioFieldList').addEventListener('input', e => {
-  const row = e.target.closest('.cardio-field-row');
-  if (!row || row.dataset.fieldType !== 'date') return;
-  let v = e.target.value.replace(/\D/g,'');
-  if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
-  if (v.length > 5) v = v.slice(0,5) + '/' + v.slice(5,9);
-  e.target.value = v;
-});
-
 // ─── EXPOSE TO WINDOW (for inline onclick handlers) ───────────
 // ─── BULK SELECT / DELETE ─────────────────────────────────────
 function _toggleSelect(id, set, cardSel, dataAttr, updateFn) {
@@ -4992,7 +5264,9 @@ Object.assign(window, {
   switchAuthTab, handleAuthSubmit, handleGoogleLogin, handleForgotPassword, handleLogout,
   showSection, toggleHistPreview,
   selectType, addCustomExercise, submitData, copyLastWorkout, copyTargetToCard, clearWorkoutForm,
+  copyCardioFieldTarget,
   _draftModalResume, _draftModalDiscard,
+  _datePickerNav, _datePickerSelectDay, _openDatePicker, _setStrengthDateFieldHidden,
   navigateTo, goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
@@ -5024,8 +5298,6 @@ Object.assign(window, {
 // Routes the physical back button / gesture-nav through the exact same
 // history.back() every in-app "← back" button already uses (Tasks 2-5),
 // so there is exactly one back-navigation mechanism in the whole app.
-let _backPressedOnce = false;
-
 function handleHardwareBack() {
   // Never dismiss the draft modal via hardware back — same rule as its
   // existing no-backdrop-dismiss behavior (data-loss protection).
@@ -5035,13 +5307,7 @@ function handleHardwareBack() {
   const authVisible = !document.getElementById('auth-screen').classList.contains('hidden');
   const atRoot = authVisible || history.state?.isRoot === true;
 
-  if (atRoot) {
-    if (_backPressedOnce) { window.Capacitor.Plugins.App.exitApp(); return; }
-    _backPressedOnce = true;
-    toast(t('app.press_back_exit'));
-    setTimeout(() => { _backPressedOnce = false; }, 2000);
-    return;
-  }
+  if (atRoot) { window.Capacitor.Plugins.App.exitApp(); return; }
   history.back();
 }
 
