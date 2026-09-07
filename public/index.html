@@ -252,6 +252,7 @@
     .clear-form-btn { border-color: var(--red); color: var(--red); }
     .clear-form-btn:active { background: color-mix(in srgb, var(--red) 10%, transparent); }
     #topActionRow { display: none; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+    .top-action-row { justify-content: space-between; flex-wrap: wrap; }
     /* ── DRAFT AUTO-SAVE ── */
     .auto-save-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; color: var(--sub); background: var(--border); direction: ltr; line-height: 1.3; }
     @keyframes draftFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -305,7 +306,7 @@
     .settings-input:focus { border-color: var(--primary); }
     .settings-save-btn { padding: 9px 16px; background: var(--primary); color: white;
       border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    .toggle-switch { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+    .toggle-switch { display: inline-block; position: relative; width: 48px; height: 28px; flex-shrink: 0; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
     .toggle-slider { position: absolute; inset: 0; background: var(--border);
       border-radius: 14px; cursor: pointer; transition: background .25s; }
@@ -392,7 +393,7 @@
       width: 100%; padding: 9px 10px;
       border: 1.5px solid var(--border); border-radius: 8px;
       font-size: 15px; color: var(--text);
-      background: var(--bg); transition: border-color .15s;
+      background: var(--surface); transition: border-color .15s;
     }
     .cardio-field-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .cardio-field-input.cardio-field-input-numeric { text-align: center; direction: ltr; }
@@ -921,6 +922,19 @@
 </div>
 
 <main id="main-content">
+<!-- Shared across ALL domains (strength/cardio) — deliberately NOT nested inside
+     any .section: a .section's own display:none would hide this too, even when
+     the draft it's showing belongs to a DIFFERENT, currently-active section. See
+     docs/superpowers/specs/2026-09-08-cardio-visual-and-modal-fixes-design.md §Issue4. -->
+<div id="draftModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="draftModalTitle">
+  <div class="draft-modal-card">
+    <div id="draftModalTitle" class="draft-modal-title"></div>
+    <div class="draft-modal-details"></div>
+    <button class="draft-modal-btn-resume"  onclick="_draftModalResume()"></button>
+    <button class="draft-modal-btn-discard" onclick="_draftModalDiscard()"></button>
+  </div>
+</div>
+
 <!-- ══════════ MAIN ══════════ -->
 <div id="sec-main" class="section active">
   <div class="topbar">
@@ -928,15 +942,6 @@
     <div style="display:flex;align-items:center;gap:4px;">
       <button class="topbar-back-btn" id="mainBackBtn" style="display:none;" onclick="closeWorkoutEdit()" data-i18n="btn.back">← חזרה</button>
       <button class="topbar-icon-btn" id="mainGearBtn" onclick="navigateTo('/settings')" title="הגדרות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"/></svg></button>
-    </div>
-  </div>
-
-  <div id="draftModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="draftModalTitle">
-    <div class="draft-modal-card">
-      <div id="draftModalTitle" class="draft-modal-title"></div>
-      <div class="draft-modal-details"></div>
-      <button class="draft-modal-btn-resume"  onclick="_draftModalResume()"></button>
-      <button class="draft-modal-btn-discard" onclick="_draftModalDiscard()"></button>
     </div>
   </div>
 
@@ -1127,7 +1132,7 @@
 
     <div id="cardioHistoryPreview" class="history-preview" style="display:none;"></div>
 
-    <div style="display:flex;gap:8px;margin:10px 0;">
+    <div class="top-action-row" style="display:flex;gap:8px;margin:10px 0;">
       <button class="copy-last-btn" style="display:none;" id="cardioCopyLastBtn" onclick="copyLastCardioWorkout()" data-i18n="copy.last_btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> העתקת אימון אחרון</button>
       <button class="copy-last-btn clear-form-btn" onclick="clearCardioForm()" data-i18n="clear.btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg> נקה טופס</button>
     </div>
