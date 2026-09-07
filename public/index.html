@@ -383,6 +383,19 @@
     }
     .field input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .field-notes input { text-align: start; direction: inherit; }
+    /* Cardio dynamic field inputs — same look as .field input above, but
+       NOT force-centered/LTR by default: cardio fields are free-text/date
+       as often as numeric, unlike strength's fixed weight/sets/reps grid.
+       Only .cardio-field-input-numeric (number-type fields) gets the
+       centered/LTR numeric treatment. */
+    .cardio-field-input {
+      width: 100%; padding: 9px 10px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 15px; color: var(--text);
+      background: var(--bg); transition: border-color .15s;
+    }
+    .cardio-field-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+    .cardio-field-input.cardio-field-input-numeric { text-align: center; direction: ltr; }
     .ex-name-input {
       width: 100%; padding: 9px 10px;
       border: 1.5px solid var(--border); border-radius: 8px;
@@ -727,7 +740,6 @@
       padding: 10px 18px; border: none; border-radius: var(--radius);
       font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
     .run-btn:active { opacity: .8; }
-    .run-btn-primary { background: var(--primary); color: #fff; }
     .run-btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
     .history-domain-btn.active { border-color: var(--primary); background: var(--primary); color: #fff; }
     .run-type-btn { width: 100%; padding: 14px; background: var(--surface);
@@ -752,9 +764,6 @@
     .run-streak-lbl { font-size: 14px; color: var(--sub); margin-top: 4px; }
     .run-form-field { margin-bottom: 14px; }
     .run-form-label { font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 6px; display: block; }
-    .run-form-input { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border);
-      border-radius: var(--radius); font-size: 15px; background: var(--bg); color: var(--text); }
-    .run-form-input:focus { outline: none; border-color: var(--primary); }
     .run-toggle-row { display: flex; justify-content: space-between; align-items: center; }
     .run-ocr-zone { width: 100%; padding: 32px 16px; border: 2px dashed var(--primary);
       border-radius: var(--radius); text-align: center; cursor: pointer; color: var(--primary);
@@ -1119,18 +1128,19 @@
     <div id="cardioHistoryPreview" class="history-preview" style="display:none;"></div>
 
     <div style="display:flex;gap:8px;margin:10px 0;">
-      <button class="run-btn run-btn-secondary" style="flex:1;display:none;" id="cardioCopyLastBtn" onclick="copyLastCardioWorkout()" data-i18n="copy.last_btn">העתקת אימון אחרון</button>
-      <button class="run-btn run-btn-secondary" style="flex:1;" onclick="clearCardioForm()" data-i18n="clear.btn">נקה טופס</button>
+      <button class="copy-last-btn" style="display:none;" id="cardioCopyLastBtn" onclick="copyLastCardioWorkout()" data-i18n="copy.last_btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> העתקת אימון אחרון</button>
+      <button class="copy-last-btn clear-form-btn" onclick="clearCardioForm()" data-i18n="clear.btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-trash"/></svg> נקה טופס</button>
     </div>
 
-    <div class="run-form-field">
-      <input type="text" id="cardioSessionNameInput" class="run-form-input" data-i18n-ph="workout.name_default_ph" placeholder="שם האימון (ראשון, שני, דלואד...)">
+    <div style="margin-bottom:16px;">
+      <label class="session-name-label-title" for="cardioSessionNameInput" data-i18n="workout.name_label">שם האימון</label>
+      <input type="text" id="cardioSessionNameInput" class="session-name-input" data-i18n-ph="workout.name_default_ph" placeholder="שם האימון (ראשון, שני, דלואד...)">
     </div>
 
     <div id="cardioFieldList"></div>
 
-    <button class="run-btn run-btn-secondary" style="width:100%;margin-top:10px;" onclick="addCustomCardioField()" data-i18n="cardio.add_field_btn">+ הוסף שדה</button>
-    <button class="run-btn run-btn-primary" style="width:100%;margin-top:8px;" id="cardioSaveBtn" onclick="submitCardioData()" data-i18n="btn.save_workout">שמור אימון</button>
+    <button class="btn-ghost" onclick="addCustomCardioField()" data-i18n="cardio.add_field_btn">+ הוסף שדה</button>
+    <button class="btn-primary green" id="cardioSaveBtn" onclick="submitCardioData()" data-i18n="btn.save_workout">שמור אימון</button>
   </div>
 
   <!-- ══ CARDIO TEMPLATE EDITOR (in-page panel, mirrors #mainEditPanel) ══ -->
@@ -1789,7 +1799,7 @@ function renderCardioFieldRow(field, value, isAdhoc) {
   if (field.fieldType === 'date') {
     inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off" value="${escHtml(String(val))}">`;
   } else if (field.fieldType === 'number') {
-    inputHtml = `<input type="number" id="${escHtml(inputId)}" class="cardio-field-input" step="any" min="0" value="${escHtml(String(val))}" placeholder="--">`;
+    inputHtml = `<input type="number" id="${escHtml(inputId)}" class="cardio-field-input cardio-field-input-numeric" step="any" min="0" value="${escHtml(String(val))}" placeholder="--">`;
   } else if (field.fieldType === 'checkbox') {
     inputHtml = `<label class="toggle-switch"><input type="checkbox" id="${escHtml(inputId)}" class="cardio-field-input" aria-label="${escHtml(cardioFieldDisplayLabel(field))}"${val ? ' checked' : ''}><span class="toggle-slider"></span></label>`;
   } else {
@@ -1832,7 +1842,25 @@ function selectCardioType(type) {
   const box  = document.getElementById('cardioHistoryPreview');
   if (last) {
     box.style.display = '';
-    box.innerHTML = `<div class="history-preview-title">${sessionDisplayDate(last)}${last.sessionName ? ' · ' + escHtml(last.sessionName) : ''}</div>`;
+    const rows = (last.fields || [])
+      .filter(f => f.fieldType === 'checkbox' ? f.value : String(f.value ?? '').trim())
+      .map(f => `<tr>
+        <td><div class="td-name">${escHtml(cardioFieldDisplayLabel(f))}</div></td>
+        <td class="td-num">${f.fieldType === 'checkbox' ? '✓' : escHtml(String(f.value))}</td>
+      </tr>`).join('');
+    box.innerHTML = `
+      <div class="history-preview-header" role="button" tabindex="0" onclick="toggleCardioHistPreview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCardioHistPreview();}">
+        <div>
+          <span class="history-preview-title"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> ${t('preview.last')}</span>
+          ${last.sessionName ? `<span class="hist-preview-session-name">— ${escHtml(last.sessionName)}</span>` : ''}
+        </div>
+        <span class="history-preview-date">${sessionDisplayDate(last)}</span>
+      </div>
+      <div id="cardioHistPreviewBody" class="history-preview-body">
+        <table class="hist-table" style="margin-top:8px;">
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
     document.getElementById('cardioCopyLastBtn').style.display = '';
   } else {
     box.style.display = 'none';
@@ -3356,6 +3384,10 @@ function selectType(type) {
 
 function toggleHistPreview() {
   document.getElementById('histPreviewBody').classList.toggle('open');
+}
+
+function toggleCardioHistPreview() {
+  document.getElementById('cardioHistPreviewBody')?.classList.toggle('open');
 }
 
 function buildTargetPillText(tw, ts, tr) {
@@ -4975,7 +5007,7 @@ Object.assign(window, {
   // Cardio daily-entry page (Task 4) — onclick handlers in the markup call these
   // by name, so they must be global exactly like every other export in this file;
   // missing here means every button on the cardio page throws ReferenceError.
-  selectCardioType, clearCardioForm, copyLastCardioWorkout, addCustomCardioField, submitCardioData,
+  selectCardioType, clearCardioForm, copyLastCardioWorkout, addCustomCardioField, submitCardioData, toggleCardioHistPreview,
   // Cardio template editor (Task 6) — same story as the daily-entry page above:
   // every one of these is called from an onclick="..." attribute in the editor
   // markup, so they must be exported here rather than waiting for Task 8.
