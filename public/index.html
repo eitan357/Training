@@ -383,6 +383,19 @@
     }
     .field input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .field-notes input { text-align: start; direction: inherit; }
+    /* Cardio dynamic field inputs — same look as .field input above, but
+       NOT force-centered/LTR by default: cardio fields are free-text/date
+       as often as numeric, unlike strength's fixed weight/sets/reps grid.
+       Only .cardio-field-input-numeric (number-type fields) gets the
+       centered/LTR numeric treatment. */
+    .cardio-field-input {
+      width: 100%; padding: 9px 10px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 15px; color: var(--text);
+      background: var(--bg); transition: border-color .15s;
+    }
+    .cardio-field-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+    .cardio-field-input.cardio-field-input-numeric { text-align: center; direction: ltr; }
     .ex-name-input {
       width: 100%; padding: 9px 10px;
       border: 1.5px solid var(--border); border-radius: 8px;
@@ -1790,7 +1803,7 @@ function renderCardioFieldRow(field, value, isAdhoc) {
   if (field.fieldType === 'date') {
     inputHtml = `<input type="text" id="${escHtml(inputId)}" class="cardio-field-input" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off" value="${escHtml(String(val))}">`;
   } else if (field.fieldType === 'number') {
-    inputHtml = `<input type="number" id="${escHtml(inputId)}" class="cardio-field-input" step="any" min="0" value="${escHtml(String(val))}" placeholder="--">`;
+    inputHtml = `<input type="number" id="${escHtml(inputId)}" class="cardio-field-input cardio-field-input-numeric" step="any" min="0" value="${escHtml(String(val))}" placeholder="--">`;
   } else if (field.fieldType === 'checkbox') {
     inputHtml = `<label class="toggle-switch"><input type="checkbox" id="${escHtml(inputId)}" class="cardio-field-input" aria-label="${escHtml(cardioFieldDisplayLabel(field))}"${val ? ' checked' : ''}><span class="toggle-slider"></span></label>`;
   } else {
