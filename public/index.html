@@ -1846,7 +1846,25 @@ function selectCardioType(type) {
   const box  = document.getElementById('cardioHistoryPreview');
   if (last) {
     box.style.display = '';
-    box.innerHTML = `<div class="history-preview-title">${sessionDisplayDate(last)}${last.sessionName ? ' · ' + escHtml(last.sessionName) : ''}</div>`;
+    const rows = (last.fields || [])
+      .filter(f => f.fieldType === 'checkbox' ? f.value : String(f.value ?? '').trim())
+      .map(f => `<tr>
+        <td><div class="td-name">${escHtml(cardioFieldDisplayLabel(f))}</div></td>
+        <td class="td-num">${f.fieldType === 'checkbox' ? '✓' : escHtml(String(f.value))}</td>
+      </tr>`).join('');
+    box.innerHTML = `
+      <div class="history-preview-header" role="button" tabindex="0" onclick="toggleCardioHistPreview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCardioHistPreview();}">
+        <div>
+          <span class="history-preview-title"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-clipboard"/></svg> ${t('preview.last')}</span>
+          ${last.sessionName ? `<span class="hist-preview-session-name">— ${escHtml(last.sessionName)}</span>` : ''}
+        </div>
+        <span class="history-preview-date">${sessionDisplayDate(last)}</span>
+      </div>
+      <div id="cardioHistPreviewBody" class="history-preview-body">
+        <table class="hist-table" style="margin-top:8px;">
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
     document.getElementById('cardioCopyLastBtn').style.display = '';
   } else {
     box.style.display = 'none';
@@ -3270,6 +3288,10 @@ function selectType(type) {
 
 function toggleHistPreview() {
   document.getElementById('histPreviewBody').classList.toggle('open');
+}
+
+function toggleCardioHistPreview() {
+  document.getElementById('cardioHistPreviewBody')?.classList.toggle('open');
 }
 
 function buildTargetPillText(tw, ts, tr) {
