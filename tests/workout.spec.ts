@@ -278,6 +278,81 @@ test.describe('Workout — Edit Plan', () => {
   });
 });
 
+// Regression tests for the 2026-09-07 draft-modal cross-domain bug: the
+// shared #draftModal element is nested inside #sec-main, so it only ever
+// becomes visible when the Strength section is active — but its caller
+// chain (initRunSection/_backgroundSync) can resolve asynchronously AFTER
+// the user has navigated to a different section or type. Racing real
+// network timing is unreliable, so this tests the guard function itself
+// (_isDomainTypeCurrentlyVisible, exposed test-only as
+// window.__debugIsDomainTypeVisible) directly and deterministically —
+// see docs/superpowers/specs/2026-09-07-draft-modal-cardio-parity-design.md.
+test.describe('Draft Modal — Cross-Domain Visibility Guard', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+  });
+
+  test('guard reports false for a domain whose section is not currently active', async ({ page }) => {
+    await page.locator('#nav-main').click();
+    await expect(page.locator('#sec-main')).toHaveClass(/active/);
+    const result = await page.evaluate(() => window.__debugIsDomainTypeVisible('cardio', 'anything'));
+    expect(result).toBe(false);
+  });
+
+  test('guard reports true for the domain+type currently being viewed', async ({ page }) => {
+    await page.locator('#mainGearBtn').click();
+    await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+    const toggle = page.locator('#runningEnabledToggle');
+    if (!(await toggle.isChecked().catch(() => false))) {
+      await page.locator('label.toggle-switch').filter({ has: toggle }).click();
+      await expect(page.locator('#nav-running')).toBeVisible({ timeout: 10000 });
+    }
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#sec-running')).toHaveClass(/active/);
+    await page.waitForTimeout(1000); // let initRunSection's async chain settle
+    const result = await page.evaluate(() => {
+      const type = window.__debugGetSelectedType('cardio');
+      return window.__debugIsDomainTypeVisible('cardio', type);
+    });
+    expect(result).toBe(true);
+  });
+
+  test('a late-resolving draft check does not show the modal on the wrong page', async ({ page }) => {
+    await page.locator('#mainGearBtn').click();
+    await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+    const toggle = page.locator('#runningEnabledToggle');
+    if (!(await toggle.isChecked().catch(() => false))) {
+      await page.locator('label.toggle-switch').filter({ has: toggle }).click();
+      await expect(page.locator('#nav-running')).toBeVisible({ timeout: 10000 });
+    }
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#sec-running')).toHaveClass(/active/);
+    await page.waitForTimeout(1000);
+
+    // Create a real, qualifying cardio draft via genuine user input.
+    const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
+    await distRow.locator('.cardio-field-input').fill('5.5');
+    await page.waitForTimeout(500);
+    await page.evaluate(() => window.__debugSaveLocalDraft('cardio', window.__debugGetSelectedType('cardio')));
+
+    // Navigate away (real navigation), then simulate the late-resolving
+    // continuation trying to show the modal for the type left behind.
+    const type = await page.evaluate(() => window.__debugGetSelectedType('cardio'));
+    await page.locator('#nav-main').click();
+    await expect(page.locator('#sec-main')).toHaveClass(/active/);
+    await page.evaluate(t => window.__debugTabRestoreOrDraft('cardio', t), type);
+    await expect(page.locator('#draftModal')).toHaveCSS('display', 'none');
+
+    // A genuine, fresh visit to that same type must still show it — proving
+    // the draft itself was never lost, only deferred.
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#sec-running')).toHaveClass(/active/);
+    await expect(page.locator('#draftModal')).toHaveCSS('display', 'flex', { timeout: 5000 });
+  });
+});
+
 // Regression test for A4 (addendum QA report): on a genuinely cold boot
 // (no localStorage cache), _backgroundSync's `if (!hadCache) selectType(...)`
 // was a no-op because selectedType already equaled workoutTypes[0] — the

@@ -2628,6 +2628,29 @@ const WORKOUT_DOMAINS = {
     },
     isEmptyItem: ex => !ex.name.trim(),
     entriesCollection: 'workouts',
+    // Promotes a stale (previous-day) draft into a real history entry for
+    // checkAndAutoSavePreviousDrafts(). Extracted verbatim from that
+    // function's old strength-only inline logic — no behavior change.
+    // Returns null if the draft doesn't qualify (caller then just deletes
+    // it, same as before this was extracted).
+    buildAutoSaveEntry: draft => {
+      if (!_strengthDraftQualifies(draft)) return null;
+      const dt   = new Date(draft.createdAt);
+      const dd   = String(dt.getDate()).padStart(2,'0');
+      const mm   = String(dt.getMonth()+1).padStart(2,'0');
+      const yyyy = dt.getFullYear();
+      return {
+        date:        `${dd}/${mm}/${yyyy}`,
+        dateISO:     `${yyyy}-${mm}-${dd}`,
+        type:        draft.type,
+        sessionName: draft.workoutName || '',
+        exercises:   (draft.exercises || [])
+          .filter(e => e.weight || e.sets || e.reps || e.notes)
+          .map(e => ({ id: genId(), name: e.name, target: e.target || '', weight: e.weight, sets: e.sets, reps: e.reps, notes: e.notes || '' })),
+        autoSaved:   true,
+        createdAt:   serverTimestamp(),
+      };
+    },
     colorClass: s => typeColorClass(workoutTypes, s.type),
     renderCardMeta: s => `${(s.exercises||[]).length} ${t('workout.exercises')}`,
     renderCardBody: s => `
@@ -2651,6 +2674,9 @@ const WORKOUT_DOMAINS = {
     getEditTab:      () => editTab,
     setEditTab:      v => { editTab = v; },
     getTypes:        () => workoutTypes,
+    sectionName:     'main',
+    draftItemsSummary: draft => `${(draft.exercises || []).filter(e => e.weight || e.sets || e.reps).length} ${t('workout.exercises')}`,
+    getAllEntries:   () => allSessions,
   },
   cardio: {
     serialize: () => {
@@ -2687,6 +2713,34 @@ const WORKOUT_DOMAINS = {
     editTabsId:           'cardioEditTabs',
     typeRowId:             'cardioTypeRow',
     entriesCollection: 'runWorkouts',
+    sectionName:     'running',
+    draftItemsSummary: draft => `${(draft.fields || []).filter(f => f.value !== '' && f.value != null && f.value !== false).length} ${t('cardio.fields_count')}`,
+    getAllEntries:   () => allRunWorkouts,
+    // Mirrors submitCardioData()'s own validation exactly — an auto-saved
+    // entry must be just as valid as one the user explicitly submitted.
+    // Unlike strength, cardio has real per-field validation (a required
+    // date, no negative numbers, no unnamed fields) that _draftQualifies
+    // alone doesn't check (qualifies() only gates whether to bother
+    // keeping the draft around at all). Returns null — meaning "don't
+    // promote this, but don't silently discard it either" — if the draft
+    // has some content but fails this stricter check.
+    buildAutoSaveEntry: draft => {
+      const fields = [];
+      for (const f of (draft.fields || [])) {
+        if (f.fieldType !== 'checkbox' && (f.value === '' || f.value == null)) continue;
+        if (!f.label || !String(f.label).trim()) return null;
+        if (f.fieldType === 'number' && Number(f.value) < 0) return null;
+        fields.push({ id: f.id, label: f.label, fieldType: f.fieldType, value: f.value });
+      }
+      const dateField = fields.find(f => f.fieldType === 'date');
+      if (!dateField || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) return null;
+      const [dd, mm, yyyy] = dateField.value.split('/');
+      return {
+        date: dateField.value, dateISO: `${yyyy}-${mm}-${dd}`,
+        workoutType: draft.type, sessionName: draft.workoutName || '', fields,
+        autoSaved: true, createdAt: serverTimestamp(),
+      };
+    },
     getSelectedType: () => cardioSelectedType,
     newItem: () => ({ id: genId(), label: '', fieldType: 'text' }),
     renderItemRow: (f, idx) => `
@@ -3022,11 +3076,22 @@ async function migrateCardioDataV2() {
 async function _backgroundSync(hadCache) {
   try {
     await migrateCardioDataV2();
+    // checkAndAutoSavePreviousDrafts() can WRITE a new doc into runWorkouts
+    // (cardio auto-save); prefetchRunData() READS that same collection.
+    // Started here (not inside the Promise.all below) so it still runs
+    // concurrently with loadRunningEnabled() — only prefetchRunData()'s own
+    // call needs to wait for it, so the just-auto-saved entry (if any) is
+    // guaranteed to be visible in this session's data instead of silently
+    // missing until the next reload.
+    const autoSavePromise = checkAndAutoSavePreviousDrafts();
     await Promise.all([
-      checkAndAutoSavePreviousDrafts(),
-      loadRunningEnabled().then(() => {
+      autoSavePromise,
+      loadRunningEnabled().then(async () => {
         try { localStorage.setItem(_cacheKeyRunning(), String(runningEnabled)); } catch(e) {}
-        if (runningEnabled) prefetchRunData();
+        if (runningEnabled) {
+          await autoSavePromise;
+          prefetchRunData();
+        }
       }),
     ]);
     const data = await loadAllData();
@@ -3053,63 +3118,74 @@ async function _backgroundSync(hadCache) {
 async function checkAndAutoSavePreviousDrafts() {
   if (!currentUser) return 0;
   const today = new Date().toISOString().slice(0, 10);
-  // Sync any previous-day localStorage drafts → Firestore before reading
-  const prefix = `draft_${currentUser.uid}_strength_`;
-  const localKeys = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(prefix)) localKeys.push(k);
+
+  // Sync any previous-day localStorage-only drafts → Firestore first, for
+  // every domain, before reading Firestore below — a draft that never made
+  // it past the 30s periodic sync (e.g. the tab closed first) would
+  // otherwise never be discovered by the read further down.
+  for (const domain of Object.keys(WORKOUT_DOMAINS)) {
+    const prefix = `draft_${currentUser.uid}_${domain}_`;
+    const localKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) localKeys.push(k);
+    }
+    for (const key of localKeys) {
+      const type  = key.slice(prefix.length);
+      const local = _draftLoadLocal(domain, type);
+      if (!local) continue;
+      const draftDate = (local.createdAt || '').slice(0, 10);
+      if (!draftDate || draftDate >= today) continue;
+      try { await _draftSaveFirestore(domain, type); } catch(e) {}
+    }
   }
-  for (const key of localKeys) {
-    const type  = key.slice(prefix.length);
-    const local = _draftLoadLocal('strength', type);
-    if (!local) continue;
-    const draftDate = (local.createdAt || '').slice(0, 10);
-    if (!draftDate || draftDate >= today) continue;
-    try { await _draftSaveFirestore('strength', type); } catch(e) {}
-  }
+
   let count = 0;
   try {
+    // One shared read across all domains, partitioned below — avoids
+    // re-fetching the whole drafts collection once per domain.
     const snap = await getDocs(collection(db, 'users', currentUser.uid, 'drafts'));
-    const toProcess = [];
     // Doc ids are `{domain}_{type}` since the domain-namespacing migration.
-    // An id with no known domain prefix is a pre-migration strength draft (bare
-    // type name): process it like a strength draft so it keeps its auto-save
-    // safety net, but delete it under its OWN id (tracked as docId), never a
-    // reconstructed `strength_`-prefixed one. A doc belonging to some other
-    // known domain (Phase B's `cardio_`) is skipped — this function is
-    // strength-only and must not auto-save cardio drafts as strength workouts.
-    const otherPrefixes = Object.keys(WORKOUT_DOMAINS).filter(k => k !== 'strength').map(k => k + '_');
+    // An id with no known domain prefix is a pre-migration STRENGTH draft
+    // (bare type name, from before cardio/domain-namespacing existed at
+    // all) — process it like a strength draft so it keeps its auto-save
+    // safety net, but delete it under its OWN id (tracked as docId), never
+    // a reconstructed `strength_`-prefixed one. This legacy fallback stays
+    // strength-only by construction: cardio never existed pre-migration, so
+    // it has no un-prefixed legacy docs to be compatible with.
+    const domainPrefixes = Object.keys(WORKOUT_DOMAINS).map(k => k + '_');
+    const byDomain = {};
+    Object.keys(WORKOUT_DOMAINS).forEach(k => { byDomain[k] = []; });
     snap.forEach(d => {
-      if (d.id.startsWith('strength_'))                 toProcess.push({ docId: d.id, type: d.id.slice('strength_'.length), ...d.data() });
-      else if (otherPrefixes.some(p => d.id.startsWith(p))) return;           // another domain's draft
-      else                                              toProcess.push({ docId: d.id, type: d.id, ...d.data() });  // legacy pre-migration doc
+      const matchedPrefix = domainPrefixes.find(p => d.id.startsWith(p));
+      if (matchedPrefix) {
+        byDomain[matchedPrefix.slice(0, -1)].push({ docId: d.id, type: d.id.slice(matchedPrefix.length), ...d.data() });
+      } else {
+        byDomain.strength.push({ docId: d.id, type: d.id, ...d.data() }); // legacy pre-migration doc
+      }
     });
 
-    for (const draft of toProcess) {
-      const draftDate = (draft.createdAt || '').slice(0, 10);
-      if (!draftDate || draftDate >= today) continue;
+    for (const domain of Object.keys(WORKOUT_DOMAINS)) {
+      const D = WORKOUT_DOMAINS[domain];
+      for (const draft of byDomain[domain]) {
+        const draftDate = (draft.createdAt || '').slice(0, 10);
+        if (!draftDate || draftDate >= today) continue;
 
-      if (_draftQualifies('strength', draft)) {
-        const dt   = new Date(draft.createdAt);
-        const dd   = String(dt.getDate()).padStart(2,'0');
-        const mm   = String(dt.getMonth()+1).padStart(2,'0');
-        const yyyy = dt.getFullYear();
-        await addDoc(collection(db, 'users', currentUser.uid, 'workouts'), {
-          date:        `${dd}/${mm}/${yyyy}`,
-          dateISO:     `${yyyy}-${mm}-${dd}`,
-          type:        draft.type,
-          sessionName: draft.workoutName || '',
-          exercises:   (draft.exercises || [])
-            .filter(e => e.weight || e.sets || e.reps || e.notes)
-            .map(e => ({ id: genId(), name: e.name, target: e.target || '', weight: e.weight, sets: e.sets, reps: e.reps, notes: e.notes || '' })),
-          autoSaved:   true,
-          createdAt:   serverTimestamp(),
-        });
-        count++;
+        const entry = D.buildAutoSaveEntry(draft);
+        if (entry) {
+          await addDoc(collection(db, 'users', currentUser.uid, D.entriesCollection), entry);
+          count++;
+        } else if (_draftQualifies(domain, draft)) {
+          // Has real content but failed this domain's stricter save-time
+          // validation (e.g. cardio: a missing/invalid date) — leave the
+          // draft in place rather than silently discarding real user data.
+          // It resurfaces via the normal draft-found modal next time this
+          // domain+type is actually visited.
+          continue;
+        }
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', draft.docId));
+        localStorage.removeItem(_draftKey(domain, draft.type));
       }
-      await deleteDoc(doc(db, 'users', currentUser.uid, 'drafts', draft.docId));
-      localStorage.removeItem(_draftKey('strength', draft.type));
     }
     if (count > 0) toast(`${count} ${t('draft.autosaved_toast')}`, 'success');
   } catch(e) { /* silent */ }
@@ -3122,6 +3198,23 @@ function _tabSnapshotCurrent(domain, type) {
   _tabState[domain + ':' + type] = _draftSerialize(domain);
 }
 
+// The domain's async load chain (initRunSection/_backgroundSync) can resolve
+// AFTER the user has already navigated to a different section or type — this
+// is what's actually being checked here, not the type match itself (which is
+// always true-by-construction at this call site, since the caller already
+// set selectedType/cardioSelectedType = type before calling
+// _tabRestoreOrDraft). Kept as an explicit check anyway rather than relying
+// on that invariant silently, in case a future call site doesn't uphold it.
+function _isDomainTypeCurrentlyVisible(domain, type) {
+  const D = WORKOUT_DOMAINS[domain];
+  return currentSection === D.sectionName && D.getSelectedType() === type;
+}
+// Test-only hooks, same convention as window.__debugGetDoc above — module
+// scope means Playwright has no other way to call these directly.
+window.__debugIsDomainTypeVisible = _isDomainTypeCurrentlyVisible;
+window.__debugGetSelectedType = domain => WORKOUT_DOMAINS[domain].getSelectedType();
+window.__debugSaveLocalDraft = _draftSaveLocal;
+
 function _tabRestoreOrDraft(domain, type) {
   const dk = domain + ':' + type;
   if (_tabState[dk]) {
@@ -3133,6 +3226,12 @@ function _tabRestoreOrDraft(domain, type) {
   const today = new Date().toISOString().slice(0, 10);
   if ((draft.createdAt || '').slice(0, 10) !== today) return;
   if (_isNewSession) {
+    // See _isDomainTypeCurrentlyVisible: the caller's own await chain can
+    // resolve after the user has navigated elsewhere — don't pop the shared
+    // draft modal on top of whatever page/type they're looking at now. The
+    // draft itself is untouched; this same check runs fresh (and passes)
+    // the next time they actually visit this domain+type.
+    if (!_isDomainTypeCurrentlyVisible(domain, type)) return;
     _draftShowModal(domain, type, draft);
   } else {
     // Refresh within same session — restore silently
@@ -3140,12 +3239,13 @@ function _tabRestoreOrDraft(domain, type) {
     _tabState[dk] = _draftSerialize(domain);
   }
 }
+window.__debugTabRestoreOrDraft = _tabRestoreOrDraft;
 
 function _draftShowModal(domain, type, draft) {
   if (_draftModalType) return;
   _draftModalType = type;
   _draftModalDomain = domain;
-  const exCount = (draft.exercises || []).filter(e => e.weight || e.sets || e.reps).length;
+  const itemsSummary = WORKOUT_DOMAINS[domain].draftItemsSummary(draft);
   const timeStr = draft.lastModified
     ? new Date(draft.lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
@@ -3153,7 +3253,7 @@ function _draftShowModal(domain, type, draft) {
   const modal = document.getElementById('draftModal');
   modal.querySelector('.draft-modal-title').textContent = `${t('draft.found_title')} ${escHtml(type)}`;
   modal.querySelector('.draft-modal-details').innerHTML =
-    `${nameStr}${exCount} ${t('workout.exercises')}<br><span style="font-size:11px;">${t('draft.found_today')} ${timeStr}</span>`;
+    `${nameStr}${itemsSummary}<br><span style="font-size:11px;">${t('draft.found_today')} ${timeStr}</span>`;
   modal.querySelector('.draft-modal-btn-resume').textContent  = t('draft.resume');
   modal.querySelector('.draft-modal-btn-discard').textContent = t('draft.discard');
   modal.style.display = 'flex';
@@ -3473,7 +3573,7 @@ function buildSessionCard(domain, s, i) {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:4px;">
-        ${s.autoSaved && !allSessions.some(o => o.dateISO > s.dateISO) ? `<span class="auto-save-badge">${t('draft.auto_badge')}</span>` : ''}
+        ${s.autoSaved && !D.getAllEntries().some(o => o.dateISO > s.dateISO) ? `<span class="auto-save-badge">${t('draft.auto_badge')}</span>` : ''}
         <span class="session-badge ${badgeClass}">${D.badgeText(s)}</span>
       </div>
     </div>

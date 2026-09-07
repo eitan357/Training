@@ -121,7 +121,11 @@ test.describe('Cardio Daily Entry Page', () => {
     // baseline (this genuinely happened under a full-suite run).
     await expect(page.locator('#cardioFieldList .cardio-field-row').first()).toBeVisible();
     const before = await page.locator('#cardioFieldList .cardio-field-row').count();
-    await page.locator('button', { hasText: 'הוסף שדה' }).click();
+    // Scoped to the daily-entry page's own onclick handler: the cardio
+    // template editor's add-field button (renamed to this exact same text
+    // by the 2026-09-05 A6 fix) is also DOM-present, making an unscoped
+    // text locator hit Playwright's strict mode (2 matches).
+    await page.locator('button[onclick="addCustomCardioField()"]').click();
     await expect(page.locator('#cardioFieldList .cardio-field-row')).toHaveCount(before + 1);
   });
 
@@ -176,7 +180,9 @@ test.describe('Cardio Daily Entry Page', () => {
   test('ad-hoc field ("+ הוסף שדה") gets an editable label, required to save', async ({ page }) => {
     await page.locator('#nav-running').click();
     await expect(page.locator('#cardioFieldList .cardio-field-row').first()).toBeVisible();
-    await page.locator('button', { hasText: 'הוסף שדה' }).click();
+    // Scoped to the daily-entry page's own onclick handler — see the note
+    // on the "+ הוסף שדה adds a one-off text field" test above.
+    await page.locator('button[onclick="addCustomCardioField()"]').click();
     const labelInput = page.locator('.run-form-label-input').last();
     await expect(labelInput).toBeVisible();
     await expect(labelInput).toHaveValue('');
@@ -219,6 +225,32 @@ test.describe('Cardio Daily Entry Page', () => {
     await expect(page.locator('#sec-settings')).toHaveClass(/active/);
     await langBtns.first().click();
     await page.waitForTimeout(500);
+  });
+
+  // Regression test for the 2026-09-07 bug where the draft-found modal's
+  // item count was hardcoded to the strength draft shape (draft.exercises)
+  // — cardio drafts are shaped { fields: [...] }, so draft.exercises was
+  // always undefined and the count was always "0", regardless of real
+  // content. See docs/superpowers/specs/2026-09-07-draft-modal-cardio-parity-design.md.
+  test('draft-found modal shows the real field count, not always 0', async ({ page }) => {
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#cardioFieldList .cardio-field-row').first()).toBeVisible();
+
+    const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
+    await distRow.locator('.cardio-field-input').fill('5.5');
+    const timeRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'זמן' });
+    await timeRow.locator('.cardio-field-input').fill('30');
+    await page.waitForTimeout(500);
+
+    // Force the "new session" (modal, not silent-restore) path.
+    await page.evaluate(() => sessionStorage.removeItem('session_active'));
+    await page.reload();
+    await page.locator('#nav-running').click();
+    await expect(page.locator('#draftModal')).toHaveCSS('display', 'flex', { timeout: 5000 });
+
+    const details = await page.locator('.draft-modal-details').textContent();
+    expect(details).not.toContain('0 ');
+    expect(details).toMatch(/\d+ (שדות|fields)/);
   });
 });
 
