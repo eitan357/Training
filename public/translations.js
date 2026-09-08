@@ -444,7 +444,7 @@ export const TRANSLATIONS = {
     'edit.ftype_text':     'Text',
     'edit.ftype_number':   'Number',
     'edit.ftype_checkbox': 'Checkbox',
-    'edit.date_show_label': 'Show date on entry page',
+    'edit.date_show_label': 'Show date in form',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'Add New Measurement',

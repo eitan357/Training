@@ -1030,8 +1030,9 @@
     </div>
 
     <!-- Optional date field (Task 8/9) — mirrors cardio's exactly (same
-         picker, same readonly-trigger pattern); shown only when
-         !strengthDateFieldHidden (toggled in the edit panel above). -->
+         picker, same readonly-trigger pattern); shown only when the
+         CURRENTLY SELECTED type's own flag isn't hidden (per-type since
+         2026-09-08, toggled per-tab in the edit panel below). -->
     <div id="strengthDateWrap" style="display:none; margin-bottom:16px;">
       <label class="run-form-label" for="strengthDateInput" data-i18n="workout.date_label">תאריך</label>
       <input type="text" id="strengthDateInput" class="cardio-field-input" readonly autocomplete="off" onclick="_openDatePicker(this, this.value, v => { this.value = v; this.dispatchEvent(new Event('input', {bubbles:true})); })">
@@ -1045,13 +1046,16 @@
   <!-- edit panel (hidden by default) -->
   <div id="mainEditPanel" style="display:none; padding:16px;">
     <div id="editTabs" class="edit-tabs"></div>
-    <!-- Global toggle (Task 8/9) — one flag for all strength types, not
-         per-type like cardio's fields: strength has no per-type field
-         template to hang a per-row toggle off of. Wrapped in the same
-         .edit-card/.edit-fields structure cardio's own date row renders
-         into (renderItemRow's date branch), so both editors' date areas
-         look identical — not just the inner input+toggle row, but the
-         whole card (white background, shadow, rounded border) around it. -->
+    <!-- Per-type toggle (2026-09-08), like cardio's own per-field `hidden`
+         — this static block isn't inside #editListContainer (strength has
+         no per-type field template to hang a real per-row toggle off of),
+         so switchEditTab()/renderEditAll() sync its checked state to the
+         CURRENTLY OPEN tab (editTab) manually on every tab switch, add, and
+         remove. Wrapped in the same .edit-card/.edit-fields structure
+         cardio's own date row renders into (renderItemRow's date branch),
+         so both editors' date areas look identical — not just the inner
+         input+toggle row, but the whole card (white background, shadow,
+         rounded border) around it. -->
     <div class="edit-card" style="margin-bottom:12px;">
       <div class="edit-fields">
         <div class="cardio-date-visibility-row">
@@ -1564,15 +1568,28 @@ let editTemplates    = {};
 let allSessions      = [];
 let activeFilter     = 'all';
 let historyActiveDomain = 'strength';   // 'strength' | 'cardio' — which dataset the History page renders
-// Task 8/9 — a single flag for ALL strength types (unlike cardio's
-// per-field `hidden`, strength has no per-type field template to hang a
-// per-row toggle off). Every current account has no date-field concept at
-// all yet, so `undefined` (not yet saved) means hidden — same as the
-// existing, unconditional save-time-only dating behavior — never means
-// "visible" the way cardio's undefined-means-visible convention does for
-// its already-in-use date field.
-let strengthDateFieldHidden = true;
-function _setStrengthDateFieldHidden(hidden) { strengthDateFieldHidden = hidden; }
+// Per-type, like cardio's own per-field `hidden` — keyed by type name
+// (editTab while editing, selectedType on the daily-entry page) rather than
+// living as a field inside a per-type list, since strength has no per-type
+// field template to hang a real per-row toggle off of. A type absent from
+// the map means hidden (matches the pre-2026-09-08 behavior for every type
+// that existed before this became per-type, and cardio's own
+// default-hidden-for-new-types convention).
+let strengthDateFieldHiddenByType = {};
+function _isStrengthDateFieldHidden(type) { return strengthDateFieldHiddenByType[type] !== false; }
+function _setStrengthDateFieldHidden(hidden) { strengthDateFieldHiddenByType[editTab] = hidden; }
+// Migrates the old single-flag shape (`tmpl.dateFieldHidden`, every account
+// before 2026-09-08) into a per-type map so existing types keep showing
+// exactly what they showed before — applies that one flag to every current
+// type. New saves write `dateFieldHiddenByType` directly; this only runs
+// when that key is still absent.
+function _deriveDateFieldHiddenByType(tmpl, types) {
+  if (tmpl.dateFieldHiddenByType && typeof tmpl.dateFieldHiddenByType === 'object') return { ...tmpl.dateFieldHiddenByType };
+  const legacyHidden = tmpl.dateFieldHidden !== false;
+  const map = {};
+  types.forEach(t => { map[t] = legacyHidden; });
+  return map;
+}
 
 async function switchHistoryDomain(domain) {
   if (domain === 'cardio' && !_isRunningAllowed()) domain = 'strength';
@@ -1887,6 +1904,20 @@ function cardioFieldDisplayLabel(field) {
   const original = CARDIO_MIGRATION_FIELD_MAP.find(f => f.id === field.id)?.label;
   if (field.label !== original) return field.label; // user renamed it — respect their text
   return t(key);
+}
+
+// Reverse of cardioFieldDisplayLabel, for the template editor's EDITABLE
+// label input (renderItemRow/collectItemFromRow): that input's value IS
+// what gets saved as the field's label, so if it's showing the translated
+// default text untouched, save the canonical (original migration-map)
+// label back instead of freezing whatever language happened to be active —
+// otherwise a plain save while the UI is in English would permanently
+// overwrite a default field's Hebrew label with "Distance"/"Date"/etc.
+function _cardioFieldSaveLabel(fieldId, inputValue) {
+  const key = CARDIO_FIELD_LABEL_KEYS[fieldId];
+  if (!key) return inputValue; // custom/ad-hoc field — no canonical form to preserve
+  if (inputValue !== t(key)) return inputValue; // user actually retyped something — respect it
+  return CARDIO_MIGRATION_FIELD_MAP.find(f => f.id === fieldId)?.label ?? inputValue;
 }
 
 function renderCardioFieldRow(field, value, isAdhoc) {
@@ -2544,7 +2575,7 @@ function applyAppData(data) {
   const tmpl = (data.templates && !data.templates.error) ? data.templates : { types: ['A','B'], A: [], B: [] };
 
   workoutTypes    = (tmpl.types && tmpl.types.length) ? tmpl.types : ['A','B'];
-  strengthDateFieldHidden = tmpl.dateFieldHidden !== false; // absent (every account today) or true -> hidden
+  strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(tmpl, workoutTypes);
   editTemplates   = {};
   workoutTypes.forEach(wtype => {
     editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
@@ -2775,7 +2806,7 @@ const WORKOUT_DOMAINS = {
       _legacyTarget: c.dataset.legacyTarget || '',
     }),
     buildSaveDoc: (types, templates) => {
-      const templateData = { types, dateFieldHidden: strengthDateFieldHidden };
+      const templateData = { types, dateFieldHiddenByType: strengthDateFieldHiddenByType };
       types.forEach(wtype => {
         templateData[wtype] = (templates[wtype] || [])
           .filter(ex => !WORKOUT_DOMAINS.strength.isEmptyItem(ex))
@@ -2926,7 +2957,7 @@ const WORKOUT_DOMAINS = {
         return `
       <div class="edit-fields">
         <div class="cardio-date-visibility-row">
-          <input class="cardio-field-label-input" value="${escHtml(f.label)}" placeholder="${t('edit.field_label_ph')}" disabled>
+          <input class="cardio-field-label-input" value="${escHtml(cardioFieldDisplayLabel(f))}" placeholder="${t('edit.field_label_ph')}" disabled>
           <label class="toggle-switch">
             <input type="checkbox" class="cardio-date-hidden-toggle"${f.hidden ? '' : ' checked'}>
             <span class="toggle-slider"></span>
@@ -2940,7 +2971,7 @@ const WORKOUT_DOMAINS = {
       return `
       <span class="drag-handle">⠿</span>
       <div class="edit-fields">
-        <input class="cardio-field-label-input" value="${escHtml(f.label)}" placeholder="${t('edit.field_label_ph')}">
+        <input class="cardio-field-label-input" value="${escHtml(cardioFieldDisplayLabel(f))}" placeholder="${t('edit.field_label_ph')}">
         <div class="field-type-picker" data-idx="${idx}">
           <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(${idx},'text')">${t('edit.ftype_text')}</button>
           <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(${idx},'number')">${t('edit.ftype_number')}</button>
@@ -2960,7 +2991,13 @@ const WORKOUT_DOMAINS = {
       // one reliable signal that survives the round-trip, so read fieldType off of it.
       const isDate = labelInput.disabled;
       const fieldType = isDate ? 'date' : (c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text');
-      const result = { id: c.dataset.id || '', label: labelInput.value, fieldType };
+      // renderItemRow shows the TRANSLATED text for an untouched default
+      // field (cardioFieldDisplayLabel) — reverse that back to the
+      // canonical stored label here, or a plain save while the UI happens
+      // to be in English would permanently overwrite e.g. "מרחק" with
+      // "Distance".
+      const label = _cardioFieldSaveLabel(c.dataset.id || '', labelInput.value);
+      const result = { id: c.dataset.id || '', label, fieldType };
       if (isDate) result.hidden = !c.querySelector('.cardio-date-hidden-toggle').checked;
       else result.target = c.querySelector('.cardio-field-target-input')?.value || '';
       return result;
@@ -3126,7 +3163,7 @@ function _applyLocalCache() {
   const cached = JSON.parse(localStorage.getItem(_cacheKeyTemplates()) || 'null');
   if (!cached) return false;
   workoutTypes = (cached.types && cached.types.length) ? cached.types : ['A', 'B'];
-  strengthDateFieldHidden = cached.dateFieldHidden !== false;
+  strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(cached, workoutTypes);
   editTemplates = {};
   workoutTypes.forEach(wtype => {
     editTemplates[wtype] = (cached[wtype] || []).map(ex => ({
@@ -3161,7 +3198,7 @@ function _backgroundApplyData(data) {
   const tmpl = (data.templates && !data.templates.error) ? data.templates : null;
   if (tmpl) {
     workoutTypes = (tmpl.types && tmpl.types.length) ? tmpl.types : workoutTypes;
-    strengthDateFieldHidden = tmpl.dateFieldHidden !== false;
+    strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(tmpl, workoutTypes);
     editTemplates = {};
     workoutTypes.forEach(wtype => {
       editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
@@ -3188,11 +3225,12 @@ function _backgroundApplyData(data) {
   try { renderMeasurements(); } catch(e) { console.error(e); }
   setDefaultDate();
   // Phase 1's earlier selectType() call (initApp) rendered #strengthDateWrap
-  // using whatever strengthDateFieldHidden was BEFORE this Firestore fetch
-  // resolved (its module-level default, or a stale local-cache value) — sync
-  // it now that the real value is in, same as saveTemplates()'s equivalent fix.
+  // using whatever strengthDateFieldHiddenByType was BEFORE this Firestore
+  // fetch resolved (its module-level default, or a stale local-cache value)
+  // — sync it now that the real value is in, same as saveTemplates()'s
+  // equivalent fix.
   const dateWrap = document.getElementById('strengthDateWrap');
-  if (dateWrap) dateWrap.style.display = strengthDateFieldHidden ? 'none' : 'block';
+  if (dateWrap) dateWrap.style.display = _isStrengthDateFieldHidden(selectedType) ? 'none' : 'block';
 }
 
 // ─── CARDIO DATA MIGRATION (V2 — runWorkoutTypes/runWorkouts → runningTemplates) ───
@@ -3661,7 +3699,7 @@ function selectType(type) {
 
   const dateWrap  = document.getElementById('strengthDateWrap');
   const dateInput = document.getElementById('strengthDateInput');
-  dateWrap.style.display = strengthDateFieldHidden ? 'none' : 'block';
+  dateWrap.style.display = _isStrengthDateFieldHidden(type) ? 'none' : 'block';
   dateInput.value = _todayDDMMYYYY();
 
   exerciseCount = 0;
@@ -3847,7 +3885,7 @@ async function submitData() {
   // actually shown and holds a valid value; otherwise dated by save-time,
   // exactly as strength has always behaved with no date field at all.
   const dateInputEl = document.getElementById('strengthDateInput');
-  const dateStr = (!strengthDateFieldHidden && dateInputEl && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInputEl.value))
+  const dateStr = (!_isStrengthDateFieldHidden(selectedType) && dateInputEl && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInputEl.value))
     ? dateInputEl.value
     : _todayDDMMYYYY();
   const [dd, mm, yyyy] = dateStr.split('/');
@@ -4256,7 +4294,7 @@ function renderEditAll() {
   renderTypeButtons();
   renderFilterButtons();
   const dateToggle = document.getElementById('strengthDateHiddenToggle');
-  if (dateToggle) dateToggle.checked = !strengthDateFieldHidden;
+  if (dateToggle) dateToggle.checked = !_isStrengthDateFieldHidden(editTab);
 }
 
 function renderEditList(domain, type) {
@@ -4279,7 +4317,17 @@ function renderEditList(domain, type) {
   initDragSort(el, startEditDrag(domain));
 }
 
-function switchEditTab(type) { collectEdits('strength'); editTab = type; renderEditTabs(); renderEditList('strength', type); }
+function switchEditTab(type) {
+  collectEdits('strength');
+  editTab = type;
+  renderEditTabs();
+  renderEditList('strength', type);
+  // Date-visibility toggle is per-type (2026-09-08) but lives as a static
+  // block outside #editListContainer (unlike cardio's, which is a real row
+  // inside the per-type list and re-renders for free) — sync it explicitly.
+  const dateToggle = document.getElementById('strengthDateHiddenToggle');
+  if (dateToggle) dateToggle.checked = !_isStrengthDateFieldHidden(type);
+}
 
 function addEditExercise() {
   collectEdits('strength');
@@ -4357,7 +4405,7 @@ async function saveTemplates() {
     // selectType() re-render for every saveTemplates() call (which would
     // also wipe any in-progress form state — not wanted for this one fix).
     const dateWrap = document.getElementById('strengthDateWrap');
-    if (dateWrap) dateWrap.style.display = strengthDateFieldHidden ? 'none' : 'block';
+    if (dateWrap) dateWrap.style.display = _isStrengthDateFieldHidden(selectedType) ? 'none' : 'block';
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
   }
@@ -4443,7 +4491,13 @@ function setCardioFieldType(idx, ftype) {
   // even though the underlying type genuinely changed. card.dataset.id
   // itself (set by renderEditList, not renderItemRow) is on the outer
   // .edit-card element and survives an innerHTML replacement untouched.
-  const label  = card.querySelector('.cardio-field-label-input')?.value || '';
+  // renderItemRow shows the TRANSLATED text for an untouched default field
+  // (cardioFieldDisplayLabel) — reverse that back to the canonical stored
+  // label before feeding it back into renderItemRow, or a type switch while
+  // the UI is in English would freeze e.g. "Distance" as this field's new
+  // "custom" label (cardioFieldDisplayLabel only re-translates a label that
+  // still equals the canonical Hebrew original).
+  const label  = _cardioFieldSaveLabel(card.dataset.id || '', card.querySelector('.cardio-field-label-input')?.value || '');
   const target = card.querySelector('.cardio-field-target-input')?.value || '';
   card.innerHTML = WORKOUT_DOMAINS.cardio.renderItemRow({ id: card.dataset.id, label, fieldType: ftype, target }, idx);
 }
