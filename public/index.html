@@ -2310,6 +2310,13 @@ async function handleAuthSubmit() {
     }
   } catch (e) {
     setAuthMsg(firebaseErrMsg(e.code));
+  } finally {
+    // Unlike the save-button functions elsewhere in this file, this
+    // element is never destroyed/rebuilt on success (onAuthStateChanged
+    // only hides #auth-screen, it doesn't re-render it) — so the reset
+    // MUST happen unconditionally here, not only in the catch branch, or
+    // the very same disabled button reappears, permanently stuck, the
+    // next time the auth screen is shown (e.g. after a later logout).
     btn.disabled = false;
   }
 }
@@ -4334,7 +4341,13 @@ async function saveSessionEdit(saveBtn, domain, sessionId) {
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
     saveBtn.disabled = false; saveBtn.innerText = t('sess.save_btn');
+    return;
   }
+  // Success path deliberately does NOT touch saveBtn here — reloadAppData()
+  // -> renderHistory() replaces this card's entire innerHTML, so the old
+  // (disabled) button element is already gone by the time this line would
+  // run. Left the failure-path reset as an explicit early return instead of
+  // a shared finally, since the success path has nothing left to reset.
 }
 
 function removeEditRow(btn) {
@@ -4945,7 +4958,12 @@ async function saveMeasureEdit(saveBtn, measureId) {
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
     saveBtn.disabled = false; saveBtn.innerText = t('sess.save_btn');
+    return;
   }
+  // Success path deliberately does NOT touch saveBtn here — reloadAppData()
+  // -> renderMeasurements() replaces this card's entire innerHTML, so the
+  // old (disabled) button element is already gone by the time this line
+  // would run. See saveSessionEdit for the identical reasoning.
 }
 
 function cancelMeasureEdit() { renderMeasurements(); }
