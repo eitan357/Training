@@ -232,6 +232,7 @@ export const TRANSLATIONS = {
     'err.network':            'בעיית חיבור לאינטרנט',
     'err.unauth_domain':      'הדומיין לא מורשה ב-Firebase Console',
     'err.prefix':             'שגיאה: ',
+    'err.google_signin_failed': 'שגיאה בהתחברות עם Google. נסה שוב.',
 
     // ── General ───────────────────────────────────────────────────
     'loading':      'טוען...',
@@ -530,6 +531,7 @@ export const TRANSLATIONS = {
     'err.network':            'Network connection error',
     'err.unauth_domain':      'Domain not authorized in Firebase Console',
     'err.prefix':             'Error: ',
+    'err.google_signin_failed': 'Google sign-in failed. Please try again.',
 
     // ── General ───────────────────────────────────────────────────
     'loading':      'Loading...',

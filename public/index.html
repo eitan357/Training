@@ -2336,7 +2336,16 @@ async function handleGoogleLogin() {
     const snap = await getDoc(doc(db, 'users', uid, 'config', 'templates'));
     if (!snap.exists()) await initNewUser(uid);
   } catch (e) {
-    setAuthMsg(firebaseErrMsg(e.code));
+    // Unlike handleAuthSubmit/handleForgotPassword (which only ever call the
+    // Firebase SDK directly and always get a real FirebaseError with a
+    // `.code`), the native branch above can throw a plain Capacitor-plugin
+    // rejection with no `.code` at all — falling through to
+    // firebaseErrMsg(undefined) silently produced the literal, useless
+    // string "Error: undefined". Surface whatever real information the
+    // error actually carries instead.
+    if (e.code) setAuthMsg(firebaseErrMsg(e.code));
+    else if (e.message) setAuthMsg(t('err.prefix') + e.message);
+    else setAuthMsg(t('err.google_signin_failed'));
   }
 }
 
