@@ -346,16 +346,28 @@ test.describe('Cardio Template Editor', () => {
     const count = await handles.count();
     test.skip(count < 2, 'need at least 2 draggable (non-date) fields to test reordering');
     const labelsBefore = await page.locator('#cardioEditListContainer .edit-card .cardio-field-label-input').evaluateAll(els => (els as HTMLInputElement[]).map(e => e.value));
-    const box = await handles.first().boundingBox();
-    // Offset relative to the ROW's own height (not the drag-handle's own
-    // much-shorter boundingBox, ~33px vs a ~137px row) — rows grew taller
-    // once the per-field target input (2026-09-08) was added for
-    // text/number fields, and a handle-sized offset that used to clear a
-    // shorter row no longer reliably crosses into the next one.
-    const rowBox = await page.locator('#cardioEditListContainer .edit-card').first().boundingBox();
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    const draggedCard = handles.first().locator('xpath=ancestor::*[contains(@class,"edit-card")]');
+    // Target the vertical center of the row TWO positions below the dragged
+    // one directly (matches this test's own "past the third field" intent)
+    // instead of a height-multiplier heuristic — that heuristic went stale
+    // once the date card's height changed (2026-09-08, label input +
+    // visibility toggle combined onto one row) and started landing only
+    // barely inside the very next row, which was too marginal to reliably
+    // cross the drop-zone check in startGenericDrag's `move` handler.
+    const cards = page.locator('#cardioEditListContainer .edit-card');
+    const draggedIndex = await draggedCard.evaluate(el => [...el.parentElement.children].indexOf(el));
+    const targetBox = await cards.nth(draggedIndex + 2).boundingBox();
+    // hover() (not a manually-computed boundingBox() click point) because in
+    // RTL layout this small inline `.drag-handle` span's Playwright-reported
+    // box was measured ~9px off from its actual hit-testable position —
+    // enough for a raw mouse.move(box.x+width/2, ...) to land on the parent
+    // `.edit-card` instead of the handle and silently no-op the whole drag.
+    // hover() uses Playwright's own actionability/hit-target verification,
+    // which lands precisely on the handle regardless of that offset.
+    await handles.first().hover();
+    const startBox = await handles.first().boundingBox();
     await page.mouse.down();
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + rowBox!.height * 1.5, { steps: 8 });
+    await page.mouse.move(startBox!.x + startBox!.width / 2, targetBox!.y + targetBox!.height / 2, { steps: 8 });
     await page.mouse.up();
     const labelsAfter = await page.locator('#cardioEditListContainer .edit-card .cardio-field-label-input').evaluateAll(els => (els as HTMLInputElement[]).map(e => e.value));
     expect(labelsAfter).not.toEqual(labelsBefore);

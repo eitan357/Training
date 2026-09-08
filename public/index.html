@@ -570,8 +570,11 @@
     .cardio-field-label-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .cardio-field-label-input:disabled { opacity: .6; }
     .field-type-picker { display: flex; gap: 6px; }
-    .cardio-date-visibility-toggle { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px; }
-    .cardio-date-visibility-label { font-size: 12px; font-weight: 700; color: var(--sub); }
+    .cardio-date-visibility-label { font-size: 12px; font-weight: 700; color: var(--sub); margin-top: 6px; display: block; }
+    /* Date-field label input + its show/hide toggle, side by side on one row
+       — shared by both the cardio (per-type) and strength (global) editors. */
+    .cardio-date-visibility-row { display: flex; align-items: center; gap: 10px; }
+    .cardio-date-visibility-row .cardio-field-label-input { flex: 1; margin-bottom: 0; }
     .ftype-btn {
       flex: 1; padding: 7px 6px; border: 1.5px solid var(--border); border-radius: 8px;
       font-size: 12px; font-weight: 700; color: var(--sub); background: var(--bg); cursor: pointer;
@@ -1044,13 +1047,17 @@
     <div id="editTabs" class="edit-tabs"></div>
     <!-- Global toggle (Task 8/9) — one flag for all strength types, not
          per-type like cardio's fields: strength has no per-type field
-         template to hang a per-row toggle off of. -->
-    <div class="cardio-date-visibility-toggle" style="margin-bottom:12px;">
-      <span class="cardio-date-visibility-label" data-i18n="edit.date_show_label">הצג בטופס היומי</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="strengthDateHiddenToggle" onchange="_setStrengthDateFieldHidden(!this.checked)">
-        <span class="toggle-slider"></span>
-      </label>
+         template to hang a per-row toggle off of. Same visual pattern as
+         cardio's own date row (disabled label input + toggle, one row). -->
+    <div style="margin-bottom:12px;">
+      <div class="cardio-date-visibility-row">
+        <input class="cardio-field-label-input" id="strengthDateLabelInput" value="תאריך" disabled>
+        <label class="toggle-switch">
+          <input type="checkbox" id="strengthDateHiddenToggle" onchange="_setStrengthDateFieldHidden(!this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <span class="cardio-date-visibility-label" data-i18n="edit.date_show_label">הצג תאריך בטופס</span>
     </div>
     <div id="addTypeForm" class="add-type-form">
       <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off" data-i18n-ph="edit.add_type_ph">
@@ -1402,6 +1409,12 @@ function applyLang() {
     }
   });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { const v = tr[el.dataset.i18nPh]; if (v != null) el.placeholder = v; });
+  // data-i18n sets .textContent, a no-op on an <input>'s .value — this one
+  // static, disabled "תאריך" label input (strength's editor, Task 8/9)
+  // needs the same treatment .cardio-field-label-input gets automatically
+  // wherever it's generated dynamically via t() in a JS template instead.
+  const strengthDateLabelInput = document.getElementById('strengthDateLabelInput');
+  if (strengthDateLabelInput) strengthDateLabelInput.value = tr['workout.date_label'];
 }
 
 function renderLangSelector() {
@@ -2899,26 +2912,39 @@ const WORKOUT_DOMAINS = {
     },
     getSelectedType: () => cardioSelectedType,
     newItem: () => ({ id: genId(), label: '', fieldType: 'text', target: '' }),
-    renderItemRow: (f, idx) => `
-      ${f.fieldType === 'date' ? '' : '<span class="drag-handle">⠿</span>'}
+    renderItemRow: (f, idx) => {
+      if (f.fieldType === 'date') {
+        // No drag handle, no remove button, label locked — same rules as
+        // before, just laid out differently: the (still-present, still-
+        // disabled) label input now shares one row with the visibility
+        // toggle instead of sitting on its own line above it.
+        return `
       <div class="edit-fields">
-        <input class="cardio-field-label-input" value="${escHtml(f.label)}" placeholder="${t('edit.field_label_ph')}" ${f.fieldType === 'date' ? 'disabled' : ''}>
-        ${f.fieldType === 'date' ? `
-        <div class="cardio-date-visibility-toggle">
-          <span class="cardio-date-visibility-label">${t('edit.date_show_label')}</span>
+        <div class="cardio-date-visibility-row">
+          <input class="cardio-field-label-input" value="${escHtml(f.label)}" placeholder="${t('edit.field_label_ph')}" disabled>
           <label class="toggle-switch">
             <input type="checkbox" class="cardio-date-hidden-toggle"${f.hidden ? '' : ' checked'}>
             <span class="toggle-slider"></span>
           </label>
-        </div>` : `
+        </div>
+        <span class="cardio-date-visibility-label">${t('edit.date_show_label')}</span>
+      </div>`;
+      }
+      const targetInputHtml = f.fieldType === 'checkbox' ? '' :
+        `<input class="cardio-field-target-input" type="${f.fieldType === 'number' ? 'number' : 'text'}" value="${escHtml(f.target || '')}" placeholder="${t('col.target')}">`;
+      return `
+      <span class="drag-handle">⠿</span>
+      <div class="edit-fields">
+        <input class="cardio-field-label-input" value="${escHtml(f.label)}" placeholder="${t('edit.field_label_ph')}">
         <div class="field-type-picker" data-idx="${idx}">
           <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(${idx},'text')">${t('edit.ftype_text')}</button>
           <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(${idx},'number')">${t('edit.ftype_number')}</button>
           <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(${idx},'checkbox')">${t('edit.ftype_checkbox')}</button>
         </div>
-        ${f.fieldType === 'checkbox' ? '' : `<input class="cardio-field-target-input" type="${f.fieldType === 'number' ? 'number' : 'text'}" value="${escHtml(f.target || '')}" placeholder="${t('col.target')}">`}`}
+        ${targetInputHtml}
       </div>
-      ${f.fieldType === 'date' ? '' : `<button class="edit-remove" onclick="removeCardioEditField(${idx})">✕</button>`}`,
+      <button class="edit-remove" onclick="removeCardioEditField(${idx})">✕</button>`;
+    },
     collectItemFromRow: c => {
       const labelInput = c.querySelector('.cardio-field-label-input');
       // The date field's picker never renders an `.active` ftype-btn (none of the
@@ -2955,9 +2981,19 @@ const WORKOUT_DOMAINS = {
     renderCardBody: s => `
       <table class="hist-table">
         <tbody>
-          ${(s.fields||[]).map(f => `<tr>
+          ${(s.fields||[])
+            // Date is already shown in the row's own header (sessionDisplayDate)
+            // — redundant here. An unchecked checkbox carries no information
+            // worth listing (nothing was "answered"), same reasoning as why an
+            // empty text/number field wouldn't be worth a row either — but
+            // those never make it into s.fields at all (submitCardioData skips
+            // empty non-checkbox fields at save time), only checkbox=false
+            // still gets saved (a real value, just "off") and needs filtering
+            // here specifically.
+            .filter(f => f.fieldType !== 'date' && !(f.fieldType === 'checkbox' && !f.value))
+            .map(f => `<tr>
             <td><div class="td-name">${escHtml(f.label)}</div></td>
-            <td class="td-num">${f.fieldType === 'checkbox' ? (f.value ? '✓' : '—') : escHtml(String(f.value ?? '—'))}</td>
+            <td class="td-num">${f.fieldType === 'checkbox' ? '✓' : escHtml(String(f.value ?? '—'))}</td>
           </tr>`).join('')}
         </tbody>
       </table>`,
@@ -4395,7 +4431,16 @@ function removeCardioEditField(idx) {
 function setCardioFieldType(idx, ftype) {
   const container = document.getElementById('cardioEditListContainer');
   const card = container.querySelectorAll('.edit-card')[idx];
-  card.querySelectorAll('.ftype-btn').forEach(b => b.classList.toggle('active', b.dataset.ftype === ftype));
+  // Re-render the row's whole inner HTML (not just toggle .active classes on
+  // the ftype buttons) — the target input's presence/absence (Task 9) is
+  // decided by fieldType at render time, so a type change must re-run
+  // renderItemRow or the target input silently never appears/disappears
+  // even though the underlying type genuinely changed. card.dataset.id
+  // itself (set by renderEditList, not renderItemRow) is on the outer
+  // .edit-card element and survives an innerHTML replacement untouched.
+  const label  = card.querySelector('.cardio-field-label-input')?.value || '';
+  const target = card.querySelector('.cardio-field-target-input')?.value || '';
+  card.innerHTML = WORKOUT_DOMAINS.cardio.renderItemRow({ id: card.dataset.id, label, fieldType: ftype, target }, idx);
 }
 
 function confirmAddCardioType() {

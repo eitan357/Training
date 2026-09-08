@@ -146,7 +146,7 @@ export const TRANSLATIONS = {
     'edit.ftype_text':     'טקסט',
     'edit.ftype_number':   'מספר',
     'edit.ftype_checkbox': 'סימון',
-    'edit.date_show_label': 'הצג בטופס היומי',
+    'edit.date_show_label': 'הצג תאריך בטופס',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'הוסף מדידה חדשה',
@@ -444,7 +444,7 @@ export const TRANSLATIONS = {
     'edit.ftype_text':     'Text',
     'edit.ftype_number':   'Number',
     'edit.ftype_checkbox': 'Checkbox',
-    'edit.date_show_label': 'Show on daily entry page',
+    'edit.date_show_label': 'Show date on entry page',
 
     // ── Measurements ──────────────────────────────────────────────
     'meas.add_title':     'Add New Measurement',
