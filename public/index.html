@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="יומן אימון">
   <link rel="apple-touch-icon" href="icon-bolt.svg">
-  <script>(function(){var s=localStorage.getItem('theme')||'auto',t=s==='auto'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):s,l=localStorage.getItem('lang')||(navigator.language.startsWith('he')?'he':'en');document.documentElement.dataset.theme=t;document.documentElement.dir=l==='en'?'ltr':'rtl';document.documentElement.lang=l;})();</script>
+  <script>(function(){var s=localStorage.getItem('theme')||'auto',t=s==='auto'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):s,l=localStorage.getItem('lang')||(navigator.language.startsWith('he')?'he':'en');document.documentElement.dataset.theme=t;document.documentElement.dir=l==='en'?'ltr':'rtl';document.documentElement.lang=l;document.documentElement.dataset.native=(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())?'1':'0';})();</script>
   <style>
     :root {
       --primary:   #6d64a8;
@@ -25,6 +25,8 @@
       --sub:       #5c6b82;
       --radius:    14px;
       --shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+      --lo-glow:   rgba(109, 100, 168, .35);
+      --lo-flash:  rgba(167, 139, 250, .9);
     }
 
     [data-theme="dark"] {
@@ -33,6 +35,7 @@
       --border:  #334155;
       --text:    #f1f5f9;
       --sub:     #94a3b8;
+      --lo-glow: rgba(167, 139, 250, .5);
     }
     [data-theme="dark"] input,
     [data-theme="dark"] textarea {
@@ -757,6 +760,57 @@
     .lo-spinner { width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--border); border-top-color: var(--primary); animation: lo-spin .75s linear infinite; }
     @keyframes lo-spin { to { transform: rotate(360deg); } }
     .lo-sub { font-size: 14px; color: var(--sub); }
+
+    /* ── NATIVE APP BOOT ANIMATION (Capacitor only — web keeps the spinner
+       above untouched) ── The native shell sets html[data-native] synchronously
+       before first paint (see the boot <script> at the top of <head>), so
+       there's no flash of the wrong loading UI on either platform. */
+    .lo-native-stage { display: none; width: 190px; height: 190px; }
+    html[data-native="1"] #loading-overlay .lo-title,
+    html[data-native="1"] #loading-overlay .lo-spinner,
+    html[data-native="1"] #loading-overlay .lo-sub { display: none; }
+    html[data-native="1"] #loading-overlay .lo-native-stage {
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lo-native-stage svg { width: 100%; height: 100%; overflow: visible; }
+    /* No filter anywhere in the masked subtree (.lo-native-fill-mask-g /
+       .lo-native-fill) — combining mask with an animated filter on the same
+       masked subtree makes the mask's bounding-box computation use the
+       filtered (expanded) result instead of the raw path, leaving a faint
+       rectangle around the shape. The glow comes only from the always-
+       unmasked stroke, which also never fades — it stays as a permanent rim
+       around the settled bolt. */
+    .lo-native-stroke {
+      fill: none; stroke: url(#lo-native-bolt-grad); stroke-width: 1;
+      stroke-linejoin: round; stroke-linecap: round;
+      stroke-dasharray: 1; stroke-dashoffset: 1;
+      filter: drop-shadow(0 0 5px var(--lo-glow));
+      animation: loNativeStroke 1.1s cubic-bezier(.4,0,.2,1) 1 forwards;
+    }
+    .lo-native-fill-mask-g { mask: url(#lo-native-fill-mask); }
+    .lo-native-fill { fill: url(#lo-native-bolt-grad); }
+    .lo-native-spark {
+      opacity: 0; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 7px var(--lo-flash));
+      animation: loNativeSpark 1.1s cubic-bezier(.4,0,.2,1) 1 forwards;
+      offset-path: path('M13 2L3 14h9l-1 8L21 10h-9l1-8z');
+    }
+    @keyframes loNativeStroke {
+      0%   { stroke-dashoffset: 1; opacity: 1; }
+      60%  { stroke-dashoffset: 0; opacity: 1; }
+      100% { stroke-dashoffset: 0; opacity: 1; }
+    }
+    @keyframes loNativeSpark {
+      0%   { opacity: 0; offset-distance: 0%; }
+      8%   { opacity: 1; }
+      60%  { opacity: 1; offset-distance: 100%; }
+      78%  { opacity: 0; offset-distance: 100%; }
+      100% { opacity: 0; offset-distance: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .lo-native-stroke, .lo-native-spark { animation: none !important; }
+      .lo-native-stroke { opacity: 1; stroke-dashoffset: 0; }
+      .lo-native-spark { opacity: 0; }
+    }
     /* ── RUNNING SECTION ── */
     .run-card {
       background: var(--surface); border-radius: var(--radius);
@@ -954,6 +1008,34 @@
   <div class="lo-title" data-i18n="auth.title">יומן האימון <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="bolt-lo" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="50%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient></defs><path fill="url(#bolt-lo)" d="M13 2L3 14h9l-1 8L21 10h-9l1-8z"/></svg></div>
   <div class="lo-spinner"></div>
   <div class="lo-sub" data-i18n="auth.loading">טוען נתונים...</div>
+
+  <!-- Native app only (html[data-native="1"]) — see CSS above. Single play,
+       no loop: matches an actual boot, not a demo. -->
+  <div class="lo-native-stage">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <defs>
+        <linearGradient id="lo-native-bolt-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#e9d5ff"/>
+          <stop offset="50%" stop-color="#a78bfa"/>
+          <stop offset="100%" stop-color="#38bdf8"/>
+        </linearGradient>
+        <linearGradient id="lo-native-fill-mask-grad" gradientUnits="objectBoundingBox" x1="0" x2="0" y1="0" y2="0.1">
+          <stop offset="0" stop-color="#fff"/>
+          <stop offset="1" stop-color="#000"/>
+          <animate id="loNativeMaskY1" attributeName="y1" values="-0.35;-0.35;1.05;1.05" dur="1.1s" repeatCount="1" fill="freeze" keyTimes="0;.3;.95;1" calcMode="spline" keySplines="0 0 1 1;.4 0 .2 1;0 0 1 1"/>
+          <animate id="loNativeMaskY2" attributeName="y2" values="-0.25;-0.25;1.15;1.15" dur="1.1s" repeatCount="1" fill="freeze" keyTimes="0;.3;.95;1" calcMode="spline" keySplines="0 0 1 1;.4 0 .2 1;0 0 1 1"/>
+        </linearGradient>
+        <mask id="lo-native-fill-mask" maskContentUnits="objectBoundingBox">
+          <rect x="0" y="0" width="1" height="1" fill="url(#lo-native-fill-mask-grad)"/>
+        </mask>
+      </defs>
+      <path class="lo-native-stroke" pathLength="1" d="M13 2L3 14h9l-1 8L21 10h-9l1-8z"/>
+      <g class="lo-native-fill-mask-g">
+        <path class="lo-native-fill" d="M13 2L3 14h9l-1 8L21 10h-9l1-8z"/>
+      </g>
+      <circle class="lo-native-spark" r="0.5" fill="#fff"/>
+    </svg>
+  </div>
 </div>
 
 <main id="main-content">
@@ -2143,6 +2225,20 @@ onAuthStateChanged(auth, async user => {
     const ov = document.getElementById('loading-overlay');
     ov.classList.remove('fade-out');
     ov.style.display = 'flex';
+    // Only RE-start on the second and later shows. The first show's markup
+    // is statically parsed and its CSS/SMIL animations begin on their own —
+    // re-parsing it via innerHTML this early isn't just unnecessary, it's
+    // actively worse: dynamically-inserted SMIL <animate> elements don't
+    // reliably auto-begin the way statically-parsed ones do, even with an
+    // explicit beginElement() call right after insertion.
+    if (_nativeLoadingPlayedOnce) restartNativeLoadingAnim();
+    _nativeLoadingPlayedOnce = true;
+    // initApp()'s Phase 1 (below) hides the overlay right after the instant
+    // local-cache read — often well under the boot bolt's own 1.1s runtime,
+    // which would cut the animation off mid-draw. hideOverlay() enforces
+    // this as a floor on native only; web is untouched (the timestamp is
+    // simply never set there).
+    if (window.Capacitor?.isNativePlatform()) _nativeOverlayShownAt = Date.now();
 
     // Allowlist check: _pendingPath is user-controllable (whatever path
     // was in the address bar before login) — only ever used as a lookup
@@ -2564,10 +2660,36 @@ async function reloadAppData() {
   }
 }
 
+// Set only right before the native boot bolt starts (see onAuthStateChanged);
+// left at 0 on web and on the logged-out path, so hideOverlay() behaves
+// exactly as before there — no floor, no delay.
+let _nativeOverlayShownAt = 0;
+let _nativeLoadingPlayedOnce = false; // see onAuthStateChanged
+const NATIVE_LOADING_MIN_MS = 1100; // matches .lo-native-stroke's animation-duration
+
 function hideOverlay() {
   const el = document.getElementById('loading-overlay');
-  el.classList.add('fade-out');
-  setTimeout(() => el.style.display = 'none', 380);
+  const finish = () => { el.classList.add('fade-out'); setTimeout(() => el.style.display = 'none', 380); };
+  if (_nativeOverlayShownAt) {
+    const remaining = NATIVE_LOADING_MIN_MS - (Date.now() - _nativeOverlayShownAt);
+    _nativeOverlayShownAt = 0;
+    if (remaining > 0) { setTimeout(finish, remaining); return; }
+  }
+  finish();
+}
+
+// The boot bolt is a single-play (non-looping) CSS + SMIL animation, and
+// onAuthStateChanged can re-show #loading-overlay more than once in the same
+// page load (e.g. logout then log back in) — without this it would just sit
+// frozen on its already-settled state the second time. Re-parsing the SVG
+// subtree via outerHTML forces every CSS animation on it to restart from 0%;
+// the SMIL <animate> elements need their own explicit restart alongside it.
+function restartNativeLoadingAnim() {
+  if (!window.Capacitor?.isNativePlatform()) return;
+  const stage = document.querySelector('#loading-overlay .lo-native-stage');
+  if (!stage) return;
+  stage.innerHTML = stage.innerHTML;
+  ['loNativeMaskY1', 'loNativeMaskY2'].forEach(id => document.getElementById(id)?.beginElement());
 }
 
 function applyAppData(data) {
