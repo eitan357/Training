@@ -1047,17 +1047,22 @@
     <div id="editTabs" class="edit-tabs"></div>
     <!-- Global toggle (Task 8/9) — one flag for all strength types, not
          per-type like cardio's fields: strength has no per-type field
-         template to hang a per-row toggle off of. Same visual pattern as
-         cardio's own date row (disabled label input + toggle, one row). -->
-    <div style="margin-bottom:12px;">
-      <div class="cardio-date-visibility-row">
-        <input class="cardio-field-label-input" id="strengthDateLabelInput" value="תאריך" disabled>
-        <label class="toggle-switch">
-          <input type="checkbox" id="strengthDateHiddenToggle" onchange="_setStrengthDateFieldHidden(!this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+         template to hang a per-row toggle off of. Wrapped in the same
+         .edit-card/.edit-fields structure cardio's own date row renders
+         into (renderItemRow's date branch), so both editors' date areas
+         look identical — not just the inner input+toggle row, but the
+         whole card (white background, shadow, rounded border) around it. -->
+    <div class="edit-card" style="margin-bottom:12px;">
+      <div class="edit-fields">
+        <div class="cardio-date-visibility-row">
+          <input class="cardio-field-label-input" id="strengthDateLabelInput" value="תאריך" disabled>
+          <label class="toggle-switch">
+            <input type="checkbox" id="strengthDateHiddenToggle" onchange="_setStrengthDateFieldHidden(!this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <span class="cardio-date-visibility-label" data-i18n="edit.date_show_label">הצג תאריך בטופס</span>
       </div>
-      <span class="cardio-date-visibility-label" data-i18n="edit.date_show_label">הצג תאריך בטופס</span>
     </div>
     <div id="addTypeForm" class="add-type-form">
       <input id="newTypeName" type="text" placeholder="שם האימון (C, D, כוח...)" autocomplete="off" data-i18n-ph="edit.add_type_ph">
