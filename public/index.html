@@ -4340,14 +4340,15 @@ async function saveSessionEdit(saveBtn, domain, sessionId) {
     await reloadAppData();
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
+  } finally {
+    // On success this runs after reloadAppData() -> renderHistory() has
+    // already replaced this card's entire innerHTML, so saveBtn is a
+    // detached node here and this is a silent no-op — but the reset must
+    // still be unconditional (not only in `catch`), matching every other
+    // disable/enable pair in this file, so the button is never left stuck
+    // if a future change makes the success path stop rebuilding the DOM.
     saveBtn.disabled = false; saveBtn.innerText = t('sess.save_btn');
-    return;
   }
-  // Success path deliberately does NOT touch saveBtn here — reloadAppData()
-  // -> renderHistory() replaces this card's entire innerHTML, so the old
-  // (disabled) button element is already gone by the time this line would
-  // run. Left the failure-path reset as an explicit early return instead of
-  // a shared finally, since the success path has nothing left to reset.
 }
 
 function removeEditRow(btn) {
@@ -4957,13 +4958,13 @@ async function saveMeasureEdit(saveBtn, measureId) {
     await reloadAppData();
   } catch (err) {
     toast(t('error.save') + err.message, 'error');
+  } finally {
+    // See saveSessionEdit for the identical reasoning: on success this is a
+    // silent no-op on an already-detached node, but the reset must still be
+    // unconditional so a future change to renderMeasurements() can't
+    // reintroduce a stuck button.
     saveBtn.disabled = false; saveBtn.innerText = t('sess.save_btn');
-    return;
   }
-  // Success path deliberately does NOT touch saveBtn here — reloadAppData()
-  // -> renderMeasurements() replaces this card's entire innerHTML, so the
-  // old (disabled) button element is already gone by the time this line
-  // would run. See saveSessionEdit for the identical reasoning.
 }
 
 function cancelMeasureEdit() { renderMeasurements(); }
