@@ -233,6 +233,7 @@ export const TRANSLATIONS = {
     'err.unauth_domain':      'הדומיין לא מורשה ב-Firebase Console',
     'err.prefix':             'שגיאה: ',
     'err.google_signin_failed': 'שגיאה בהתחברות עם Google. נסה שוב.',
+    'err.google_no_account':    'לא נמצא חשבון Google במכשיר',
 
     // ── General ───────────────────────────────────────────────────
     'loading':      'טוען...',
@@ -532,6 +533,7 @@ export const TRANSLATIONS = {
     'err.unauth_domain':      'Domain not authorized in Firebase Console',
     'err.prefix':             'Error: ',
     'err.google_signin_failed': 'Google sign-in failed. Please try again.',
+    'err.google_no_account':    'No Google account found on this device',
 
     // ── General ───────────────────────────────────────────────────
     'loading':      'Loading...',

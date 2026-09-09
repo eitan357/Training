@@ -2346,13 +2346,29 @@ async function handleGoogleLogin() {
     // Unlike handleAuthSubmit/handleForgotPassword (which only ever call the
     // Firebase SDK directly and always get a real FirebaseError with a
     // `.code`), the native branch above can throw a plain Capacitor-plugin
-    // rejection with no `.code` at all — falling through to
-    // firebaseErrMsg(undefined) silently produced the literal, useless
-    // string "Error: undefined". Surface whatever real information the
-    // error actually carries instead.
-    if (e.code) setAuthMsg(firebaseErrMsg(e.code));
-    else if (e.message) setAuthMsg(t('err.prefix') + e.message);
-    else setAuthMsg(t('err.google_signin_failed'));
+    // rejection with no `.code` at all. Investigated at the native plugin
+    // source level (@capacitor-firebase/authentication's
+    // GoogleAuthProviderHandler.java + FirebaseAuthenticationHelper.java):
+    // createErrorCode() only ever returns a real code for a genuine
+    // FirebaseAuthException — every realistic native-flow failure
+    // (cancellation, no Google account on the device, provider
+    // misconfiguration, anything else Android's CredentialManager API can
+    // throw) comes back with `.code` completely absent, and the ONLY
+    // signal available at all is the exception's raw `.message` string —
+    // which Android populates in English regardless of the app's
+    // currently-selected language. Never show that raw string directly
+    // (it previously produced a Hebrew "שגיאה:" prefix glued to an English
+    // sentence) — classify the known shapes by keyword into real,
+    // correctly-localized messages, and fall back to an already-translated
+    // generic message (never raw text) for anything unrecognized.
+    if (e.code) {
+      setAuthMsg(firebaseErrMsg(e.code));
+    } else {
+      const msg = (e.message || '').toLowerCase();
+      if (msg.includes('cancel')) setAuthMsg(t('err.popup_closed'));
+      else if (msg.includes('no credential') || msg.includes('not available')) setAuthMsg(t('err.google_no_account'));
+      else setAuthMsg(t('err.google_signin_failed'));
+    }
   }
 }
 
