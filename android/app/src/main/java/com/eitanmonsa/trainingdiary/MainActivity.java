@@ -15,6 +15,15 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        getBridge().getWebView().requestFocus();
+        // BridgeActivity's own onCreate() returns early -- leaving
+        // getBridge() null -- if the WebView layout fails to inflate (e.g.
+        // Android System WebView missing/disabled/mid-update), showing a
+        // fallback "no webview" screen instead. Every other lifecycle
+        // override in BridgeActivity null-guards getBridge() for exactly
+        // this reason; skipping the guard here would turn that graceful
+        // fallback into a hard NPE crash on resume for those devices.
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().requestFocus();
+        }
     }
 }
