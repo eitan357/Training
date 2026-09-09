@@ -2364,7 +2364,13 @@ async function handleGoogleLogin() {
     if (e.code) {
       setAuthMsg(firebaseErrMsg(e.code));
     } else {
-      const msg = (e.message || '').toLowerCase();
+      // String(...) rather than a bare `|| ''` fallback: a truthy
+      // non-string e.message (unlikely but not contractually impossible)
+      // would otherwise throw here, and since this function is invoked via
+      // a bare onclick with no .catch(), that throw would silently swallow
+      // the whole error display instead of falling through to the
+      // translated fallback below.
+      const msg = String(e.message || '').toLowerCase();
       if (msg.includes('cancel')) setAuthMsg(t('err.popup_closed'));
       else if (msg.includes('no credential') || msg.includes('not available')) setAuthMsg(t('err.google_no_account'));
       else setAuthMsg(t('err.google_signin_failed'));
