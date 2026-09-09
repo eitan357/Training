@@ -2874,6 +2874,16 @@ function _strengthDraftQualifies(draft) {
     (draft.exercises || []).some(e => e.weight || e.sets || e.reps || e.notes);
 }
 
+// Text/number fields only — never the date (always auto-filled with today
+// per renderCardioFieldRow, so its mere presence proves nothing about
+// whether the user actually entered anything) or checkbox (a toggle alone
+// shouldn't create/qualify a draft either, per explicit request). Mirrors
+// _strengthDraftQualifies's own exclusion of its date field exactly.
+function _cardioDraftQualifies(draft) {
+  return !!(draft.workoutName?.trim()) ||
+    (draft.fields || []).some(f => (f.fieldType === 'text' || f.fieldType === 'number') && f.value !== '' && f.value != null);
+}
+
 function _strengthDraftApplyToForm(draft) {
   const nameInput = document.getElementById('sessionNameInput');
   if (nameInput) nameInput.value = draft.workoutName || '';
@@ -3022,13 +3032,19 @@ const WORKOUT_DOMAINS = {
         else input.value = f.value;
       });
     },
+    // Only text/number rows count — never the date (auto-filled with today
+    // regardless of user action) or a checkbox toggle alone. See
+    // _cardioDraftQualifies for the matching rule applied downstream, at
+    // promotion time.
     hasFormData: () => {
       if (document.getElementById('cardioSessionNameInput')?.value.trim()) return true;
-      return [...document.querySelectorAll('#cardioFieldList .cardio-field-input')].some(inp =>
-        inp.type === 'checkbox' ? inp.checked : inp.value.trim()
-      );
+      return [...document.querySelectorAll('#cardioFieldList .cardio-field-row')].some(row => {
+        const ft = row.dataset.fieldType;
+        if (ft !== 'text' && ft !== 'number') return false;
+        return row.querySelector('.cardio-field-input')?.value.trim();
+      });
     },
-    qualifies: draft => !!(draft.workoutName?.trim()) || (draft.fields || []).some(f => f.value !== '' && f.value != null && f.value !== false),
+    qualifies: _cardioDraftQualifies,
     templatesDoc: ['config', 'runningTemplates'],
     editListContainerId: 'cardioEditListContainer',
     editTabsId:           'cardioEditTabs',
@@ -3046,6 +3062,12 @@ const WORKOUT_DOMAINS = {
     // promote this, but don't silently discard it either" — if the draft
     // has some content but fails this stricter check.
     buildAutoSaveEntry: draft => {
+      // A date-only (or checkbox-only) draft has no real content — same
+      // rule as hasFormData above, checked again here since this is a
+      // separate entry point (a Firestore-synced draft read back at
+      // promotion time, not necessarily one that went through this
+      // session's hasFormData check at all).
+      if (!_cardioDraftQualifies(draft)) return null;
       const fields = [];
       for (const f of (draft.fields || [])) {
         if (f.fieldType !== 'checkbox' && (f.value === '' || f.value == null)) continue;
