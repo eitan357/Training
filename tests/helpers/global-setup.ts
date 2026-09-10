@@ -13,7 +13,13 @@ export default async function globalSetup() {
   fs.mkdirSync(fixturesDir, { recursive: true });
 
   const browser = await chromium.launch();
-  const context = await browser.newContext();
+  // Must match playwright.config.ts's `use.locale` ('he-IL') — this context
+  // is created manually and does NOT inherit that config. Before the app
+  // persisted its device-language fallback to localStorage, the mismatch
+  // was invisible (no stored 'lang' key ever made it into the captured
+  // storageState); now that it does persist on first load, an unlocalized
+  // context here would bake an English 'lang' into every test's fixture.
+  const context = await browser.newContext({ locale: 'he-IL' });
   const page = await context.newPage();
 
   await page.goto(BASE_URL);

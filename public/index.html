@@ -1474,7 +1474,13 @@ const firebaseConfig = {
 // ─── i18n + THEME ────────────────────────────────────────────
 // TRANSLATIONS and LANGUAGES are imported from ./translations.js
 
-let currentLang  = (() => { const s = localStorage.getItem('lang'); return LANGUAGES[s] ? s : (navigator.language.startsWith('he') ? 'he' : 'en'); })();
+let currentLang = (() => {
+  const s = localStorage.getItem('lang');
+  if (LANGUAGES[s]) return s;
+  const detected = navigator.language.startsWith('he') ? 'he' : 'en';
+  try { localStorage.setItem('lang', detected); } catch (e) {}
+  return detected;
+})();
 let currentTheme = localStorage.getItem('theme') || 'auto';
 
 function t(key) { return (TRANSLATIONS[currentLang] ?? TRANSLATIONS.he ?? {})[key] ?? key; }
@@ -1562,8 +1568,45 @@ function saveDisplayName() {
   const key  = 'displayName_' + (currentUser?.uid || '');
   if (name) localStorage.setItem(key, name); else localStorage.removeItem(key);
   _updateTopbarName();
-  if (currentUser) setDoc(doc(db, 'users', currentUser.uid, 'config', 'profile'), { displayName: name }, { merge: true }).catch(() => {});
+  _syncDisplayName(name);
   toast(t('display_name_saved'), 'success');
+}
+
+// Fire-and-forget write to Firestore. On failure we never bother the user —
+// per product decision, a failed displayName sync is flagged and retried
+// opportunistically the next time we're already talking to Firestore for
+// something else (see _retryPendingDisplayNameSync, called from
+// reloadAppData() and the draft auto-save timer), instead of showing an
+// error for something this low-stakes.
+// The pending flag stores the actual name that failed to sync, not just a
+// boolean — reading it back from displayName_<uid> instead would pick up
+// whatever loadAllData() last wrote there from the SERVER's (stale) value,
+// silently discarding the user's still-unsynced change. Empty string is a
+// legitimate pending value (user cleared their name while offline), so the
+// presence check below is explicitly `!== null`, not a truthiness check.
+function _syncDisplayName(name) {
+  if (!currentUser) return;
+  const pendingKey = 'displayNamePending_' + currentUser.uid;
+  setDoc(doc(db, 'users', currentUser.uid, 'config', 'profile'), { displayName: name }, { merge: true })
+    .then(() => { try { localStorage.removeItem(pendingKey); } catch (e) {} })
+    .catch(() => { try { localStorage.setItem(pendingKey, name); } catch (e) {} });
+}
+
+// Cheap no-op when nothing is pending (single localStorage read, no network
+// call) — safe to call unconditionally from any existing Firestore-write
+// hot path.
+function _retryPendingDisplayNameSync() {
+  if (!currentUser) return;
+  const pendingKey = 'displayNamePending_' + currentUser.uid;
+  const pending = localStorage.getItem(pendingKey);
+  if (pending === null) return;
+  // Re-assert the still-pending name into the display cache + topbar in
+  // case loadAllData() just overwrote displayName_<uid> with the stale
+  // pre-change server value earlier in this same reload.
+  const nameKey = 'displayName_' + currentUser.uid;
+  if (pending) localStorage.setItem(nameKey, pending); else localStorage.removeItem(nameKey);
+  _updateTopbarName();
+  _syncDisplayName(pending);
 }
 
 function _updateTopbarName() {
@@ -1597,7 +1640,7 @@ async function saveRunningEnabled(val) {
   runningEnabled = val;
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'settings'), { runningEnabled: val }, { merge: true });
-  } catch { toast('שגיאה בשמירת הגדרות', 'error'); }
+  } catch (err) { toast(t('error.save') + firestoreErrMsg(err), 'error'); }
   applyRunningGate();
 }
 
@@ -1800,19 +1843,22 @@ function calcRunStreak(workouts) {
   return streak;
 }
 
-// Reads by field LABEL now (dynamic templates have no fixed keys) — a
-// distance-equivalent field is whichever field has label==='מרחק' on that
-// entry; pace is derived client-side from distance+duration since the new
-// schema no longer precomputes paceMinPerKm server-side per entry.
-function _fieldVal(entry, label) {
-  const f = (entry.fields || []).find(x => x.label === label);
+// Reads by field ID (stable and language-independent across every source
+// of cardio fields — the legacy CARDIO_MIGRATION_FIELD_MAP, a type a user
+// built themselves via confirmAddCardioType, and initNewUser's bilingual
+// DEFAULT_CARDIO_FIELDS all share the same id namespace even though their
+// display *labels* differ between languages/wordings). Pace is derived
+// client-side from distance+duration since the new schema no longer
+// precomputes paceMinPerKm server-side per entry.
+function _fieldVal(entry, id) {
+  const f = (entry.fields || []).find(x => x.id === id);
   return f ? Number(f.value) : null;
 }
 
 function calcRunPRs(workouts) {
   let bestDistanceKm = 0, bestPaceMinPerKm = Infinity, lowestHeartRate = Infinity;
   for (const w of workouts) {
-    const dist = _fieldVal(w, 'מרחק'), dur = _fieldVal(w, 'זמן'), hr = _fieldVal(w, 'דופק ממוצע');
+    const dist = _fieldVal(w, 'distanceKm'), dur = _fieldVal(w, 'durationMinutes'), hr = _fieldVal(w, 'avgHeartRate');
     if (dist != null && dist > bestDistanceKm) bestDistanceKm = dist;
     if (dist && dur) {
       const pace = dur / dist;
@@ -1862,10 +1908,10 @@ async function initRunSection() {
 // were already in-family (paceMinPerKm literally reuses --green-d) and
 // are unchanged. See docs/superpowers/specs/2026-08-30-ui-polish-settings-history-charts-design.md §3.
 const RUN_CHARTS_CONFIG = [
-  { label: 'מרחק',       tKey: 'run.chart.distance', color: '#536fac', fmt: v => v.toFixed(1) },
-  { label: 'דופק ממוצע', tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
-  { label: 'קלוריות',    tKey: 'run.chart.calories', color: '#aa7941', fmt: v => Math.round(v) },
-  { label: 'צעדים',      tKey: 'run.chart.spm',      color: '#9b5aaf', fmt: v => Math.round(v) },
+  { id: 'distanceKm',       tKey: 'run.chart.distance', color: '#536fac', fmt: v => v.toFixed(1) },
+  { id: 'avgHeartRate',     tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
+  { id: 'calories',         tKey: 'run.chart.calories', color: '#aa7941', fmt: v => Math.round(v) },
+  { id: 'avgStridesPerMin', tKey: 'run.chart.spm',      color: '#9b5aaf', fmt: v => Math.round(v) },
 ];
 
 function runSetRange(range) {
@@ -1913,16 +1959,17 @@ async function renderRunCharts() {
   container.innerHTML = '';
 
   for (const cfg of RUN_CHARTS_CONFIG) {
-    const rows = sorted.filter(w => _fieldVal(w, cfg.label) != null);
+    const rows = sorted.filter(w => _fieldVal(w, cfg.id) != null);
     if (rows.length === 0) continue;
 
     const labels = rows.map(w => w.date.slice(5));
-    const data   = rows.map(w => _fieldVal(w, cfg.label));
+    const data   = rows.map(w => _fieldVal(w, cfg.id));
 
-    // DOM id / chart-instance-map key use cfg.tKey (e.g. "run.chart.distance"), not
-    // cfg.label — labels are Hebrew strings that can contain spaces (e.g. 'דופק
-    // ממוצע'), which are invalid in an HTML id and would collide across charts if
-    // used as an object key here. tKey is already unique per chart and ASCII-safe.
+    // DOM id / chart-instance-map key use cfg.tKey (e.g. "run.chart.distance"),
+    // kept as-is from when this config was keyed by Hebrew label (labels contain
+    // spaces, e.g. 'דופק ממוצע', which are invalid in an HTML id). cfg.id would
+    // work now too, but tKey is already unique per chart and ASCII-safe, and
+    // changing it would orphan nothing — no reason to churn the DOM ids.
     const domKey = cfg.tKey;
     const wrap = document.createElement('div');
     wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px;">${t(cfg.tKey)}</div>
@@ -2306,7 +2353,15 @@ async function handleAuthSubmit() {
       await signInWithEmailAndPassword(auth, email, password);
     } else {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await initNewUser(cred.user.uid);
+      await initNewUser(cred.user.uid, email);
+      // onAuthStateChanged already fired initApp() the moment the account was
+      // created — concurrently with initNewUser's writes above, so that first
+      // load can easily read an account that has no defaults in it yet and
+      // leave the user staring at an empty app. reloadAppData() is idempotent
+      // (it's the standard post-mutation refresh everywhere else in this file),
+      // so an unconditional one here guarantees at least one fully-correct
+      // load happens after the defaults actually landed.
+      await reloadAppData();
     }
   } catch (e) {
     setAuthMsg(firebaseErrMsg(e.code));
@@ -2323,7 +2378,7 @@ async function handleAuthSubmit() {
 
 async function handleGoogleLogin() {
   try {
-    let uid;
+    let uid, userEmail;
 
     if (window.Capacitor?.isNativePlatform()) {
       // Android app: Chrome Custom Tab (Google allows it, unlike WebView)
@@ -2333,15 +2388,29 @@ async function handleGoogleLogin() {
       const credential = GoogleAuthProvider.credential(idToken);
       const fbResult   = await signInWithCredential(auth, credential);
       uid = fbResult.user.uid;
+      userEmail = fbResult.user.email;
     } else {
       // Web browser: standard popup flow
       const provider = new GoogleAuthProvider();
       const result   = await signInWithPopup(auth, provider);
       uid = result.user.uid;
+      userEmail = result.user.email;
     }
 
-    const snap = await getDoc(doc(db, 'users', uid, 'config', 'templates'));
-    if (!snap.exists()) await initNewUser(uid);
+    // "Brand new account" must require BOTH docs missing, not just templates:
+    // initNewUser now also writes config/profile (which can hold a display name
+    // the user chose themselves), so keying purely on templates would silently
+    // reset a real name for any existing account whose templates doc went
+    // missing for an unrelated reason. See handleAuthSubmit for why the
+    // reloadAppData() below is needed.
+    const [tmplSnap, profSnap] = await Promise.all([
+      getDoc(doc(db, 'users', uid, 'config', 'templates')),
+      getDoc(doc(db, 'users', uid, 'config', 'profile')),
+    ]);
+    if (!tmplSnap.exists() && !profSnap.exists()) {
+      await initNewUser(uid, userEmail);
+      await reloadAppData();
+    }
   } catch (e) {
     // Unlike handleAuthSubmit/handleForgotPassword (which only ever call the
     // Firebase SDK directly and always get a real FirebaseError with a
@@ -2441,31 +2510,45 @@ function firestoreErrMsg(err) {
 }
 
 // ─── NEW USER DEFAULTS ────────────────────────────────────────
-async function initNewUser(uid) {
+async function initNewUser(uid, email) {
   const g = () => crypto.randomUUID().replace(/-/g,'').substring(0,12).toUpperCase();
-  const DEFAULT_TEMPLATES = {
+  const isHe = currentLang === 'he';
+
+  const DEFAULT_TEMPLATES = isHe ? {
     types: ['A', 'B'],
     A: [
-      { id: g(), name: 'בכן סקוואט',           target: '3 X 4-6 + 1 X 15-20' },
-      { id: g(), name: 'ספליט סקוואט / לאנג G', target: '3 X 10-12 / 3 X הלך-חזור' },
-      { id: g(), name: 'לחיצת כפיים',           target: '3 X 4-6 + 1 X 15-20' },
-      { id: g(), name: 'הרמקת כתף',             target: '3 X 15' },
-      { id: g(), name: 'יד אחורית',             target: '3 X 12-15' },
-      { id: g(), name: 'Toes to Bar',           target: '3 X 8-10' },
-      { id: g(), name: 'תליה על מתח',           target: '3 X 50s' },
+      { id: g(), name: 'מתח',          target: '' },
+      { id: g(), name: 'שכיבות סמיכה', target: '' },
+      { id: g(), name: 'סקוואט',       target: '' },
+      { id: g(), name: 'כפיפות בטן',   target: '' },
+      { id: g(), name: 'דדליפט',       target: '' },
     ],
     B: [
-      { id: g(), name: 'מתח כבד',              target: '2 X 3-5' },
-      { id: g(), name: 'מתח טבעות',            target: '3 X 6-10' },
-      { id: g(), name: 'חתירה אוסטרלית',       target: '2 X 12-15' },
-      { id: g(), name: "בצ'",                  target: '3 X 3-5' },
-      { id: g(), name: 'מקבילים משקל/טבעות',  target: '2 X RIR2' },
-      { id: g(), name: 'שיפוע עליון',          target: '2 X 20' },
-      { id: g(), name: 'יד קדמית סופינציה',    target: '2 X 12-15' },
-      { id: g(), name: 'יד קדמית פטיש',        target: '1 X 12-15' },
-    ]
+      { id: g(), name: "בנץ' פרס",  target: '' },
+      { id: g(), name: 'כפיפת ירך', target: '' },
+      { id: g(), name: 'מקבילים',   target: '' },
+      { id: g(), name: 'יד קדמית',  target: '' },
+      { id: g(), name: 'יד אחורית', target: '' },
+    ],
+  } : {
+    types: ['A', 'B'],
+    A: [
+      { id: g(), name: 'Pull-up',  target: '' },
+      { id: g(), name: 'Push-up',  target: '' },
+      { id: g(), name: 'Squat',    target: '' },
+      { id: g(), name: 'Sit-up',   target: '' },
+      { id: g(), name: 'Deadlift', target: '' },
+    ],
+    B: [
+      { id: g(), name: 'Bench Press',       target: '' },
+      { id: g(), name: 'Hip Flexion',       target: '' },
+      { id: g(), name: 'Dips',              target: '' },
+      { id: g(), name: 'Biceps Curl',       target: '' },
+      { id: g(), name: 'Triceps Extension', target: '' },
+    ],
   };
-  const DEFAULT_MEASURE_TYPES = [
+
+  const DEFAULT_MEASURE_TYPES = isHe ? [
     { id: g(), name: 'משקל',    unit: 'ק"ג' },
     { id: g(), name: 'חזה',     unit: 'ס"מ' },
     { id: g(), name: 'כתפיים',  unit: 'ס"מ' },
@@ -2474,9 +2557,57 @@ async function initNewUser(uid) {
     { id: g(), name: 'שוק',     unit: 'ס"מ' },
     { id: g(), name: 'מותניים', unit: 'ס"מ' },
     { id: g(), name: 'ישבן',    unit: 'ס"מ' },
+  ] : [
+    { id: g(), name: 'Weight',    unit: 'kg' },
+    { id: g(), name: 'Chest',     unit: 'cm' },
+    { id: g(), name: 'Shoulders', unit: 'cm' },
+    { id: g(), name: 'Arm',       unit: 'cm' },
+    { id: g(), name: 'Thigh',     unit: 'cm' },
+    { id: g(), name: 'Calf',      unit: 'cm' },
+    { id: g(), name: 'Waist',     unit: 'cm' },
+    { id: g(), name: 'Glutes',    unit: 'cm' },
   ];
-  await setDoc(doc(db, 'users', uid, 'config', 'templates'),       DEFAULT_TEMPLATES);
+
+  // Deliberately NOT CARDIO_MIGRATION_FIELD_MAP (index.html:3448) — that map's
+  // wording ("דופק ממוצע"/"הרגשתי עייפות") is what's already live on existing
+  // accounts; new-user defaults use different, shorter wording on purpose
+  // (spec: docs/superpowers/specs/2026-09-10-new-user-defaults-design.md).
+  // This only actually matters for the 2 fields whose new wording differs
+  // from the canonical map (heart rate, tired) — cardioFieldDisplayLabel's
+  // translate-on-view check is a byte-exact match against the canonical
+  // label, and the other 6 Hebrew defaults happen to equal it, so those
+  // DO still translate live; see docs/product/07-running-cardio.md for the
+  // full 6-vs-2 breakdown (corrected there 2026-09-10 — this comment
+  // previously implied all 8 fields were frozen, which isn't accurate).
+  const DEFAULT_CARDIO_FIELDS = isHe ? [
+    { id: 'date',             label: 'תאריך',  fieldType: 'date',    hidden: true },
+    { id: 'distanceKm',       label: 'מרחק',   fieldType: 'number' },
+    { id: 'durationMinutes',  label: 'זמן',    fieldType: 'number' },
+    { id: 'calories',         label: 'קלוריות', fieldType: 'number' },
+    { id: 'avgStridesPerMin', label: 'צעדים',  fieldType: 'number' },
+    { id: 'avgHeartRate',     label: 'דופק',   fieldType: 'number' },
+    { id: 'feltTired',        label: 'עייפות', fieldType: 'checkbox' },
+    { id: 'notes',            label: 'הערות',  fieldType: 'text' },
+  ] : [
+    { id: 'date',             label: 'Date',       fieldType: 'date',    hidden: true },
+    { id: 'distanceKm',       label: 'Distance',   fieldType: 'number' },
+    { id: 'durationMinutes',  label: 'Time',       fieldType: 'number' },
+    { id: 'calories',         label: 'Calories',   fieldType: 'number' },
+    { id: 'avgStridesPerMin', label: 'Steps',      fieldType: 'number' },
+    { id: 'avgHeartRate',     label: 'Heart Rate', fieldType: 'number' },
+    { id: 'feltTired',        label: 'Tired',      fieldType: 'checkbox' },
+    { id: 'notes',            label: 'Notes',      fieldType: 'text' },
+  ];
+  const cardioTypeName = t('run.default_type');
+  const DEFAULT_RUNNING_TEMPLATES = {
+    types: [cardioTypeName],
+    [cardioTypeName]: DEFAULT_CARDIO_FIELDS,
+  };
+
+  await setDoc(doc(db, 'users', uid, 'config', 'templates'),        DEFAULT_TEMPLATES);
   await setDoc(doc(db, 'users', uid, 'config', 'measurementTypes'), { types: DEFAULT_MEASURE_TYPES });
+  await setDoc(doc(db, 'users', uid, 'config', 'runningTemplates'), DEFAULT_RUNNING_TEMPLATES);
+  await setDoc(doc(db, 'users', uid, 'config', 'profile'),          { displayName: email ? email.split('@')[0] : '' });
 }
 
 // ─── UTILS ────────────────────────────────────────────────────
@@ -2718,6 +2849,7 @@ async function reloadAppData() {
     const [data] = await Promise.all([loadAllData(), loadRunData()]);
     applyAppData(data);
     if (selectedType) selectType(selectedType);
+    _retryPendingDisplayNameSync();
   } catch (err) {
     toast(t('error.load') + firestoreErrMsg(err), 'error');
   }
@@ -3339,6 +3471,7 @@ function _draftAttachListeners(domain, listId, nameInputId, extraInputId) {
 function _draftStartFirestoreTimer(domain, getType) {
   clearInterval(_draftFirestoreTimer[domain]);
   _draftFirestoreTimer[domain] = setInterval(async () => {
+    _retryPendingDisplayNameSync();
     const type = getType();
     if (!type) return;
     const dk = domain + ':' + type;
