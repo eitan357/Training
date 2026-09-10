@@ -1562,8 +1562,33 @@ function saveDisplayName() {
   const key  = 'displayName_' + (currentUser?.uid || '');
   if (name) localStorage.setItem(key, name); else localStorage.removeItem(key);
   _updateTopbarName();
-  if (currentUser) setDoc(doc(db, 'users', currentUser.uid, 'config', 'profile'), { displayName: name }, { merge: true }).catch(() => {});
+  _syncDisplayName(name);
   toast(t('display_name_saved'), 'success');
+}
+
+// Fire-and-forget write to Firestore. On failure we never bother the user —
+// per product decision, a failed displayName sync is flagged and retried
+// opportunistically the next time we're already talking to Firestore for
+// something else (see _retryPendingDisplayNameSync, called from
+// reloadAppData() and the draft auto-save timer), instead of showing an
+// error for something this low-stakes.
+function _syncDisplayName(name) {
+  if (!currentUser) return;
+  const pendingKey = 'displayNamePending_' + currentUser.uid;
+  setDoc(doc(db, 'users', currentUser.uid, 'config', 'profile'), { displayName: name }, { merge: true })
+    .then(() => { try { localStorage.removeItem(pendingKey); } catch (e) {} })
+    .catch(() => { try { localStorage.setItem(pendingKey, '1'); } catch (e) {} });
+}
+
+// Cheap no-op when nothing is pending (single localStorage read, no network
+// call) — safe to call unconditionally from any existing Firestore-write
+// hot path.
+function _retryPendingDisplayNameSync() {
+  if (!currentUser) return;
+  const pendingKey = 'displayNamePending_' + currentUser.uid;
+  if (!localStorage.getItem(pendingKey)) return;
+  const nameKey = 'displayName_' + currentUser.uid;
+  _syncDisplayName(localStorage.getItem(nameKey) || '');
 }
 
 function _updateTopbarName() {
@@ -2718,6 +2743,7 @@ async function reloadAppData() {
     const [data] = await Promise.all([loadAllData(), loadRunData()]);
     applyAppData(data);
     if (selectedType) selectType(selectedType);
+    _retryPendingDisplayNameSync();
   } catch (err) {
     toast(t('error.load') + firestoreErrMsg(err), 'error');
   }
@@ -3339,6 +3365,7 @@ function _draftAttachListeners(domain, listId, nameInputId, extraInputId) {
 function _draftStartFirestoreTimer(domain, getType) {
   clearInterval(_draftFirestoreTimer[domain]);
   _draftFirestoreTimer[domain] = setInterval(async () => {
+    _retryPendingDisplayNameSync();
     const type = getType();
     if (!type) return;
     const dk = domain + ':' + type;
