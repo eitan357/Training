@@ -3571,26 +3571,43 @@ async function _migrateTypeIdentityForDomain(domainKey, templatesDoc, entriesCol
   const data = templatesSnap.data();
   const rawTypes = data.types;
   if (!Array.isArray(rawTypes) || !rawTypes.length) return;
-  // Idempotency guard: already-migrated types are objects, not strings.
-  if (typeof rawTypes[0] === 'object') return;
 
-  const oldNames = rawTypes; // string[]
-  const newTypes = oldNames.map((name, idx) => ({ id: genId(), name, color: idx % TYPE_COLOR_PALETTE_SIZE }));
-  const nameToId = {};
-  newTypes.forEach(t => { nameToId[t.name] = t.id; });
-
-  const newData = { ...data, types: newTypes };
-  newTypes.forEach(t => {
-    newData[t.id] = data[t.name] || [];
-    if (t.id !== t.name) delete newData[t.name];
-  });
-  if (perTypeExtraField && data[perTypeExtraField] && typeof data[perTypeExtraField] === 'object') {
-    const oldMap = data[perTypeExtraField];
-    const newMap = {};
-    newTypes.forEach(t => { if (t.name in oldMap) newMap[t.id] = oldMap[t.name]; });
-    newData[perTypeExtraField] = newMap;
+  // Phase A — registry conversion (name[] -> {id,name,color}[]). Guarded
+  // independently of Phase B below: already-migrated types are objects,
+  // not strings, so a retry reuses the existing registry as-is rather than
+  // re-deriving it, but ALWAYS falls through to Phase B regardless of
+  // which branch ran here. (Real bug this fixes: the original version
+  // gated Phase B behind this same guard, so a retry after Phase A
+  // succeeded but Phase B failed partway through would never revisit the
+  // remaining un-backfilled docs again — the whole function would
+  // silently no-op forever once the registry itself looked done.)
+  let currentTypes;
+  if (typeof rawTypes[0] === 'object') {
+    currentTypes = rawTypes;
+  } else {
+    const oldNames = rawTypes; // string[]
+    const newTypes = oldNames.map((name, idx) => ({ id: genId(), name, color: idx % TYPE_COLOR_PALETTE_SIZE }));
+    const newData = { ...data, types: newTypes };
+    newTypes.forEach(t => {
+      newData[t.id] = data[t.name] || [];
+      if (t.id !== t.name) delete newData[t.name];
+    });
+    if (perTypeExtraField && data[perTypeExtraField] && typeof data[perTypeExtraField] === 'object') {
+      const oldMap = data[perTypeExtraField];
+      const newMap = {};
+      newTypes.forEach(t => { if (t.name in oldMap) newMap[t.id] = oldMap[t.name]; });
+      newData[perTypeExtraField] = newMap;
+    }
+    await setDoc(templatesRef, newData);
+    currentTypes = newTypes;
   }
-  await setDoc(templatesRef, newData);
+
+  // Phase B — per-entry typeId backfill. Always runs, keyed off
+  // currentTypes' name->id map regardless of whether Phase A ran this time
+  // or an earlier time, so a retry correctly resumes backfilling whatever
+  // docs the per-doc guard below shows are still missing typeId.
+  const nameToId = {};
+  currentTypes.forEach(t => { nameToId[t.name] = t.id; });
 
   const entriesSnap = await getDocs(collection(db, 'users', currentUser.uid, entriesCollection));
   for (const entryDoc of entriesSnap.docs) {
