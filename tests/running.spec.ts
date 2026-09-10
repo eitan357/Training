@@ -37,9 +37,10 @@ test.describe('Cardio Data Migration', () => {
       return await (window as any).__debugGetDoc(['config', 'runningTemplates']);
     });
     expect(result).toBeTruthy();
-    expect(result.types).toContain('Running');
-    expect(result['Running'].some((f: any) => f.fieldType === 'date')).toBe(true);
-    expect(result['Running'].some((f: any) => f.label === 'מרחק')).toBe(true);
+    const runningType = result.types.find((t: any) => t.name === 'Running');
+    expect(runningType).toBeTruthy();
+    expect(result[runningType.id].some((f: any) => f.fieldType === 'date')).toBe(true);
+    expect(result[runningType.id].some((f: any) => f.label === 'מרחק')).toBe(true);
   });
 
   test('migration guard flag is set and idempotent across reloads', async ({ page }) => {
@@ -63,7 +64,7 @@ test.describe('Cardio Data Migration', () => {
       ];
     });
     expect(settingsAfterReload.cardioMigratedV2).toBe(true);
-    expect(templatesAfterReload.types).toContain('Running');
+    expect(templatesAfterReload.types.some((t: any) => t.name === 'Running')).toBe(true);
   });
 });
 

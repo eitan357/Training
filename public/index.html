@@ -1687,7 +1687,7 @@ let currentUser = null;
 // ─── APP STATE ───────────────────────────────────────────────
 let exerciseCount    = 0;
 let selectedType     = null;
-let workoutTypes     = ['A', 'B'];
+let workoutTypes     = [];   // {id,name,color}[], sourced from config/templates.types; empty until Firestore/cache data loads
 let editTab          = 'A';
 let editTemplates    = {};
 let allSessions      = [];
@@ -1771,7 +1771,7 @@ let lastWorkouts     = {};
 // ─── RUNNING STATE ────────────────────────────────────────────
 let runningEnabled     = false;
 let allRunWorkouts     = [];   // was runWorkouts — renamed for symmetry with allSessions/allMeasurements
-let runningTypes       = [];   // plain type-name strings (e.g. "Running"), sourced from config/runningTemplates.types
+let runningTypes       = [];   // {id,name,color}[], sourced from config/runningTemplates.types
 let cardioSelectedType = null;
 let cardioEditTab      = null;
 let cardioEditTemplates = {};
