@@ -1744,9 +1744,9 @@ async function loadRunData() {
     const tmpl = tmplSnap.exists() ? tmplSnap.data() : { types: [] };
     runningTypes = tmpl.types && tmpl.types.length ? tmpl.types : [];
     cardioEditTemplates = {};
-    runningTypes.forEach(type => { cardioEditTemplates[type] = tmpl[type] || []; });
-    if (!cardioSelectedType || !runningTypes.includes(cardioSelectedType)) cardioSelectedType = runningTypes[0] || null;
-    if (!cardioEditTab || !runningTypes.includes(cardioEditTab)) cardioEditTab = runningTypes[0] || null;
+    runningTypes.forEach(type => { cardioEditTemplates[type.id] = tmpl[type.id] || []; });
+    if (!cardioSelectedType || !runningTypes.some(type => type.id === cardioSelectedType)) cardioSelectedType = runningTypes[0]?.id || null;
+    if (!cardioEditTab || !runningTypes.some(type => type.id === cardioEditTab)) cardioEditTab = runningTypes[0]?.id || null;
 
     const wRef  = collection(db, 'users', currentUser.uid, 'runWorkouts');
     const wSnap = await getDocs(query(wRef, orderBy('dateISO', 'desc')));
@@ -2763,7 +2763,7 @@ function applyAppData(data) {
   strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(tmpl, workoutTypes);
   editTemplates   = {};
   workoutTypes.forEach(wtype => {
-    editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
+    editTemplates[wtype.id] = (tmpl[wtype.id] || []).map(ex => {
       const hasNew = ex.targetWeight || ex.targetSets || ex.targetReps;
       return {
         id:            ex.id           || '',
@@ -3373,7 +3373,7 @@ function _applyLocalCache() {
   strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(cached, workoutTypes);
   editTemplates = {};
   workoutTypes.forEach(wtype => {
-    editTemplates[wtype] = (cached[wtype] || []).map(ex => ({
+    editTemplates[wtype.id] = (cached[wtype.id] || []).map(ex => ({
       id:            ex.id            || '',
       name:          ex.name          || '',
       targetWeight:  ex.targetWeight  || '',
@@ -3408,7 +3408,7 @@ function _backgroundApplyData(data) {
     strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(tmpl, workoutTypes);
     editTemplates = {};
     workoutTypes.forEach(wtype => {
-      editTemplates[wtype] = (tmpl[wtype] || []).map(ex => {
+      editTemplates[wtype.id] = (tmpl[wtype.id] || []).map(ex => {
         const hasNew = ex.targetWeight || ex.targetSets || ex.targetReps;
         return {
           id:            ex.id           || '',
