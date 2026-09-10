@@ -1597,7 +1597,7 @@ async function saveRunningEnabled(val) {
   runningEnabled = val;
   try {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'settings'), { runningEnabled: val }, { merge: true });
-  } catch { toast('שגיאה בשמירת הגדרות', 'error'); }
+  } catch (err) { toast(t('error.save') + firestoreErrMsg(err), 'error'); }
   applyRunningGate();
 }
 
