@@ -1474,7 +1474,13 @@ const firebaseConfig = {
 // ─── i18n + THEME ────────────────────────────────────────────
 // TRANSLATIONS and LANGUAGES are imported from ./translations.js
 
-let currentLang  = (() => { const s = localStorage.getItem('lang'); return LANGUAGES[s] ? s : (navigator.language.startsWith('he') ? 'he' : 'en'); })();
+let currentLang = (() => {
+  const s = localStorage.getItem('lang');
+  if (LANGUAGES[s]) return s;
+  const detected = navigator.language.startsWith('he') ? 'he' : 'en';
+  try { localStorage.setItem('lang', detected); } catch (e) {}
+  return detected;
+})();
 let currentTheme = localStorage.getItem('theme') || 'auto';
 
 function t(key) { return (TRANSLATIONS[currentLang] ?? TRANSLATIONS.he ?? {})[key] ?? key; }
