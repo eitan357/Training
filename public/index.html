@@ -2337,7 +2337,7 @@ async function handleAuthSubmit() {
       await signInWithEmailAndPassword(auth, email, password);
     } else {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await initNewUser(cred.user.uid);
+      await initNewUser(cred.user.uid, email);
     }
   } catch (e) {
     setAuthMsg(firebaseErrMsg(e.code));
@@ -2354,7 +2354,7 @@ async function handleAuthSubmit() {
 
 async function handleGoogleLogin() {
   try {
-    let uid;
+    let uid, userEmail;
 
     if (window.Capacitor?.isNativePlatform()) {
       // Android app: Chrome Custom Tab (Google allows it, unlike WebView)
@@ -2364,15 +2364,17 @@ async function handleGoogleLogin() {
       const credential = GoogleAuthProvider.credential(idToken);
       const fbResult   = await signInWithCredential(auth, credential);
       uid = fbResult.user.uid;
+      userEmail = fbResult.user.email;
     } else {
       // Web browser: standard popup flow
       const provider = new GoogleAuthProvider();
       const result   = await signInWithPopup(auth, provider);
       uid = result.user.uid;
+      userEmail = result.user.email;
     }
 
     const snap = await getDoc(doc(db, 'users', uid, 'config', 'templates'));
-    if (!snap.exists()) await initNewUser(uid);
+    if (!snap.exists()) await initNewUser(uid, userEmail);
   } catch (e) {
     // Unlike handleAuthSubmit/handleForgotPassword (which only ever call the
     // Firebase SDK directly and always get a real FirebaseError with a
@@ -2472,31 +2474,45 @@ function firestoreErrMsg(err) {
 }
 
 // ─── NEW USER DEFAULTS ────────────────────────────────────────
-async function initNewUser(uid) {
+async function initNewUser(uid, email) {
   const g = () => crypto.randomUUID().replace(/-/g,'').substring(0,12).toUpperCase();
-  const DEFAULT_TEMPLATES = {
+  const isHe = currentLang === 'he';
+
+  const DEFAULT_TEMPLATES = isHe ? {
     types: ['A', 'B'],
     A: [
-      { id: g(), name: 'בכן סקוואט',           target: '3 X 4-6 + 1 X 15-20' },
-      { id: g(), name: 'ספליט סקוואט / לאנג G', target: '3 X 10-12 / 3 X הלך-חזור' },
-      { id: g(), name: 'לחיצת כפיים',           target: '3 X 4-6 + 1 X 15-20' },
-      { id: g(), name: 'הרמקת כתף',             target: '3 X 15' },
-      { id: g(), name: 'יד אחורית',             target: '3 X 12-15' },
-      { id: g(), name: 'Toes to Bar',           target: '3 X 8-10' },
-      { id: g(), name: 'תליה על מתח',           target: '3 X 50s' },
+      { id: g(), name: 'מתח',          target: '' },
+      { id: g(), name: 'שכיבות סמיכה', target: '' },
+      { id: g(), name: 'סקוואט',       target: '' },
+      { id: g(), name: 'כפיפות בטן',   target: '' },
+      { id: g(), name: 'דדליפט',       target: '' },
     ],
     B: [
-      { id: g(), name: 'מתח כבד',              target: '2 X 3-5' },
-      { id: g(), name: 'מתח טבעות',            target: '3 X 6-10' },
-      { id: g(), name: 'חתירה אוסטרלית',       target: '2 X 12-15' },
-      { id: g(), name: "בצ'",                  target: '3 X 3-5' },
-      { id: g(), name: 'מקבילים משקל/טבעות',  target: '2 X RIR2' },
-      { id: g(), name: 'שיפוע עליון',          target: '2 X 20' },
-      { id: g(), name: 'יד קדמית סופינציה',    target: '2 X 12-15' },
-      { id: g(), name: 'יד קדמית פטיש',        target: '1 X 12-15' },
-    ]
+      { id: g(), name: "בנץ' פרס",  target: '' },
+      { id: g(), name: 'כפיפת ירך', target: '' },
+      { id: g(), name: 'מקבילים',   target: '' },
+      { id: g(), name: 'יד קדמית',  target: '' },
+      { id: g(), name: 'יד אחורית', target: '' },
+    ],
+  } : {
+    types: ['A', 'B'],
+    A: [
+      { id: g(), name: 'Pull-up',  target: '' },
+      { id: g(), name: 'Push-up',  target: '' },
+      { id: g(), name: 'Squat',    target: '' },
+      { id: g(), name: 'Sit-up',   target: '' },
+      { id: g(), name: 'Deadlift', target: '' },
+    ],
+    B: [
+      { id: g(), name: 'Bench Press',       target: '' },
+      { id: g(), name: 'Hip Flexion',       target: '' },
+      { id: g(), name: 'Dips',              target: '' },
+      { id: g(), name: 'Biceps Curl',       target: '' },
+      { id: g(), name: 'Triceps Extension', target: '' },
+    ],
   };
-  const DEFAULT_MEASURE_TYPES = [
+
+  const DEFAULT_MEASURE_TYPES = isHe ? [
     { id: g(), name: 'משקל',    unit: 'ק"ג' },
     { id: g(), name: 'חזה',     unit: 'ס"מ' },
     { id: g(), name: 'כתפיים',  unit: 'ס"מ' },
@@ -2505,9 +2521,52 @@ async function initNewUser(uid) {
     { id: g(), name: 'שוק',     unit: 'ס"מ' },
     { id: g(), name: 'מותניים', unit: 'ס"מ' },
     { id: g(), name: 'ישבן',    unit: 'ס"מ' },
+  ] : [
+    { id: g(), name: 'Weight',    unit: 'kg' },
+    { id: g(), name: 'Chest',     unit: 'cm' },
+    { id: g(), name: 'Shoulders', unit: 'cm' },
+    { id: g(), name: 'Arm',       unit: 'cm' },
+    { id: g(), name: 'Thigh',     unit: 'cm' },
+    { id: g(), name: 'Calf',      unit: 'cm' },
+    { id: g(), name: 'Waist',     unit: 'cm' },
+    { id: g(), name: 'Glutes',    unit: 'cm' },
   ];
-  await setDoc(doc(db, 'users', uid, 'config', 'templates'),       DEFAULT_TEMPLATES);
+
+  // Deliberately NOT CARDIO_MIGRATION_FIELD_MAP (index.html:3448) — that map's
+  // wording ("דופק ממוצע"/"הרגשתי עייפות") is what's already live on existing
+  // accounts; new-user defaults use different, shorter wording on purpose
+  // (spec: docs/superpowers/specs/2026-09-10-new-user-defaults-design.md),
+  // so this set deliberately does not participate in cardioFieldDisplayLabel's
+  // translate-on-view mechanism — see that spec's "Known limitation".
+  const DEFAULT_CARDIO_FIELDS = isHe ? [
+    { id: 'date',             label: 'תאריך',  fieldType: 'date',    hidden: true },
+    { id: 'distanceKm',       label: 'מרחק',   fieldType: 'number' },
+    { id: 'durationMinutes',  label: 'זמן',    fieldType: 'number' },
+    { id: 'calories',         label: 'קלוריות', fieldType: 'number' },
+    { id: 'avgStridesPerMin', label: 'צעדים',  fieldType: 'number' },
+    { id: 'avgHeartRate',     label: 'דופק',   fieldType: 'number' },
+    { id: 'feltTired',        label: 'עייפות', fieldType: 'checkbox' },
+    { id: 'notes',            label: 'הערות',  fieldType: 'text' },
+  ] : [
+    { id: 'date',             label: 'Date',       fieldType: 'date',    hidden: true },
+    { id: 'distanceKm',       label: 'Distance',   fieldType: 'number' },
+    { id: 'durationMinutes',  label: 'Time',       fieldType: 'number' },
+    { id: 'calories',         label: 'Calories',   fieldType: 'number' },
+    { id: 'avgStridesPerMin', label: 'Steps',      fieldType: 'number' },
+    { id: 'avgHeartRate',     label: 'Heart Rate', fieldType: 'number' },
+    { id: 'feltTired',        label: 'Tired',      fieldType: 'checkbox' },
+    { id: 'notes',            label: 'Notes',      fieldType: 'text' },
+  ];
+  const cardioTypeName = t('run.default_type');
+  const DEFAULT_RUNNING_TEMPLATES = {
+    types: [cardioTypeName],
+    [cardioTypeName]: DEFAULT_CARDIO_FIELDS,
+  };
+
+  await setDoc(doc(db, 'users', uid, 'config', 'templates'),        DEFAULT_TEMPLATES);
   await setDoc(doc(db, 'users', uid, 'config', 'measurementTypes'), { types: DEFAULT_MEASURE_TYPES });
+  await setDoc(doc(db, 'users', uid, 'config', 'runningTemplates'), DEFAULT_RUNNING_TEMPLATES);
+  await setDoc(doc(db, 'users', uid, 'config', 'profile'),          { displayName: email ? email.split('@')[0] : '' });
 }
 
 // ─── UTILS ────────────────────────────────────────────────────
