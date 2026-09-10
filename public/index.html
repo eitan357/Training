@@ -1849,7 +1849,7 @@ async function initRunSection() {
   // re-clicking the active tab, but it would wrongly no-op this initial render too
   // (leaving field list/history preview/active-tab class unset). Clear it first so
   // the section always fully renders on open, same as before loadRunData set defaults.
-  const typeToSelect = cardioSelectedType || runningTypes[0];
+  const typeToSelect = cardioSelectedType || runningTypes[0]?.id;
   cardioSelectedType = null;
   selectCardioType(typeToSelect);
   _draftStartFirestoreTimer('cardio', () => WORKOUT_DOMAINS.cardio.getSelectedType());
@@ -2691,7 +2691,7 @@ async function loadAllData() {
 async function initApp() {
   // Phase 1 — instant from localStorage (no Firestore)
   const hadCache = _applyLocalCache();
-  selectType(workoutTypes[0] || 'A');
+  selectType(workoutTypes[0]?.id || 'A');
   renderTypeButtons();
   _draftAttachListeners('strength', 'exerciseList', 'sessionNameInput', 'strengthDateInput');
   _draftStartFirestoreTimer('strength', () => WORKOUT_DOMAINS.strength.getSelectedType());
@@ -3673,7 +3673,7 @@ async function _backgroundSync(hadCache) {
       // Resetting selectedType first forces the equality check to fail,
       // guaranteeing the real re-render this branch exists to trigger.
       selectedType = null;
-      selectType(workoutTypes[0] || 'A');
+      selectType(workoutTypes[0]?.id || 'A');
     }
   } catch(e) { /* silent — Phase 1 data remains visible */ }
 }
