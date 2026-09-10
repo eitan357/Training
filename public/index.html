@@ -1754,7 +1754,7 @@ async function loadRunData() {
     lastCardioWorkouts = {};
     allRunWorkouts.forEach(w => { if (!lastCardioWorkouts[w.workoutType]) lastCardioWorkouts[w.workoutType] = w; });
   } catch (err) {
-    toast(t('error.update') + err.message, 'error');
+    toast(t('error.load') + firestoreErrMsg(err), 'error');
   }
 }
 
@@ -2196,7 +2196,7 @@ async function submitCardioData() {
     await reloadAppData();
     clearCardioForm(true);
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
   btn.disabled = false; btn.innerText = t('btn.save_workout');
 }
@@ -2419,6 +2419,25 @@ function firebaseErrMsg(code) {
     'auth/unauthorized-domain':   t('err.unauth_domain'),
   };
   return msgs[code] || t('err.prefix') + code;
+}
+
+// Maps a Firestore SDK error (updateDoc/addDoc/setDoc/deleteDoc/getDoc(s))
+// to a localized, actionable message. Firestore error messages are always
+// English regardless of app language, so — unlike firebaseErrMsg's
+// unmapped-code fallback — an unrecognized code falls back to a fully
+// generic localized message rather than surfacing any raw SDK text.
+function firestoreErrMsg(err) {
+  const msgs = {
+    'permission-denied':  t('err.fs_permission_denied'),
+    'unavailable':        t('err.fs_unavailable'),
+    'not-found':          t('err.fs_not_found'),
+    'unauthenticated':    t('err.fs_unauthenticated'),
+    'resource-exhausted': t('err.fs_resource_exhausted'),
+    'deadline-exceeded':  t('err.fs_deadline_exceeded'),
+    'cancelled':          t('err.fs_deadline_exceeded'),
+    'aborted':            t('err.fs_deadline_exceeded'),
+  };
+  return msgs[err?.code] || t('err.fs_generic');
 }
 
 // ─── NEW USER DEFAULTS ────────────────────────────────────────
@@ -2700,7 +2719,7 @@ async function reloadAppData() {
     applyAppData(data);
     if (selectedType) selectType(selectedType);
   } catch (err) {
-    toast(t('error.update') + err.message, 'error');
+    toast(t('error.load') + firestoreErrMsg(err), 'error');
   }
 }
 
@@ -4096,7 +4115,7 @@ async function submitData() {
     await reloadAppData();
     clearWorkoutForm(true);
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
   btn.disabled = false; btn.innerText = t('btn.save_workout');
 }
@@ -4389,7 +4408,7 @@ async function saveSessionEdit(saveBtn, domain, sessionId) {
     toast(t('sess.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   } finally {
     // On success this runs after reloadAppData() -> renderHistory() has
     // already replaced this card's entire innerHTML, so saveBtn is a
@@ -4425,7 +4444,7 @@ async function deleteSession(btn, domain, sessionId) {
       toast(t('sess.deleted_ok'), 'success');
       await reloadAppData();
     } catch (err) {
-      toast(t('error.save') + err.message, 'error');
+      toast(t('error.save') + firestoreErrMsg(err), 'error');
     }
   });
 }
@@ -4602,7 +4621,7 @@ async function saveTemplates() {
     const dateWrap = document.getElementById('strengthDateWrap');
     if (dateWrap) dateWrap.style.display = _isStrengthDateFieldHidden(selectedType) ? 'none' : 'block';
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
   if (btn) { btn.disabled = false; btn.innerText = t('edit.save'); }
 }
@@ -4732,7 +4751,7 @@ async function saveCardioTemplates() {
     toast(t('edit.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
   if (btn) { btn.disabled = false; btn.innerText = t('edit.save'); }
 }
@@ -4944,7 +4963,7 @@ async function saveMeasurement() {
     setDefaultDate();
     await reloadAppData();
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
   btn.disabled = false; btn.innerText = t('meas.save');
 }
@@ -4956,7 +4975,7 @@ async function deleteMeasurementEntry(btn, id) {
       toast(t('meas.deleted_ok'), 'success');
       await reloadAppData();
     } catch (err) {
-      toast(t('error.save') + err.message, 'error');
+      toast(t('error.save') + firestoreErrMsg(err), 'error');
     }
   });
 }
@@ -5007,7 +5026,7 @@ async function saveMeasureEdit(saveBtn, measureId) {
     toast(t('sess.saved_ok'), 'success');
     await reloadAppData();
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   } finally {
     // See saveSessionEdit for the identical reasoning: on success this is a
     // silent no-op on an already-detached node, but the reset must still be
@@ -5095,7 +5114,7 @@ async function saveTypesEditor() {
     closeMeasurementsEdit();
     await reloadAppData();
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
   btn.disabled = false; btn.innerText = t('types.save');
 }
@@ -5555,7 +5574,7 @@ async function _bulkDelete(set, barId, collection) {
     toast(ids.length + ' ' + t('bulk.deleted'), 'error');
     await reloadAppData();
   } catch (err) {
-    toast(t('error.save') + err.message, 'error');
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
 }
 async function bulkDeleteSessions() { await _bulkDelete(selectedSessions, 'histBulkBar', WORKOUT_DOMAINS[historyActiveDomain].entriesCollection); }

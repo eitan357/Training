@@ -235,6 +235,15 @@ export const TRANSLATIONS = {
     'err.google_signin_failed': 'שגיאה בהתחברות עם Google. נסה שוב.',
     'err.google_no_account':    'לא נמצא חשבון Google במכשיר',
 
+    // ── Firestore errors (save/update/delete on app data) ──────────
+    'err.fs_permission_denied':  'אין לך הרשאה לבצע פעולה זו. נסה להתחבר מחדש.',
+    'err.fs_unavailable':        'בעיית חיבור לשרת. בדוק את החיבור לאינטרנט ונסה שוב.',
+    'err.fs_not_found':          'הפריט הזה כבר לא קיים (אולי נמחק ממכשיר אחר).',
+    'err.fs_unauthenticated':    'החיבור פג תוקף. התחבר מחדש ונסה שוב.',
+    'err.fs_resource_exhausted': 'השרת עמוס כרגע. נסה שוב בעוד רגע.',
+    'err.fs_deadline_exceeded':  'הפעולה ארכה זמן רב מדי. בדוק את החיבור ונסה שוב.',
+    'err.fs_generic':            'משהו השתבש. נסה שוב, ואם זה חוזר בדוק את החיבור לאינטרנט.',
+
     // ── General ───────────────────────────────────────────────────
     'loading':      'טוען...',
     'saving':       'שומר...',
@@ -534,6 +543,15 @@ export const TRANSLATIONS = {
     'err.prefix':             'Error: ',
     'err.google_signin_failed': 'Google sign-in failed. Please try again.',
     'err.google_no_account':    'No Google account found on this device',
+
+    // ── Firestore errors (save/update/delete on app data) ──────────
+    'err.fs_permission_denied':  "You don't have permission to do this. Try signing in again.",
+    'err.fs_unavailable':        'Connection problem. Check your internet and try again.',
+    'err.fs_not_found':          'This item no longer exists (it may have been deleted elsewhere).',
+    'err.fs_unauthenticated':    'Your session expired. Please sign in again.',
+    'err.fs_resource_exhausted': 'Server is busy right now. Try again in a moment.',
+    'err.fs_deadline_exceeded':  'The request took too long. Check your connection and try again.',
+    'err.fs_generic':            'Something went wrong. Please try again, and check your connection if this keeps happening.',
 
     // ── General ───────────────────────────────────────────────────
     'loading':      'Loading...',

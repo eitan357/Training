@@ -176,6 +176,34 @@ function setProgress(pct, label) {
   document.getElementById('progress-label').textContent = label;
 }
 
+// Firebase Auth/Firestore SDK errors are always in English regardless of
+// device language, and this page has no i18n system (unlike the main app) —
+// map the known codes to Hebrew and never surface a raw English message.
+function authErrMsg(code) {
+  const msgs = {
+    'auth/user-not-found':         'לא נמצא משתמש עם מייל זה',
+    'auth/wrong-password':         'סיסמה שגויה',
+    'auth/invalid-credential':     'מייל או סיסמה שגויים',
+    'auth/email-already-in-use':   'מייל זה כבר רשום',
+    'auth/weak-password':          'סיסמה חלשה מדי (לפחות 6 תווים)',
+    'auth/invalid-email':          'כתובת מייל לא תקינה',
+    'auth/too-many-requests':      'יותר מדי ניסיונות — נסה שוב מאוחר יותר',
+    'auth/network-request-failed': 'בעיית חיבור לאינטרנט',
+  };
+  return msgs[code] || 'שגיאה בהתחברות. נסה שוב (' + (code || 'unknown') + ')';
+}
+
+function firestoreErrMsg(code) {
+  const msgs = {
+    'permission-denied':  'אין הרשאה לבצע פעולה זו. נסה להתחבר מחדש.',
+    'unavailable':        'בעיית חיבור לשרת. בדוק את החיבור ונסה שוב.',
+    'unauthenticated':    'החיבור פג תוקף. התחבר מחדש ונסה שוב.',
+    'resource-exhausted': 'השרת עמוס כרגע. נסה שוב בעוד רגע.',
+    'deadline-exceeded':  'הפעולה ארכה זמן רב מדי. נסה שוב.',
+  };
+  return msgs[code] || 'שגיאה בשמירת הנתונים. נסה שוב.';
+}
+
 async function doLogin() {
   const email = document.getElementById('email').value.trim();
   const pw    = document.getElementById('password').value;
@@ -187,8 +215,8 @@ async function doLogin() {
     if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
       try {
         await createUserWithEmailAndPassword(auth, email, pw);
-      } catch (e2) { showMsg('auth-msg', 'שגיאה: ' + e2.message, 'err'); }
-    } else { showMsg('auth-msg', 'שגיאה: ' + e.message, 'err'); }
+      } catch (e2) { showMsg('auth-msg', authErrMsg(e2.code), 'err'); }
+    } else { showMsg('auth-msg', authErrMsg(e.code), 'err'); }
   }
 }
 
@@ -247,7 +275,7 @@ async function runImport() {
           exercises,
           createdAt: serverTimestamp()
         });
-      } catch (e) { addLog(`אימון ${s.date} — שגיאה: ${e.message}`, true); errors++; }
+      } catch (e) { addLog(`אימון ${s.date} — ${firestoreErrMsg(e.code)}`, true); errors++; }
     }
     if (wTotal > 0) addLog(`אימונים (${wTotal - errors}/${wTotal})`);
 
@@ -263,7 +291,7 @@ async function runImport() {
         await addDoc(collection(db, 'users', uid, 'measurements'), {
           date: String(date || ''), dateISO, ...fields, createdAt: serverTimestamp()
         });
-      } catch (e) { addLog(`מדידה ${m.date} — שגיאה: ${e.message}`, true); errors++; }
+      } catch (e) { addLog(`מדידה ${m.date} — ${firestoreErrMsg(e.code)}`, true); errors++; }
     }
     if (mTotal > 0) addLog(`מדידות (${mTotal})`);
 
@@ -274,7 +302,7 @@ async function runImport() {
     if (errors > 0) showMsg('import-msg', `הייבוא הושלם עם ${errors} שגיאות`, 'info');
 
   } catch (err) {
-    showMsg('import-msg', 'שגיאה כללית: ' + err.message, 'err');
+    showMsg('import-msg', 'שגיאה כללית: ' + firestoreErrMsg(err.code), 'err');
     document.getElementById('import-btn').disabled = false;
   }
 }
