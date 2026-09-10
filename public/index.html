@@ -2571,9 +2571,14 @@ async function initNewUser(uid, email) {
   // Deliberately NOT CARDIO_MIGRATION_FIELD_MAP (index.html:3448) — that map's
   // wording ("דופק ממוצע"/"הרגשתי עייפות") is what's already live on existing
   // accounts; new-user defaults use different, shorter wording on purpose
-  // (spec: docs/superpowers/specs/2026-09-10-new-user-defaults-design.md),
-  // so this set deliberately does not participate in cardioFieldDisplayLabel's
-  // translate-on-view mechanism — see that spec's "Known limitation".
+  // (spec: docs/superpowers/specs/2026-09-10-new-user-defaults-design.md).
+  // This only actually matters for the 2 fields whose new wording differs
+  // from the canonical map (heart rate, tired) — cardioFieldDisplayLabel's
+  // translate-on-view check is a byte-exact match against the canonical
+  // label, and the other 6 Hebrew defaults happen to equal it, so those
+  // DO still translate live; see docs/product/07-running-cardio.md for the
+  // full 6-vs-2 breakdown (corrected there 2026-09-10 — this comment
+  // previously implied all 8 fields were frozen, which isn't accurate).
   const DEFAULT_CARDIO_FIELDS = isHe ? [
     { id: 'date',             label: 'תאריך',  fieldType: 'date',    hidden: true },
     { id: 'distanceKm',       label: 'מרחק',   fieldType: 'number' },
