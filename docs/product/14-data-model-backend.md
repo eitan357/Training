@@ -12,12 +12,12 @@
 |---|---|---|---|---|
 | `users/{uid}/config/templates` | מסמך יחיד | `initNewUser`, `saveTemplates`, עדכון יעד אוטומטי ב-`submitData` | `types: string[]`, ולכל סוג: מערך `{id, name, targetWeight, targetSets, targetReps, target?}` | `02`, `03` |
 | `users/{uid}/config/measurementTypes` | מסמך יחיד | `initNewUser`, `saveTypesEditor` | `types: {id, name, unit}[]` | `06` |
-| `users/{uid}/config/profile` | מסמך יחיד | `saveDisplayName` | `displayName: string` | `08` |
+| `users/{uid}/config/profile` | מסמך יחיד | `initNewUser`, `saveDisplayName` | `displayName: string` | `01`, `08` |
 | `users/{uid}/config/settings` | מסמך יחיד | `saveRunningEnabled`, `migrateCardioDataV2` | `runningEnabled: boolean`, `cardioMigratedV2: boolean` (דגל מיגרציה חד-פעמי, ראו `07`) | `07`, `08` |
 | `users/{uid}/workouts` | אוסף (מסמך לכל אימון) | `submitData`, `checkAndAutoSavePreviousDrafts`, `migrate.html` | `date`, `dateISO`, `type`, `sessionName`, `exercises: {id,name,target,weight,sets,reps,notes}[]`, `autoSaved?`, `createdAt` | `02`, `04` |
 | `users/{uid}/measurements` | אוסף (מסמך לכל מדידה) | `saveMeasurement`, `migrate.html` | `date`, `dateISO`, `createdAt`, ושדה דינמי לכל סוג מדידה (למשל `"משקל": "78.5"`) | `06` |
 | `users/{uid}/drafts/{domain}_{type}` | מסמך לכל סוג אימון פעיל (כוח **או** אירובי) | `_draftSaveFirestore` | לכוח: `workoutName`, `exercises: {name,target,weight,sets,reps,notes}[]`; לאירובי: `workoutName`, `fields: {id,label,fieldType,value}[]`; בשניהם: `createdAt`, `lastModified` | `02`, `07` |
-| `users/{uid}/config/runningTemplates` | מסמך יחיד | `confirmAddCardioType`, `saveCardioTemplates`, `migrateCardioDataV2` | `types: string[]` (רשימת שמות סוגי אימון אירובי) + שדה נוסף לכל סוג ששמו הוא מפתח, עם מערך `{id, label, fieldType}[]` (`fieldType`: `text`\|`number`\|`checkbox`\|`date`) — מקביל מבנית ל-`config/templates` של הכוח, אבל לשדות דינמיים במקום תרגילים | `07` |
+| `users/{uid}/config/runningTemplates` | מסמך יחיד | `initNewUser`, `confirmAddCardioType`, `saveCardioTemplates`, `migrateCardioDataV2` | `types: string[]` (רשימת שמות סוגי אימון אירובי) + שדה נוסף לכל סוג ששמו הוא מפתח, עם מערך `{id, label, fieldType}[]` (`fieldType`: `text`\|`number`\|`checkbox`\|`date`) — מקביל מבנית ל-`config/templates` של הכוח, אבל לשדות דינמיים במקום תרגילים | `07` |
 | `users/{uid}/runWorkouts` | אוסף (מסמך לכל אימון אירובי) | `submitCardioData`, `migrateCardioDataV2` | `date` (DD/MM/YYYY), `dateISO` (YYYY-MM-DD), `workoutType: string`, `sessionName: string`, `fields: {id,label,fieldType,value}[]`, `createdAt` | `04`, `07` |
 
 ## הערות עיצוב נתונים חשובות
