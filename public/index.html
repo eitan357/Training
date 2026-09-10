@@ -1669,7 +1669,7 @@ function _deriveDateFieldHiddenByType(tmpl, types) {
   if (tmpl.dateFieldHiddenByType && typeof tmpl.dateFieldHiddenByType === 'object') return { ...tmpl.dateFieldHiddenByType };
   const legacyHidden = tmpl.dateFieldHidden !== false;
   const map = {};
-  types.forEach(t => { map[t] = legacyHidden; });
+  types.forEach(t => { map[t.id] = legacyHidden; });
   return map;
 }
 
@@ -2181,15 +2181,17 @@ async function submitCardioData() {
   const dateISO = `${yyyy}-${mm}-${dd}`;
 
   const sessionName = document.getElementById('cardioSessionNameInput')?.value.trim() || '';
+  const matchedType = runningTypes.find(t => t.id === cardioSelectedType);
   btn.disabled = true; btn.innerText = t('saving');
   try {
     await addDoc(collection(db, 'users', currentUser.uid, 'runWorkouts'), {
       date: dateStr, dateISO,
-      workoutType: cardioSelectedType,
+      workoutType: matchedType ? matchedType.name : cardioSelectedType,
+      typeId: cardioSelectedType,
       sessionName, fields,
       createdAt: serverTimestamp(),
     });
-    const cachedLW = { date: dateStr, dateISO, workoutType: cardioSelectedType, sessionName, fields };
+    const cachedLW = { date: dateStr, dateISO, workoutType: matchedType ? matchedType.name : cardioSelectedType, typeId: cardioSelectedType, sessionName, fields };
     lastCardioWorkouts[cardioSelectedType] = cachedLW;
     await _draftDelete('cardio', cardioSelectedType);
     toast(t('workout.saved_ok'), 'success');
@@ -4198,17 +4200,19 @@ async function submitData() {
     : _todayDDMMYYYY();
   const [dd, mm, yyyy] = dateStr.split('/');
 
+  const matchedType = workoutTypes.find(wt => wt.id === selectedType);
   btn.disabled = true; btn.innerText = t('saving');
   try {
     await addDoc(collection(db, 'users', currentUser.uid, 'workouts'), {
       date:        `${dd}/${mm}/${yyyy}`,
       dateISO:     `${yyyy}-${mm}-${dd}`,
-      type:        selectedType,
+      type:        matchedType ? matchedType.name : selectedType,
+      typeId:      selectedType,
       sessionName,
       exercises,
       createdAt:   serverTimestamp()
     });
-    const cachedLW = { date: `${dd}/${mm}/${yyyy}`, dateISO: `${yyyy}-${mm}-${dd}`, type: selectedType, sessionName, exercises };
+    const cachedLW = { date: `${dd}/${mm}/${yyyy}`, dateISO: `${yyyy}-${mm}-${dd}`, type: matchedType ? matchedType.name : selectedType, typeId: selectedType, sessionName, exercises };
     try { localStorage.setItem(_cacheKeyLastWorkout(selectedType), JSON.stringify(cachedLW)); } catch(e) {}
     lastWorkouts[selectedType] = cachedLW;
     await _draftDelete('strength', selectedType);
