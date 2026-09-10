@@ -1752,7 +1752,7 @@ async function loadRunData() {
     const wSnap = await getDocs(query(wRef, orderBy('dateISO', 'desc')));
     allRunWorkouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     lastCardioWorkouts = {};
-    allRunWorkouts.forEach(w => { if (!lastCardioWorkouts[w.workoutType]) lastCardioWorkouts[w.workoutType] = w; });
+    allRunWorkouts.forEach(w => { const key = w.typeId || w.workoutType; if (!lastCardioWorkouts[key]) lastCardioWorkouts[key] = w; });
   } catch (err) {
     toast(t('error.load') + firestoreErrMsg(err), 'error');
   }
@@ -2062,7 +2062,7 @@ function renderCardioFieldList(type, prefillFields) {
 
 function renderCardioTypeButtons() {
   document.getElementById('cardioTypeRow').innerHTML = runningTypes.map(type =>
-    `<button class="type-btn${type === cardioSelectedType ? ' active' : ''}" data-type="${escHtml(type)}" onclick="selectCardioType('${escHtml(type)}')">${escHtml(type)}</button>`
+    `<button class="type-btn${type.id === cardioSelectedType ? ' active' : ''}" data-type="${escHtml(type.id)}" onclick="selectCardioType('${escHtml(type.id)}')">${escHtml(type.name)}</button>`
   ).join('');
 }
 
@@ -2485,16 +2485,24 @@ function genId() {
 }
 
 // Shared color-assignment strategy for BOTH strength and cardio type
-// badges/dots: color follows a type's position in its domain's `types`
-// array (workoutTypes for strength, runningTypes for cardio — Plan B), not
-// its name. This is what lets a user-added 3rd/4th/Nth type always get a
+// badges/dots: color is frozen onto each type at creation time (see
+// TYPE_COLOR_PALETTE_SIZE usage where types are created) and read back from
+// that type's own `.color` field, not recomputed from its current position
+// in the domain's `types` array (workoutTypes for strength, runningTypes for
+// cardio). This is what lets a user-added 3rd/4th/Nth type always get a
 // distinct, defined color instead of silently rendering colorless (the bug
-// that motivated this function). Index 0/1 are pinned to strength's
-// pre-existing green/purple so A/B never visibly change color.
+// that originally motivated this function), AND lets types be reordered
+// (Task 5) without anyone's color changing. Index 0/1 are pinned to
+// strength's pre-existing green/purple so A/B never visibly change color.
 const TYPE_COLOR_PALETTE_SIZE = 6;
-function typeColorClass(types, typeName) {
-  const idx = types.indexOf(typeName);
-  return 'c' + (idx >= 0 ? idx % TYPE_COLOR_PALETTE_SIZE : 0);
+// `types` is the domain's {id,name,color}[] registry; `typeId` is the id
+// to resolve. Reads the color frozen at that type's creation time (spec
+// 2026-09-10-type-identity-rename-reorder-design.md §3.1) rather than
+// recomputing from the type's current array position, so reordering types
+// never changes anyone's color.
+function typeColorClass(types, typeId) {
+  const match = types.find(t => t.id === typeId);
+  return 'c' + (match ? match.color : 0);
 }
 
 function escHtml(s) {
@@ -2673,7 +2681,7 @@ async function loadAllData() {
   measurementsSnap.forEach(d => measurements.push({ ...d.data(), id: d.id }));
 
   const lw = {};
-  workouts.forEach(s => { if (!lw[s.type]) lw[s.type] = s; });
+  workouts.forEach(s => { const key = s.typeId || s.type; if (!lw[key]) lw[key] = s; });
 
   return { templates, measureTypes: mtData.types || [], allWorkouts: workouts, measurements, lastWorkouts: lw };
 }
@@ -3033,10 +3041,12 @@ const WORKOUT_DOMAINS = {
         ? draft.date
         : _todayDDMMYYYY(new Date(draft.createdAt));
       const [dd, mm, yyyy] = dateStr.split('/');
+      const matchedType = workoutTypes.find(t => t.id === draft.type);
       return {
         date:        dateStr,
         dateISO:     `${yyyy}-${mm}-${dd}`,
-        type:        draft.type,
+        type:        matchedType ? matchedType.name : draft.type, // matchedType.name for the normal case; draft.type itself is only used as a last-resort display fallback if the type was deleted between the draft's creation and this promotion
+        typeId:      draft.type,
         sessionName: draft.workoutName || '',
         exercises:   (draft.exercises || [])
           .filter(e => e.weight || e.sets || e.reps || e.notes)
@@ -3045,7 +3055,7 @@ const WORKOUT_DOMAINS = {
         createdAt:   serverTimestamp(),
       };
     },
-    colorClass: s => typeColorClass(workoutTypes, s.type),
+    colorClass: s => typeColorClass(workoutTypes, s.typeId || s.type),
     renderCardMeta: s => `${(s.exercises||[]).length} ${t('workout.exercises')}`,
     renderCardBody: s => `
       <table class="hist-table">
@@ -3062,7 +3072,10 @@ const WORKOUT_DOMAINS = {
           </tr>`).join('')}
         </tbody>
       </table>`,
-    badgeText: s => `${t('workout.badge')} ${escHtml(s.type)}`,
+    badgeText: s => {
+      const match = s.typeId ? workoutTypes.find(t => t.id === s.typeId) : null;
+      return `${t('workout.badge')} ${escHtml(match ? match.name : s.type)}`;
+    },
     getSelectedType: () => selectedType,
     getTemplates:    () => editTemplates,
     getEditTab:      () => editTab,
@@ -3147,9 +3160,10 @@ const WORKOUT_DOMAINS = {
       if (dateField && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateField.value)) return null;
       const dateStr = dateField ? dateField.value : _todayDDMMYYYY(new Date(draft.createdAt));
       const [dd, mm, yyyy] = dateStr.split('/');
+      const matchedType = runningTypes.find(t => t.id === draft.type);
       return {
         date: dateStr, dateISO: `${yyyy}-${mm}-${dd}`,
-        workoutType: draft.type, sessionName: draft.workoutName || '', fields,
+        workoutType: matchedType ? matchedType.name : draft.type, typeId: draft.type, sessionName: draft.workoutName || '', fields,
         autoSaved: true, createdAt: serverTimestamp(),
       };
     },
@@ -3224,9 +3238,12 @@ const WORKOUT_DOMAINS = {
     getEditTab:   () => cardioEditTab,
     setEditTab:   v => { cardioEditTab = v; },
     getTypes:     () => runningTypes,
-    colorClass: s => typeColorClass(runningTypes, s.workoutType),
+    colorClass: s => typeColorClass(runningTypes, s.typeId || s.workoutType),
     renderCardMeta: s => `${(s.fields||[]).length} ${t('cardio.fields_count')}`,
-    badgeText: s => escHtml(s.workoutType),
+    badgeText: s => {
+      const match = s.typeId ? runningTypes.find(t => t.id === s.typeId) : null;
+      return escHtml(match ? match.name : s.workoutType);
+    },
     renderCardBody: s => `
       <table class="hist-table">
         <tbody>
@@ -4254,7 +4271,7 @@ function renderHistory() {
   _attachHistLongPress();
   const sourceData = historyActiveDomain === 'cardio' ? allRunWorkouts : allSessions;
   const typeKey    = historyActiveDomain === 'cardio' ? 'workoutType' : 'type';
-  const data = activeFilter === 'all' ? sourceData : sourceData.filter(s => s[typeKey] === activeFilter);
+  const data = activeFilter === 'all' ? sourceData : sourceData.filter(s => (s.typeId || s[typeKey]) === activeFilter);
   if (!data.length) {
     list.innerHTML = `<div class="empty"><div class="empty-icon"><svg class="icon" style="width:48px;height:48px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-runner"/></svg></div><div class="empty-text">${t('workout.no_results')}</div></div>`;
     return;
@@ -4554,17 +4571,17 @@ function armDelete(btn, callback) {
 // ─── EDIT TEMPLATES ───────────────────────────────────────────
 function renderTypeButtons() {
   document.getElementById('typeRow').innerHTML = workoutTypes.map(wtype =>
-    `<button class="type-btn${wtype === selectedType ? ' active' : ''}" data-type="${escHtml(wtype)}" onclick="selectType('${escHtml(wtype)}')">${escHtml(t('workout.badge') + ' ' + wtype)}</button>`
+    `<button class="type-btn${wtype.id === selectedType ? ' active' : ''}" data-type="${escHtml(wtype.id)}" onclick="selectType('${escHtml(wtype.id)}')">${escHtml(t('workout.badge') + ' ' + wtype.name)}</button>`
   ).join('');
 }
 
 function renderFilterButtons() {
   const types = historyActiveDomain === 'cardio' ? runningTypes : workoutTypes;
-  const label = wtype => historyActiveDomain === 'cardio' ? escHtml(wtype) : escHtml(t('workout.badge') + ' ' + wtype);
+  const label = wtype => historyActiveDomain === 'cardio' ? escHtml(wtype.name) : escHtml(t('workout.badge') + ' ' + wtype.name);
   document.getElementById('filterRow').innerHTML =
     `<button class="filter-btn${activeFilter==='all'?' active':''}" data-filter="all" onclick="filterHistory('all')">${t('filter.all')}</button>` +
     types.map(wtype =>
-      `<button class="filter-btn${activeFilter===wtype?' active':''}" data-filter="${escHtml(wtype)}" onclick="filterHistory('${escHtml(wtype)}')">${label(wtype)}</button>`
+      `<button class="filter-btn${activeFilter===wtype.id?' active':''}" data-filter="${escHtml(wtype.id)}" onclick="filterHistory('${escHtml(wtype.id)}')">${label(wtype)}</button>`
     ).join('');
 }
 
