@@ -3003,7 +3003,7 @@ const WORKOUT_DOMAINS = {
     buildSaveDoc: (types, templates) => {
       const templateData = { types, dateFieldHiddenByType: strengthDateFieldHiddenByType };
       types.forEach(wtype => {
-        templateData[wtype] = (templates[wtype] || [])
+        templateData[wtype.id] = (templates[wtype.id] || [])
           .filter(ex => !WORKOUT_DOMAINS.strength.isEmptyItem(ex))
           .map(ex => {
             const hasNew = (ex.targetWeight || '').trim() || (ex.targetSets || '').trim() || (ex.targetReps || '').trim();
@@ -3212,7 +3212,7 @@ const WORKOUT_DOMAINS = {
     buildSaveDoc: (types, templates) => {
       const templateData = { types };
       types.forEach(type => {
-        templateData[type] = (templates[type] || []).filter(f => f.label.trim());
+        templateData[type.id] = (templates[type.id] || []).filter(f => f.label.trim());
       });
       return templateData;
     },
@@ -4572,12 +4572,12 @@ function renderEditTabs() {
   const canRemove = workoutTypes.length > 1;
   document.getElementById('editTabs').innerHTML =
     workoutTypes.map(wtype =>
-      `<div class="tab-item${wtype===editTab?' active':''}">
-        <button class="tab-btn" onclick="switchEditTab('${escHtml(wtype)}')">
-          <span class="count-pill">${(editTemplates[wtype]||[]).length}</span>
-          ${escHtml(wtype)}
+      `<div class="tab-item${wtype.id===editTab?' active':''}">
+        <button class="tab-btn" onclick="switchEditTab('${escHtml(wtype.id)}')">
+          <span class="count-pill">${(editTemplates[wtype.id]||[]).length}</span>
+          ${escHtml(wtype.name)}
         </button>
-        ${canRemove ? `<button class="tab-remove" onclick="removeWorkoutType('${escHtml(wtype)}')" title="✕">✕</button>` : ''}
+        ${canRemove ? `<button class="tab-remove" onclick="removeWorkoutType('${escHtml(wtype.id)}')" title="✕">✕</button>` : ''}
       </div>`
     ).join('') +
     `<div class="tab-item add-tab-item">
@@ -4586,7 +4586,7 @@ function renderEditTabs() {
 }
 
 function renderEditAll() {
-  if (!workoutTypes.includes(editTab)) editTab = workoutTypes[0];
+  if (!workoutTypes.some(wtype => wtype.id === editTab)) editTab = workoutTypes[0]?.id;
   renderEditTabs();
   renderEditList('strength', editTab);
   renderTypeButtons();
@@ -4661,22 +4661,23 @@ function cancelAddType() { document.getElementById('addTypeForm').style.display 
 function confirmAddType() {
   const val = document.getElementById('newTypeName').value.trim();
   if (!val) return;
-  if (workoutTypes.map(wtype => wtype.toLowerCase()).includes(val.toLowerCase())) { toast(t('edit.type_exists'), 'error'); return; }
+  if (workoutTypes.map(wtype => wtype.name.toLowerCase()).includes(val.toLowerCase())) { toast(t('edit.type_exists'), 'error'); return; }
   collectEdits('strength');
-  workoutTypes.push(val);
-  editTemplates[val] = [];
-  editTab = val;
+  const newType = { id: genId(), name: val, color: workoutTypes.length % TYPE_COLOR_PALETTE_SIZE };
+  workoutTypes.push(newType);
+  editTemplates[newType.id] = [];
+  editTab = newType.id;
   document.getElementById('addTypeForm').style.display = 'none';
   renderEditAll();
   toast(t('edit.type_added'), 'success');
 }
 
-function removeWorkoutType(type) {
+function removeWorkoutType(typeId) {
   if (workoutTypes.length <= 1) { toast(t('edit.min_one_type'), 'error'); return; }
   collectEdits('strength');
-  workoutTypes = workoutTypes.filter(wtype => wtype !== type);
-  delete editTemplates[type];
-  if (editTab === type) editTab = workoutTypes[0];
+  workoutTypes = workoutTypes.filter(wtype => wtype.id !== typeId);
+  delete editTemplates[typeId];
+  if (editTab === typeId) editTab = workoutTypes[0].id;
   renderEditAll();
   toast(t('edit.type_removed'), 'success');
 }
@@ -4684,7 +4685,7 @@ function removeWorkoutType(type) {
 async function saveTemplates() {
   collectEdits('strength');
   const templateData = WORKOUT_DOMAINS.strength.buildSaveDoc(workoutTypes, editTemplates);
-  const total = workoutTypes.reduce((n, wtype) => n + (templateData[wtype]||[]).length, 0);
+  const total = workoutTypes.reduce((n, wtype) => n + (templateData[wtype.id]||[]).length, 0);
   if (!total) { toast(t('edit.no_items'), 'error'); return; }
 
   const btn = document.querySelector('#mainEditPanel .btn-primary');
@@ -4742,19 +4743,19 @@ function renderCardioEditTabs() {
   const canRemove = runningTypes.length > 1;
   document.getElementById('cardioEditTabs').innerHTML =
     runningTypes.map(type =>
-      `<div class="tab-item${type===cardioEditTab?' active':''}">
-        <button class="tab-btn" onclick="switchCardioEditTab('${escHtml(type)}')">
-          <span class="count-pill">${(cardioEditTemplates[type]||[]).length}</span>
-          ${escHtml(type)}
+      `<div class="tab-item${type.id===cardioEditTab?' active':''}">
+        <button class="tab-btn" onclick="switchCardioEditTab('${escHtml(type.id)}')">
+          <span class="count-pill">${(cardioEditTemplates[type.id]||[]).length}</span>
+          ${escHtml(type.name)}
         </button>
-        ${canRemove ? `<button class="tab-remove" onclick="removeCardioType('${escHtml(type)}')" title="✕">✕</button>` : ''}
+        ${canRemove ? `<button class="tab-remove" onclick="removeCardioType('${escHtml(type.id)}')" title="✕">✕</button>` : ''}
       </div>`
     ).join('') +
     `<div class="tab-item add-tab-item"><button class="tab-btn add-tab-btn" onclick="document.getElementById('cardioAddTypeForm').style.display='flex';document.getElementById('cardioNewTypeName').focus();">+</button></div>`;
 }
 
 function renderCardioEditAll() {
-  if (!runningTypes.includes(cardioEditTab)) cardioEditTab = runningTypes[0];
+  if (!runningTypes.some(type => type.id === cardioEditTab)) cardioEditTab = runningTypes[0]?.id;
   renderCardioEditTabs();
   if (cardioEditTab) renderEditList('cardio', cardioEditTab);
   renderCardioTypeButtons();
@@ -4803,22 +4804,23 @@ function setCardioFieldType(idx, ftype) {
 function confirmAddCardioType() {
   const val = document.getElementById('cardioNewTypeName').value.trim();
   if (!val) return;
-  if (runningTypes.map(t => t.toLowerCase()).includes(val.toLowerCase())) { toast(t('edit.type_exists'), 'error'); return; }
+  if (runningTypes.map(t => t.name.toLowerCase()).includes(val.toLowerCase())) { toast(t('edit.type_exists'), 'error'); return; }
   collectEdits('cardio');
-  runningTypes.push(val);
-  cardioEditTemplates[val] = CARDIO_MIGRATION_FIELD_MAP.map(f => ({ ...f })); // seed with the 8 default fields (spec §4.2)
-  cardioEditTab = val;
+  const newType = { id: genId(), name: val, color: runningTypes.length % TYPE_COLOR_PALETTE_SIZE };
+  runningTypes.push(newType);
+  cardioEditTemplates[newType.id] = CARDIO_MIGRATION_FIELD_MAP.map(f => ({ ...f })); // seed with the 8 default fields (spec §4.2)
+  cardioEditTab = newType.id;
   document.getElementById('cardioAddTypeForm').style.display = 'none';
   renderCardioEditAll();
   toast(t('edit.type_added'), 'success');
 }
 
-function removeCardioType(type) {
+function removeCardioType(typeId) {
   if (runningTypes.length <= 1) { toast(t('edit.min_one_type'), 'error'); return; }
   collectEdits('cardio');
-  runningTypes = runningTypes.filter(t => t !== type);
-  delete cardioEditTemplates[type];
-  if (cardioEditTab === type) cardioEditTab = runningTypes[0];
+  runningTypes = runningTypes.filter(t => t.id !== typeId);
+  delete cardioEditTemplates[typeId];
+  if (cardioEditTab === typeId) cardioEditTab = runningTypes[0].id;
   renderCardioEditAll();
   toast(t('edit.type_removed'), 'success');
 }
@@ -4826,7 +4828,7 @@ function removeCardioType(type) {
 async function saveCardioTemplates() {
   collectEdits('cardio');
   const templateData = WORKOUT_DOMAINS.cardio.buildSaveDoc(runningTypes, cardioEditTemplates);
-  const total = runningTypes.reduce((n, type) => n + (templateData[type]||[]).length, 0);
+  const total = runningTypes.reduce((n, type) => n + (templateData[type.id]||[]).length, 0);
   if (!total) { toast(t('edit.no_items'), 'error'); return; }
   const btn = document.querySelector('#cardioEditPanel .btn-primary');
   if (btn) { btn.disabled = true; btn.innerText = t('saving'); }
