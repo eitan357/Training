@@ -3536,9 +3536,76 @@ async function migrateCardioDataV2() {
   } catch (e) { /* silent — retried next load, guard flag only set on full success */ }
 }
 
+// ─── TYPE IDENTITY MIGRATION (V1 — name-keyed types → {id,name,color}) ───
+// One-time, guarded by config/settings.typeIdentityMigratedV1. Same silent
+// try/catch + idempotency discipline as migrateCardioDataV2 (spec
+// 2026-09-10-type-identity-rename-reorder-design.md §4): a failure here
+// must never block app load and must be safe to retry from any partial
+// state without corrupting already-migrated data.
+async function migrateTypeIdentity() {
+  if (!currentUser) return;
+  try {
+    const settingsRef = doc(db, 'users', currentUser.uid, 'config', 'settings');
+    const settingsSnap = await getDoc(settingsRef);
+    if (settingsSnap.exists() && settingsSnap.data().typeIdentityMigratedV1 === true) {
+      return;
+    }
+
+    await _migrateTypeIdentityForDomain('strength', 'templates', 'workouts', 'type', 'dateFieldHiddenByType');
+    await _migrateTypeIdentityForDomain('cardio', 'runningTemplates', 'runWorkouts', 'workoutType', null);
+
+    await setDoc(settingsRef, { typeIdentityMigratedV1: true }, { merge: true });
+  } catch (e) { /* silent — retried next load, guard flag only set on full success */ }
+}
+
+// domainKey: 'strength' | 'cardio' — only used for error messages/comments below.
+// templatesDoc: 'templates' | 'runningTemplates' — the config doc holding `types`.
+// entriesCollection: 'workouts' | 'runWorkouts'.
+// typeField: the name of the field on each entry doc holding the type name ('type' or 'workoutType').
+// perTypeExtraField: an additional name-keyed map living on the SAME templates doc that also
+//   needs re-keying (strength's `dateFieldHiddenByType`); null if the domain has none (cardio).
+async function _migrateTypeIdentityForDomain(domainKey, templatesDoc, entriesCollection, typeField, perTypeExtraField) {
+  const templatesRef = doc(db, 'users', currentUser.uid, 'config', templatesDoc);
+  const templatesSnap = await getDoc(templatesRef);
+  if (!templatesSnap.exists()) return; // nothing to migrate for this domain
+  const data = templatesSnap.data();
+  const rawTypes = data.types;
+  if (!Array.isArray(rawTypes) || !rawTypes.length) return;
+  // Idempotency guard: already-migrated types are objects, not strings.
+  if (typeof rawTypes[0] === 'object') return;
+
+  const oldNames = rawTypes; // string[]
+  const newTypes = oldNames.map((name, idx) => ({ id: genId(), name, color: idx % TYPE_COLOR_PALETTE_SIZE }));
+  const nameToId = {};
+  newTypes.forEach(t => { nameToId[t.name] = t.id; });
+
+  const newData = { ...data, types: newTypes };
+  newTypes.forEach(t => {
+    newData[t.id] = data[t.name] || [];
+    if (t.id !== t.name) delete newData[t.name];
+  });
+  if (perTypeExtraField && data[perTypeExtraField] && typeof data[perTypeExtraField] === 'object') {
+    const oldMap = data[perTypeExtraField];
+    const newMap = {};
+    newTypes.forEach(t => { if (t.name in oldMap) newMap[t.id] = oldMap[t.name]; });
+    newData[perTypeExtraField] = newMap;
+  }
+  await setDoc(templatesRef, newData);
+
+  const entriesSnap = await getDocs(collection(db, 'users', currentUser.uid, entriesCollection));
+  for (const entryDoc of entriesSnap.docs) {
+    const entry = entryDoc.data();
+    if (entry.typeId !== undefined) continue; // already backfilled, idempotency guard
+    const matchedId = nameToId[entry[typeField]];
+    if (!matchedId) continue; // entry's type name doesn't match any current type (e.g. a removed type) — leave typeId unset, falls back to the frozen name string at render time
+    await updateDoc(doc(db, 'users', currentUser.uid, entriesCollection, entryDoc.id), { typeId: matchedId });
+  }
+}
+
 async function _backgroundSync(hadCache) {
   try {
     await migrateCardioDataV2();
+    await migrateTypeIdentity();
     // checkAndAutoSavePreviousDrafts() can WRITE a new doc into runWorkouts
     // (cardio auto-save); prefetchRunData() READS that same collection.
     // Started here (not inside the Promise.all below) so it still runs
