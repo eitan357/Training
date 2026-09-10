@@ -1578,12 +1578,18 @@ function saveDisplayName() {
 // something else (see _retryPendingDisplayNameSync, called from
 // reloadAppData() and the draft auto-save timer), instead of showing an
 // error for something this low-stakes.
+// The pending flag stores the actual name that failed to sync, not just a
+// boolean — reading it back from displayName_<uid> instead would pick up
+// whatever loadAllData() last wrote there from the SERVER's (stale) value,
+// silently discarding the user's still-unsynced change. Empty string is a
+// legitimate pending value (user cleared their name while offline), so the
+// presence check below is explicitly `!== null`, not a truthiness check.
 function _syncDisplayName(name) {
   if (!currentUser) return;
   const pendingKey = 'displayNamePending_' + currentUser.uid;
   setDoc(doc(db, 'users', currentUser.uid, 'config', 'profile'), { displayName: name }, { merge: true })
     .then(() => { try { localStorage.removeItem(pendingKey); } catch (e) {} })
-    .catch(() => { try { localStorage.setItem(pendingKey, '1'); } catch (e) {} });
+    .catch(() => { try { localStorage.setItem(pendingKey, name); } catch (e) {} });
 }
 
 // Cheap no-op when nothing is pending (single localStorage read, no network
@@ -1592,9 +1598,15 @@ function _syncDisplayName(name) {
 function _retryPendingDisplayNameSync() {
   if (!currentUser) return;
   const pendingKey = 'displayNamePending_' + currentUser.uid;
-  if (!localStorage.getItem(pendingKey)) return;
+  const pending = localStorage.getItem(pendingKey);
+  if (pending === null) return;
+  // Re-assert the still-pending name into the display cache + topbar in
+  // case loadAllData() just overwrote displayName_<uid> with the stale
+  // pre-change server value earlier in this same reload.
   const nameKey = 'displayName_' + currentUser.uid;
-  _syncDisplayName(localStorage.getItem(nameKey) || '');
+  if (pending) localStorage.setItem(nameKey, pending); else localStorage.removeItem(nameKey);
+  _updateTopbarName();
+  _syncDisplayName(pending);
 }
 
 function _updateTopbarName() {
@@ -1831,19 +1843,22 @@ function calcRunStreak(workouts) {
   return streak;
 }
 
-// Reads by field LABEL now (dynamic templates have no fixed keys) — a
-// distance-equivalent field is whichever field has label==='מרחק' on that
-// entry; pace is derived client-side from distance+duration since the new
-// schema no longer precomputes paceMinPerKm server-side per entry.
-function _fieldVal(entry, label) {
-  const f = (entry.fields || []).find(x => x.label === label);
+// Reads by field ID (stable and language-independent across every source
+// of cardio fields — the legacy CARDIO_MIGRATION_FIELD_MAP, a type a user
+// built themselves via confirmAddCardioType, and initNewUser's bilingual
+// DEFAULT_CARDIO_FIELDS all share the same id namespace even though their
+// display *labels* differ between languages/wordings). Pace is derived
+// client-side from distance+duration since the new schema no longer
+// precomputes paceMinPerKm server-side per entry.
+function _fieldVal(entry, id) {
+  const f = (entry.fields || []).find(x => x.id === id);
   return f ? Number(f.value) : null;
 }
 
 function calcRunPRs(workouts) {
   let bestDistanceKm = 0, bestPaceMinPerKm = Infinity, lowestHeartRate = Infinity;
   for (const w of workouts) {
-    const dist = _fieldVal(w, 'מרחק'), dur = _fieldVal(w, 'זמן'), hr = _fieldVal(w, 'דופק ממוצע');
+    const dist = _fieldVal(w, 'distanceKm'), dur = _fieldVal(w, 'durationMinutes'), hr = _fieldVal(w, 'avgHeartRate');
     if (dist != null && dist > bestDistanceKm) bestDistanceKm = dist;
     if (dist && dur) {
       const pace = dur / dist;
@@ -1893,10 +1908,10 @@ async function initRunSection() {
 // were already in-family (paceMinPerKm literally reuses --green-d) and
 // are unchanged. See docs/superpowers/specs/2026-08-30-ui-polish-settings-history-charts-design.md §3.
 const RUN_CHARTS_CONFIG = [
-  { label: 'מרחק',       tKey: 'run.chart.distance', color: '#536fac', fmt: v => v.toFixed(1) },
-  { label: 'דופק ממוצע', tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
-  { label: 'קלוריות',    tKey: 'run.chart.calories', color: '#aa7941', fmt: v => Math.round(v) },
-  { label: 'צעדים',      tKey: 'run.chart.spm',      color: '#9b5aaf', fmt: v => Math.round(v) },
+  { id: 'distanceKm',       tKey: 'run.chart.distance', color: '#536fac', fmt: v => v.toFixed(1) },
+  { id: 'avgHeartRate',     tKey: 'run.chart.hr',       color: '#a05555', fmt: v => Math.round(v) },
+  { id: 'calories',         tKey: 'run.chart.calories', color: '#aa7941', fmt: v => Math.round(v) },
+  { id: 'avgStridesPerMin', tKey: 'run.chart.spm',      color: '#9b5aaf', fmt: v => Math.round(v) },
 ];
 
 function runSetRange(range) {
@@ -1944,16 +1959,17 @@ async function renderRunCharts() {
   container.innerHTML = '';
 
   for (const cfg of RUN_CHARTS_CONFIG) {
-    const rows = sorted.filter(w => _fieldVal(w, cfg.label) != null);
+    const rows = sorted.filter(w => _fieldVal(w, cfg.id) != null);
     if (rows.length === 0) continue;
 
     const labels = rows.map(w => w.date.slice(5));
-    const data   = rows.map(w => _fieldVal(w, cfg.label));
+    const data   = rows.map(w => _fieldVal(w, cfg.id));
 
-    // DOM id / chart-instance-map key use cfg.tKey (e.g. "run.chart.distance"), not
-    // cfg.label — labels are Hebrew strings that can contain spaces (e.g. 'דופק
-    // ממוצע'), which are invalid in an HTML id and would collide across charts if
-    // used as an object key here. tKey is already unique per chart and ASCII-safe.
+    // DOM id / chart-instance-map key use cfg.tKey (e.g. "run.chart.distance"),
+    // kept as-is from when this config was keyed by Hebrew label (labels contain
+    // spaces, e.g. 'דופק ממוצע', which are invalid in an HTML id). cfg.id would
+    // work now too, but tKey is already unique per chart and ASCII-safe, and
+    // changing it would orphan nothing — no reason to churn the DOM ids.
     const domKey = cfg.tKey;
     const wrap = document.createElement('div');
     wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px;">${t(cfg.tKey)}</div>
@@ -2338,6 +2354,14 @@ async function handleAuthSubmit() {
     } else {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await initNewUser(cred.user.uid, email);
+      // onAuthStateChanged already fired initApp() the moment the account was
+      // created — concurrently with initNewUser's writes above, so that first
+      // load can easily read an account that has no defaults in it yet and
+      // leave the user staring at an empty app. reloadAppData() is idempotent
+      // (it's the standard post-mutation refresh everywhere else in this file),
+      // so an unconditional one here guarantees at least one fully-correct
+      // load happens after the defaults actually landed.
+      await reloadAppData();
     }
   } catch (e) {
     setAuthMsg(firebaseErrMsg(e.code));
@@ -2373,8 +2397,20 @@ async function handleGoogleLogin() {
       userEmail = result.user.email;
     }
 
-    const snap = await getDoc(doc(db, 'users', uid, 'config', 'templates'));
-    if (!snap.exists()) await initNewUser(uid, userEmail);
+    // "Brand new account" must require BOTH docs missing, not just templates:
+    // initNewUser now also writes config/profile (which can hold a display name
+    // the user chose themselves), so keying purely on templates would silently
+    // reset a real name for any existing account whose templates doc went
+    // missing for an unrelated reason. See handleAuthSubmit for why the
+    // reloadAppData() below is needed.
+    const [tmplSnap, profSnap] = await Promise.all([
+      getDoc(doc(db, 'users', uid, 'config', 'templates')),
+      getDoc(doc(db, 'users', uid, 'config', 'profile')),
+    ]);
+    if (!tmplSnap.exists() && !profSnap.exists()) {
+      await initNewUser(uid, userEmail);
+      await reloadAppData();
+    }
   } catch (e) {
     // Unlike handleAuthSubmit/handleForgotPassword (which only ever call the
     // Firebase SDK directly and always get a real FirebaseError with a
