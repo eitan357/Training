@@ -4726,7 +4726,8 @@ function renderEditTabs() {
   const canRemove = workoutTypes.length > 1;
   document.getElementById('editTabs').innerHTML =
     workoutTypes.map(wtype =>
-      `<div class="tab-item${wtype.id===editTab?' active':''}">
+      `<div class="tab-item edit-card${wtype.id===editTab?' active':''}" data-id="${escHtml(wtype.id)}">
+        <span class="drag-handle">⠿</span>
         <button class="tab-btn" onclick="switchEditTab('${escHtml(wtype.id)}')">
           <span class="count-pill">${(editTemplates[wtype.id]||[]).length}</span>
           <span class="tab-name" ondblclick="event.stopPropagation(); promptRenameType('${escHtml(wtype.id)}')">${escHtml(wtype.name)}</span>
@@ -4737,6 +4738,7 @@ function renderEditTabs() {
     `<div class="tab-item add-tab-item">
       <button class="tab-btn add-tab-btn" onclick="showAddTypeForm()">+</button>
     </div>`;
+  initDragSort(document.getElementById('editTabs'), startTypeDrag('strength'));
 }
 
 function renderEditAll() {
@@ -4916,7 +4918,8 @@ function renderCardioEditTabs() {
   const canRemove = runningTypes.length > 1;
   document.getElementById('cardioEditTabs').innerHTML =
     runningTypes.map(type =>
-      `<div class="tab-item${type.id===cardioEditTab?' active':''}">
+      `<div class="tab-item edit-card${type.id===cardioEditTab?' active':''}" data-id="${escHtml(type.id)}">
+        <span class="drag-handle">⠿</span>
         <button class="tab-btn" onclick="switchCardioEditTab('${escHtml(type.id)}')">
           <span class="count-pill">${(cardioEditTemplates[type.id]||[]).length}</span>
           <span class="tab-name" ondblclick="event.stopPropagation(); promptRenameCardioType('${escHtml(type.id)}')">${escHtml(type.name)}</span>
@@ -4925,6 +4928,7 @@ function renderCardioEditTabs() {
       </div>`
     ).join('') +
     `<div class="tab-item add-tab-item"><button class="tab-btn add-tab-btn" onclick="document.getElementById('cardioAddTypeForm').style.display='flex';document.getElementById('cardioNewTypeName').focus();">+</button></div>`;
+  initDragSort(document.getElementById('cardioEditTabs'), startTypeDrag('cardio'));
 }
 
 function renderCardioEditAll() {
@@ -5052,6 +5056,25 @@ function startEditDrag(domain) {
   return (e, card, container) => {
     startGenericDrag(e, card, container, () => collectEdits(domain), () => collectEdits(domain));
   };
+}
+
+// Domain-aware drag-start factory for reordering the type tabs themselves
+// (as opposed to startEditDrag, which reorders one type's field/exercise
+// list). Mirrors startEditDrag's own shape exactly: startGenericDrag
+// doesn't care what's being dragged, only that .edit-card elements exist
+// inside the given container and that collectAtStart/onDrop can read/write
+// the domain's own order state.
+function startTypeDrag(domain) {
+  return (e, card, container) => {
+    startGenericDrag(e, card, container, () => {}, () => _commitTypeOrder(domain, container));
+  };
+}
+
+function _commitTypeOrder(domain, container) {
+  const orderedIds = [...container.querySelectorAll('.edit-card')].map(c => c.dataset.id);
+  const registry = domain === 'cardio' ? runningTypes : workoutTypes;
+  const reordered = orderedIds.map(id => registry.find(t => t.id === id)).filter(Boolean);
+  if (domain === 'cardio') runningTypes = reordered; else workoutTypes = reordered;
 }
 
 function startGenericDrag(e, card, container, collectAtStart, onDrop) {
