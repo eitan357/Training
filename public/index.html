@@ -1785,7 +1785,7 @@ async function loadRunData() {
   try {
     const tmplSnap = await getDoc(doc(db, 'users', currentUser.uid, 'config', 'runningTemplates'));
     const tmpl = tmplSnap.exists() ? tmplSnap.data() : { types: [] };
-    runningTypes = tmpl.types && tmpl.types.length ? tmpl.types : [];
+    runningTypes = (tmpl.types && tmpl.types.length && typeof tmpl.types[0] === 'object') ? tmpl.types : [];
     cardioEditTemplates = {};
     runningTypes.forEach(type => { cardioEditTemplates[type.id] = tmpl[type.id] || []; });
     if (!cardioSelectedType || !runningTypes.some(type => type.id === cardioSelectedType)) cardioSelectedType = runningTypes[0]?.id || null;
@@ -3560,7 +3560,7 @@ function _backgroundApplyData(data) {
   const safeArr = v => Array.isArray(v) ? v : [];
   const tmpl = (data.templates && !data.templates.error) ? data.templates : null;
   if (tmpl) {
-    workoutTypes = (tmpl.types && tmpl.types.length) ? tmpl.types : workoutTypes;
+    workoutTypes = (tmpl.types && tmpl.types.length && typeof tmpl.types[0] === 'object') ? tmpl.types : workoutTypes;
     strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(tmpl, workoutTypes);
     editTemplates = {};
     workoutTypes.forEach(wtype => {
