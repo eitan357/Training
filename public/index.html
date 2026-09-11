@@ -4729,7 +4729,7 @@ function renderEditTabs() {
       `<div class="tab-item${wtype.id===editTab?' active':''}">
         <button class="tab-btn" onclick="switchEditTab('${escHtml(wtype.id)}')">
           <span class="count-pill">${(editTemplates[wtype.id]||[]).length}</span>
-          ${escHtml(wtype.name)}
+          <span class="tab-name" ondblclick="event.stopPropagation(); promptRenameType('${escHtml(wtype.id)}')">${escHtml(wtype.name)}</span>
         </button>
         ${canRemove ? `<button class="tab-remove" onclick="removeWorkoutType('${escHtml(wtype.id)}')" title="✕">✕</button>` : ''}
       </div>`
@@ -4826,6 +4826,25 @@ function confirmAddType() {
   toast(t('edit.type_added'), 'success');
 }
 
+function promptRenameType(typeId) {
+  const current = workoutTypes.find(t => t.id === typeId);
+  if (!current) return;
+  const newName = prompt(t('edit.rename_prompt'), current.name);
+  if (newName === null) return; // cancelled
+  renameWorkoutType(typeId, newName.trim());
+}
+
+function renameWorkoutType(typeId, newName) {
+  if (!newName) return;
+  const current = workoutTypes.find(t => t.id === typeId);
+  if (!current) return;
+  const duplicate = workoutTypes.some(t => t.id !== typeId && t.name.toLowerCase() === newName.toLowerCase());
+  if (duplicate) { toast(t('edit.type_exists'), 'error'); return; }
+  current.name = newName;
+  renderEditAll();
+  toast(t('edit.type_renamed'), 'success');
+}
+
 function removeWorkoutType(typeId) {
   if (workoutTypes.length <= 1) { toast(t('edit.min_one_type'), 'error'); return; }
   collectEdits('strength');
@@ -4900,7 +4919,7 @@ function renderCardioEditTabs() {
       `<div class="tab-item${type.id===cardioEditTab?' active':''}">
         <button class="tab-btn" onclick="switchCardioEditTab('${escHtml(type.id)}')">
           <span class="count-pill">${(cardioEditTemplates[type.id]||[]).length}</span>
-          ${escHtml(type.name)}
+          <span class="tab-name" ondblclick="event.stopPropagation(); promptRenameCardioType('${escHtml(type.id)}')">${escHtml(type.name)}</span>
         </button>
         ${canRemove ? `<button class="tab-remove" onclick="removeCardioType('${escHtml(type.id)}')" title="✕">✕</button>` : ''}
       </div>`
@@ -4967,6 +4986,25 @@ function confirmAddCardioType() {
   document.getElementById('cardioAddTypeForm').style.display = 'none';
   renderCardioEditAll();
   toast(t('edit.type_added'), 'success');
+}
+
+function promptRenameCardioType(typeId) {
+  const current = runningTypes.find(t => t.id === typeId);
+  if (!current) return;
+  const newName = prompt(t('edit.rename_prompt'), current.name);
+  if (newName === null) return; // cancelled
+  renameCardioType(typeId, newName.trim());
+}
+
+function renameCardioType(typeId, newName) {
+  if (!newName) return;
+  const current = runningTypes.find(t => t.id === typeId);
+  if (!current) return;
+  const duplicate = runningTypes.some(t => t.id !== typeId && t.name.toLowerCase() === newName.toLowerCase());
+  if (duplicate) { toast(t('edit.type_exists'), 'error'); return; }
+  current.name = newName;
+  renderCardioEditAll();
+  toast(t('edit.type_renamed'), 'success');
 }
 
 function removeCardioType(typeId) {
@@ -5838,7 +5876,7 @@ Object.assign(window, {
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   editMeasurement, saveMeasureEdit, cancelMeasureEdit,
   editSelectedSession, editSelectedMeasure,
-  switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, removeWorkoutType, saveTemplates,
+  switchEditTab, addEditExercise, removeEditEx, showAddTypeForm, cancelAddType, confirmAddType, promptRenameType, removeWorkoutType, saveTemplates,
   saveMeasurement, toggleMeasure, toggleTypesEditor, addMeasureType, removeMeasureType, saveTypesEditor, deleteMeasurementEntry,
 });
 
@@ -5854,7 +5892,7 @@ Object.assign(window, {
   // every one of these is called from an onclick="..." attribute in the editor
   // markup, so they must be exported here rather than waiting for Task 8.
   openCardioEdit, closeCardioEdit, switchCardioEditTab, addCardioEditField, removeCardioEditField,
-  setCardioFieldType, confirmAddCardioType, removeCardioType, saveCardioTemplates,
+  setCardioFieldType, confirmAddCardioType, promptRenameCardioType, removeCardioType, saveCardioTemplates,
 });
 
 // ─── ANDROID HARDWARE BACK BUTTON ──────────────────────────────
