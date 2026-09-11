@@ -2516,16 +2516,19 @@ async function initNewUser(uid, email) {
   const g = () => crypto.randomUUID().replace(/-/g,'').substring(0,12).toUpperCase();
   const isHe = currentLang === 'he';
 
+  const typeIdA = g();
+  const typeIdB = g();
+
   const DEFAULT_TEMPLATES = isHe ? {
-    types: ['A', 'B'],
-    A: [
+    types: [{ id: typeIdA, name: 'A', color: 0 }, { id: typeIdB, name: 'B', color: 1 }],
+    [typeIdA]: [
       { id: g(), name: 'מתח',          target: '' },
       { id: g(), name: 'שכיבות סמיכה', target: '' },
       { id: g(), name: 'סקוואט',       target: '' },
       { id: g(), name: 'כפיפות בטן',   target: '' },
       { id: g(), name: 'דדליפט',       target: '' },
     ],
-    B: [
+    [typeIdB]: [
       { id: g(), name: "בנץ' פרס",  target: '' },
       { id: g(), name: 'כפיפת ירך', target: '' },
       { id: g(), name: 'מקבילים',   target: '' },
@@ -2533,15 +2536,15 @@ async function initNewUser(uid, email) {
       { id: g(), name: 'יד אחורית', target: '' },
     ],
   } : {
-    types: ['A', 'B'],
-    A: [
+    types: [{ id: typeIdA, name: 'A', color: 0 }, { id: typeIdB, name: 'B', color: 1 }],
+    [typeIdA]: [
       { id: g(), name: 'Pull-up',  target: '' },
       { id: g(), name: 'Push-up',  target: '' },
       { id: g(), name: 'Squat',    target: '' },
       { id: g(), name: 'Sit-up',   target: '' },
       { id: g(), name: 'Deadlift', target: '' },
     ],
-    B: [
+    [typeIdB]: [
       { id: g(), name: 'Bench Press',       target: '' },
       { id: g(), name: 'Hip Flexion',       target: '' },
       { id: g(), name: 'Dips',              target: '' },
@@ -2600,10 +2603,11 @@ async function initNewUser(uid, email) {
     { id: 'feltTired',        label: 'Tired',      fieldType: 'checkbox' },
     { id: 'notes',            label: 'Notes',      fieldType: 'text' },
   ];
+  const cardioTypeId = g();
   const cardioTypeName = t('run.default_type');
   const DEFAULT_RUNNING_TEMPLATES = {
-    types: [cardioTypeName],
-    [cardioTypeName]: DEFAULT_CARDIO_FIELDS,
+    types: [{ id: cardioTypeId, name: cardioTypeName, color: 0 }],
+    [cardioTypeId]: DEFAULT_CARDIO_FIELDS,
   };
 
   await setDoc(doc(db, 'users', uid, 'config', 'templates'),        DEFAULT_TEMPLATES);
@@ -2634,7 +2638,7 @@ const TYPE_COLOR_PALETTE_SIZE = 6;
 // recomputing from the type's current array position, so reordering types
 // never changes anyone's color.
 function typeColorClass(types, typeId) {
-  const match = types.find(t => t.id === typeId);
+  const match = types.find(t => t.id === typeId || t.name === typeId);
   return 'c' + (match ? match.color : 0);
 }
 
@@ -2806,7 +2810,7 @@ async function loadAllData() {
   const profName = profSnap.exists() ? (profSnap.data().displayName || '') : '';
   if (profName) localStorage.setItem('displayName_' + uid, profName);
 
-  const templates  = tmplSnap.exists() ? tmplSnap.data() : { types: ['A','B'], A: [], B: [] };
+  const templates  = tmplSnap.exists() ? tmplSnap.data() : { types: [] };
   const mtData     = mtSnap.exists()   ? mtSnap.data()   : { types: [] };
   const workouts   = [];
   workoutsSnap.forEach(d   => workouts.push({ ...d.data(), id: d.id }));
@@ -2899,9 +2903,9 @@ function restartNativeLoadingAnim() {
 
 function applyAppData(data) {
   const safeArr = v => Array.isArray(v) ? v : [];
-  const tmpl = (data.templates && !data.templates.error) ? data.templates : { types: ['A','B'], A: [], B: [] };
+  const tmpl = (data.templates && !data.templates.error) ? data.templates : { types: [] };
 
-  workoutTypes    = (tmpl.types && tmpl.types.length) ? tmpl.types : ['A','B'];
+  workoutTypes    = (tmpl.types && tmpl.types.length && typeof tmpl.types[0] === 'object') ? tmpl.types : [];
   strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(tmpl, workoutTypes);
   editTemplates   = {};
   workoutTypes.forEach(wtype => {
@@ -3521,7 +3525,7 @@ function _applyLocalCache() {
   }
   const cached = JSON.parse(localStorage.getItem(_cacheKeyTemplates()) || 'null');
   if (!cached) return false;
-  workoutTypes = (cached.types && cached.types.length) ? cached.types : ['A', 'B'];
+  workoutTypes = (cached.types && cached.types.length && typeof cached.types[0] === 'object') ? cached.types : [];
   strengthDateFieldHiddenByType = _deriveDateFieldHiddenByType(cached, workoutTypes);
   editTemplates = {};
   workoutTypes.forEach(wtype => {
@@ -3700,6 +3704,7 @@ async function migrateTypeIdentity() {
     const settingsRef = doc(db, 'users', currentUser.uid, 'config', 'settings');
     const settingsSnap = await getDoc(settingsRef);
     if (settingsSnap.exists() && settingsSnap.data().typeIdentityMigratedV1 === true) {
+      window.__typeIdentityMigrationDone = true;
       return;
     }
 
@@ -3707,6 +3712,7 @@ async function migrateTypeIdentity() {
     await _migrateTypeIdentityForDomain('cardio', 'runningTemplates', 'runWorkouts', 'workoutType', null);
 
     await setDoc(settingsRef, { typeIdentityMigratedV1: true }, { merge: true });
+    window.__typeIdentityMigrationDone = true;
   } catch (e) { /* silent — retried next load, guard flag only set on full success */ }
 }
 
@@ -3770,6 +3776,18 @@ async function _migrateTypeIdentityForDomain(domainKey, templatesDoc, entriesCol
     await updateDoc(doc(db, 'users', currentUser.uid, entriesCollection, entryDoc.id), { typeId: matchedId });
   }
 }
+
+// Test-only hook, same convention as window.__debugGetDoc above — clears
+// ONLY the typeIdentityMigratedV1 flag (via a merge:true update, so no
+// other field on config/settings is touched) so a Playwright test can force
+// migrateTypeIdentity()'s top-level guard open and reach
+// _migrateTypeIdentityForDomain's own guards on the next reload. No-ops in
+// production since nothing calls it outside tests.
+window.__debugClearTypeIdentityMigrationFlag = async () => {
+  if (!currentUser) return;
+  const settingsRef = doc(db, 'users', currentUser.uid, 'config', 'settings');
+  await setDoc(settingsRef, { typeIdentityMigratedV1: false }, { merge: true });
+};
 
 async function _backgroundSync(hadCache) {
   try {
@@ -5080,9 +5098,19 @@ function _commitTypeOrder(domain, container) {
 function startGenericDrag(e, card, container, collectAtStart, onDrop) {
   collectAtStart();
   card.style.opacity = '.5';
+  // .edit-tabs (both #editTabs and #cardioEditTabs, Task 5) is display:flex
+  // in row direction — every candidate card shares the same vertical band,
+  // so the hit-test must compare X, not Y, there. Every other .edit-card
+  // container in this file (exercise/field lists, measurement types) is a
+  // plain block layout (vertically stacked), where Y is correct — this
+  // check picks the right axis for either case without hardcoding IDs.
+  const cs = getComputedStyle(container);
+  const horizontal = cs.display === 'flex' && !cs.flexDirection.startsWith('column');
   let last = null;
   const move = ev => {
-    const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    const pos = horizontal
+      ? (ev.touches ? ev.touches[0].clientX : ev.clientX)
+      : (ev.touches ? ev.touches[0].clientY : ev.clientY);
     // `last` only guards against re-triggering the SAME swap while the
     // pointer sits still inside that row — without this reset, reversing
     // direction mid-drag back through the row just swapped stays blocked
@@ -5090,17 +5118,20 @@ function startGenericDrag(e, card, container, collectAtStart, onDrop) {
     // "left" it from this variable's point of view.
     if (last) {
       const lr = last.getBoundingClientRect();
-      if (!(y > lr.top && y < lr.bottom)) last = null;
+      const inLast = horizontal ? (pos > lr.left && pos < lr.right) : (pos > lr.top && pos < lr.bottom);
+      if (!inLast) last = null;
     }
-    [...container.querySelectorAll('.edit-card')].forEach(c => {
-      if (c === card) return;
+    const cards = [...container.querySelectorAll('.edit-card')];
+    for (const c of cards) {
+      if (c === card) continue;
       const r = c.getBoundingClientRect();
-      if (y > r.top && y < r.bottom && last !== c) {
+      const inside = horizontal ? (pos > r.left && pos < r.right) : (pos > r.top && pos < r.bottom);
+      if (inside && last !== c) {
         last = c;
-        [...container.querySelectorAll('.edit-card')].indexOf(card) <
-        [...container.querySelectorAll('.edit-card')].indexOf(c) ? c.after(card) : c.before(card);
+        cards.indexOf(card) < cards.indexOf(c) ? c.after(card) : c.before(card);
+        break;
       }
-    });
+    }
   };
   const up = () => {
     card.style.opacity = '';

@@ -480,14 +480,24 @@ test.describe('Type Identity — Reorder & Colors', () => {
   // otherwise-unobservable Firestore-shape assertion — the color check
   // reads the raw config/templates doc directly.
   //
-  // Uses the REAL account's A/B types (this scenario is inherently about
-  // reordering *existing* types, and every earlier task in this plan has
-  // already renamed/reordered A/B for live verification and always
-  // restored them — same precedent here). Scoped to accounts with exactly
-  // 2 strength types (this account's documented state) so the "drag once
-  // to swap, drag again to restore" logic is unambiguous; on any other
-  // shape the test skips itself rather than guessing.
-  test('reordering strength type tabs persists across reload without changing colors', async ({ page }) => {
+  // A throwaway 3rd type is added before dragging (same create-then-remove
+  // convention as the Rename/History describe blocks above) so this
+  // exercises 3+ types — the exact configuration the final whole-branch
+  // review's C2 fix targets. startGenericDrag's hit-test previously
+  // compared only Y against each candidate card's bounding box with no
+  // early exit; in a horizontal flex row (.edit-tabs) every tab shares the
+  // same Y band, so with only 2 tabs that degenerates into looking correct
+  // (there's only one "other" card to match), while 3+ tabs exposed real
+  // scrambling on any Y-only movement. The drag below only ever repositions
+  // the throwaway 3rd tab (dragged across both original tabs and back to
+  // the front), never displacing A/B's own relative order — so removing
+  // the throwaway at the end restores the account to its original 2-type
+  // baseline directly, with no compensating reverse-drag needed.
+  //
+  // Still scoped to accounts with exactly 2 strength types (this account's
+  // documented A/B state) so "original baseline" is unambiguous; on any
+  // other shape the test skips itself rather than guessing.
+  test('reordering strength type tabs (3+ types) persists across reload without changing colors', async ({ page }) => {
     const before = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'templates']));
     test.skip(!before || !Array.isArray(before.types) || before.types.length !== 2,
       'scoped to accounts with exactly 2 strength types (this account\'s documented A/B state)');
@@ -497,23 +507,61 @@ test.describe('Type Identity — Reorder & Colors', () => {
 
     await openWorkoutEditPanel(page);
 
-    const dragFirstTabPastSecond = async () => {
-      const handles = page.locator('#editTabs .tab-item.edit-card .drag-handle');
-      const cards   = page.locator('#editTabs .tab-item.edit-card');
-      await handles.first().hover();
-      const startBox  = await handles.first().boundingBox();
-      const targetBox = await cards.nth(1).boundingBox();
-      await page.mouse.down();
-      await page.mouse.move(targetBox!.x + targetBox!.width / 2, startBox!.y + startBox!.height / 2, { steps: 10 });
-      await page.mouse.up();
-    };
+    // Add a throwaway 3rd type — see file header comment on the throwaway
+    // convention.
+    await page.locator('#editTabs .add-tab-btn').click();
+    const throwawayName = 'TID3_' + Date.now();
+    await page.locator('#newTypeName').fill(throwawayName);
+    await page.locator('#addTypeForm button', { hasText: 'הוסף' }).click();
+    const thirdId = (await page.locator('#editTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(thirdId).toBeTruthy();
+    await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+    // Reload before reading back via __debugGetDoc — same convention every
+    // other read in this describe block follows (see the "after" reads
+    // below): an immediate read right after save raced the client's own
+    // Firestore cache/write-ack timing during verification and intermittently
+    // saw the just-added 3rd type missing.
+    await page.reload();
+    await waitForAppReady(page);
+    const afterAdd = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'templates']));
+    colorById[thirdId] = afterAdd.types.find((t: any) => t.id === thirdId).color;
+    await openWorkoutEditPanel(page);
+
     const readTabOrder = async () =>
       page.locator('#editTabs .tab-item.edit-card').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.id));
 
+    // Drags the LAST tab (the throwaway) all the way to the FIRST position,
+    // crossing both other tabs' bounding boxes along a real multi-step
+    // path with `steps` — a genuine sequence of intermediate pointer
+    // positions, not a single teleport jump, since C2's bug was specifically
+    // about mishandling that sequence.
+    const dragLastTabToFirst = async () => {
+      const handles = page.locator('#editTabs .tab-item.edit-card .drag-handle');
+      const cards   = page.locator('#editTabs .tab-item.edit-card');
+      await handles.last().hover();
+      const startBox  = await handles.last().boundingBox();
+      const targetBox = await cards.first().boundingBox();
+      await page.mouse.down();
+      await page.mouse.move(targetBox!.x + targetBox!.width / 2, startBox!.y + startBox!.height / 2, { steps: 15 });
+      await page.mouse.up();
+    };
+
     try {
-      await dragFirstTabPastSecond();
+      expect(await readTabOrder()).toEqual([...idsBefore, thirdId]);
+      await dragLastTabToFirst();
       const idsAfterDrag = await readTabOrder();
-      expect(idsAfterDrag).toEqual([...idsBefore].reverse());
+      expect(idsAfterDrag).toEqual([thirdId, ...idsBefore]);
+
+      // A pure vertical micro-jitter (zero horizontal movement) must NOT
+      // reorder anything — the other live-reproduced half of C2 (a 3px
+      // straight-down nudge scrambled a 3-tab row before the fix).
+      const jitterHandle = page.locator('#editTabs .tab-item.edit-card .drag-handle').first();
+      const jitterBox = await jitterHandle.boundingBox();
+      await page.mouse.move(jitterBox!.x + jitterBox!.width / 2, jitterBox!.y + jitterBox!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(jitterBox!.x + jitterBox!.width / 2, jitterBox!.y + jitterBox!.height / 2 + 3, { steps: 3 });
+      await page.mouse.up();
+      expect(await readTabOrder()).toEqual(idsAfterDrag);
 
       await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
 
@@ -521,19 +569,20 @@ test.describe('Type Identity — Reorder & Colors', () => {
       await waitForAppReady(page);
       const after = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'templates']));
       expect(after.types.map((t: any) => t.id)).toEqual(idsAfterDrag);
-      // Colors must be exactly what they were before reordering.
+      // Colors must be exactly what they were before reordering — including
+      // the throwaway 3rd type's own frozen color.
       after.types.forEach((t: any) => { expect(t.color).toBe(colorById[t.id]); });
     } finally {
-      // Restore original order regardless of pass/fail above: dragging the
-      // first tab past the second is a pure transposition of a 2-element
-      // list, so repeating it once more always returns to idsBefore.
+      // Remove the throwaway 3rd type. The drag above only ever repositioned
+      // IT — A/B's own relative order was never touched — so this alone
+      // restores the account to its original idsBefore order.
       await openWorkoutEditPanel(page);
-      const currentIds = await readTabOrder();
-      if (currentIds[0] !== idsBefore[0]) {
-        await dragFirstTabPastSecond();
-        await expect.poll(readTabOrder).toEqual(idsBefore);
+      const removeBtn = page.locator(`#editTabs .tab-item[data-id="${thirdId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
         await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
       }
+      await expect.poll(readTabOrder).toEqual(idsBefore);
     }
   });
 });

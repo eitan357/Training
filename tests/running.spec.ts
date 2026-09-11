@@ -472,10 +472,13 @@ test.describe('Cardio Type Identity — Reorder & Colors', () => {
 
   // Mirrors workout.spec.ts's strength reorder+color test exactly — see
   // that test's comments for the full rationale (__debugGetDoc for the
-  // otherwise-unobservable `color` field, real A/B-equivalent Running/
-  // Elliptical types, scoped to exactly-2-types accounts, drag-twice
-  // restore).
-  test('reordering cardio type tabs persists across reload without changing colors', async ({ page }) => {
+  // otherwise-unobservable `color` field, real Running/Elliptical types,
+  // scoped to exactly-2-types accounts, a throwaway 3rd type added before
+  // dragging so this exercises 3+ tabs — the exact configuration the final
+  // whole-branch review's C2 fix targets — while only ever repositioning
+  // the throwaway itself so removing it at the end restores the original
+  // 2-type baseline directly, no compensating reverse-drag needed).
+  test('reordering cardio type tabs (3+ types) persists across reload without changing colors', async ({ page }) => {
     const before = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'runningTemplates']));
     test.skip(!before || !Array.isArray(before.types) || before.types.length !== 2,
       'scoped to accounts with exactly 2 cardio types (this account\'s documented Running/Elliptical state)');
@@ -485,23 +488,60 @@ test.describe('Cardio Type Identity — Reorder & Colors', () => {
 
     await openCardioEditPanel(page);
 
-    const dragFirstTabPastSecond = async () => {
-      const handles = page.locator('#cardioEditTabs .tab-item.edit-card .drag-handle');
-      const cards   = page.locator('#cardioEditTabs .tab-item.edit-card');
-      await handles.first().hover();
-      const startBox  = await handles.first().boundingBox();
-      const targetBox = await cards.nth(1).boundingBox();
-      await page.mouse.down();
-      await page.mouse.move(targetBox!.x + targetBox!.width / 2, startBox!.y + startBox!.height / 2, { steps: 10 });
-      await page.mouse.up();
-    };
+    // Add a throwaway 3rd type — see file header's create-then-remove
+    // convention (same as the Rename/History describe blocks above).
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    const throwawayName = 'CTID3_' + Date.now();
+    await page.locator('#cardioNewTypeName').fill(throwawayName);
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    const thirdId = (await page.locator('#cardioEditTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(thirdId).toBeTruthy();
+    await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+    // Reload before reading back via __debugGetDoc — same convention every
+    // other read in this describe block follows (see the "after" reads
+    // below): an immediate read right after save raced the client's own
+    // Firestore cache/write-ack timing during verification and intermittently
+    // saw the just-added 3rd type missing.
+    await page.reload();
+    await waitForAppReady(page);
+    const afterAdd = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'runningTemplates']));
+    colorById[thirdId] = afterAdd.types.find((t: any) => t.id === thirdId).color;
+    await openCardioEditPanel(page);
+
     const readTabOrder = async () =>
       page.locator('#cardioEditTabs .tab-item.edit-card').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.id));
 
+    // Drags the LAST tab (the throwaway) all the way to the FIRST position,
+    // crossing both other tabs' bounding boxes along a real multi-step path
+    // — a genuine sequence of intermediate pointer positions, not a single
+    // teleport jump, since C2's bug was specifically about mishandling that
+    // sequence.
+    const dragLastTabToFirst = async () => {
+      const handles = page.locator('#cardioEditTabs .tab-item.edit-card .drag-handle');
+      const cards   = page.locator('#cardioEditTabs .tab-item.edit-card');
+      await handles.last().hover();
+      const startBox  = await handles.last().boundingBox();
+      const targetBox = await cards.first().boundingBox();
+      await page.mouse.down();
+      await page.mouse.move(targetBox!.x + targetBox!.width / 2, startBox!.y + startBox!.height / 2, { steps: 15 });
+      await page.mouse.up();
+    };
+
     try {
-      await dragFirstTabPastSecond();
+      expect(await readTabOrder()).toEqual([...idsBefore, thirdId]);
+      await dragLastTabToFirst();
       const idsAfterDrag = await readTabOrder();
-      expect(idsAfterDrag).toEqual([...idsBefore].reverse());
+      expect(idsAfterDrag).toEqual([thirdId, ...idsBefore]);
+
+      // A pure vertical micro-jitter (zero horizontal movement) must NOT
+      // reorder anything — the other live-reproduced half of C2.
+      const jitterHandle = page.locator('#cardioEditTabs .tab-item.edit-card .drag-handle').first();
+      const jitterBox = await jitterHandle.boundingBox();
+      await page.mouse.move(jitterBox!.x + jitterBox!.width / 2, jitterBox!.y + jitterBox!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(jitterBox!.x + jitterBox!.width / 2, jitterBox!.y + jitterBox!.height / 2 + 3, { steps: 3 });
+      await page.mouse.up();
+      expect(await readTabOrder()).toEqual(idsAfterDrag);
 
       await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
 
@@ -511,13 +551,16 @@ test.describe('Cardio Type Identity — Reorder & Colors', () => {
       expect(after.types.map((t: any) => t.id)).toEqual(idsAfterDrag);
       after.types.forEach((t: any) => { expect(t.color).toBe(colorById[t.id]); });
     } finally {
+      // Remove the throwaway 3rd type. The drag above only ever repositioned
+      // IT — Running/Elliptical's own relative order was never touched — so
+      // this alone restores the account to its original idsBefore order.
       await openCardioEditPanel(page);
-      const currentIds = await readTabOrder();
-      if (currentIds[0] !== idsBefore[0]) {
-        await dragFirstTabPastSecond();
-        await expect.poll(readTabOrder).toEqual(idsBefore);
+      const removeBtn = page.locator(`#cardioEditTabs .tab-item[data-id="${thirdId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
         await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
       }
+      await expect.poll(readTabOrder).toEqual(idsBefore);
     }
   });
 });
@@ -763,5 +806,73 @@ test.describe('Type Identity Migration (Rename/Reorder V1)', () => {
     // both domains' `types` arrays proves the Phase A guard held.
     expect(after[0].types).toEqual(before[0].types);
     expect(after[1].types).toEqual(before[1].types);
+  });
+
+  // I1 (final whole-branch review, 2026-09-10 fix round): the test above
+  // never actually reaches _migrateTypeIdentityForDomain — migrateTypeIdentity()
+  // returns at its own top-level `typeIdentityMigratedV1` check before that
+  // function is ever called, since this account is already migrated on
+  // every normal load. To genuinely exercise _migrateTypeIdentityForDomain's
+  // own two guards (Phase A: registry entries already objects -> reuse
+  // as-is; Phase B: entries already carrying `typeId` -> skip), the
+  // top-level flag needs to be cleared first so migrateTypeIdentity() falls
+  // through into calling it. There's no read-only way to do that from the
+  // page, so window.__debugClearTypeIdentityMigrationFlag (public/index.html)
+  // was added as a narrowly-scoped, deliberate write — same test-only-hook
+  // convention as __debugGetDoc, but a `setDoc(..., {merge:true})` touching
+  // ONLY the one boolean field, never the rest of config/settings.
+  //
+  // This is a genuine no-op by construction, not a real double-migration:
+  // the registry is already {id,name,color}[] (Phase A's guard) and every
+  // entry already has typeId (Phase B's guard), so re-running the function
+  // must leave both config/templates and config/runningTemplates
+  // byte-identical — any actual re-derive would mint brand-new ids via
+  // genId(), which would show up immediately as a diff — and must set the
+  // guard flag back to true on its own (proving the early-return-because-
+  // already-object-shaped path ran cleanly, not that the flag was simply
+  // never cleared).
+  //
+  // Waits on window.__typeIdentityMigrationDone (public/index.html), NOT
+  // just on the settings doc's flag reading true, both before clearing and
+  // after the reload. waitForAppReady() only guarantees Phase 1 (the
+  // synchronous local-cache render) has finished — Phase 2's
+  // _backgroundSync (which calls migrateTypeIdentity()) is fired
+  // unawaited from initApp() and can still be mid-flight afterward. This
+  // was reproduced directly while writing this test: clearing the flag
+  // while THIS page's own boot-time migrateTypeIdentity() call was still
+  // in flight raced its own closing `setDoc(..., {typeIdentityMigratedV1:
+  // true})`, which landed microseconds later and silently clobbered the
+  // clear. __typeIdentityMigrationDone is a genuine completion signal (set
+  // once migrateTypeIdentity() has either taken its early-return path or
+  // finished writing the flag itself), the same established convention as
+  // migrateCardioDataV2's own window.__cardioMigrationDone above.
+  test('clearing the top-level guard flag and reloading exercises _migrateTypeIdentityForDomain\'s own guards as a true no-op', async ({ page }) => {
+    await page.waitForFunction(() => (window as any).__typeIdentityMigrationDone === true, { timeout: 15000 });
+    const before = await page.evaluate(async () => [
+      await (window as any).__debugGetDoc(['config', 'templates']),
+      await (window as any).__debugGetDoc(['config', 'runningTemplates']),
+    ]);
+
+    await page.evaluate(async () => { await (window as any).__debugClearTypeIdentityMigrationFlag(); });
+    const clearedSettings = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'settings']));
+    expect(clearedSettings.typeIdentityMigratedV1).toBe(false);
+
+    await page.reload();
+    await waitForAppReady(page);
+    await page.waitForFunction(() => (window as any).__typeIdentityMigrationDone === true, { timeout: 15000 });
+
+    const after = await page.evaluate(async () => [
+      await (window as any).__debugGetDoc(['config', 'templates']),
+      await (window as any).__debugGetDoc(['config', 'runningTemplates']),
+    ]);
+    // Byte-identical, including exercise/field content and ids — not just
+    // the `types` array — proving _migrateTypeIdentityForDomain's Phase A
+    // AND Phase B guards both correctly no-op rather than re-deriving
+    // anything.
+    expect(after[0]).toEqual(before[0]);
+    expect(after[1]).toEqual(before[1]);
+
+    const settingsAfter = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'settings']));
+    expect(settingsAfter.typeIdentityMigratedV1).toBe(true);
   });
 });
