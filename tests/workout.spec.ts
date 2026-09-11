@@ -379,3 +379,320 @@ test.describe('Cold-Cache Boot', () => {
     await context.close();
   });
 });
+
+// ─── Type Identity: Rename & Reorder (2026-09-10) ──────────────────────
+// Coverage for docs/superpowers/specs/2026-09-10-type-identity-rename-reorder-design.md
+// §8. This project has no Firestore emulator and no fixture-seeding
+// mechanism (see running.spec.ts's own "Cardio Data Migration" comment
+// block for the established rationale) — these tests run against the real
+// `test@gmail.com` account's real production Firestore data, same as every
+// other spec in this suite.
+//
+// Where a scenario needs a saved workout entry or an in-flight draft (the
+// history-grouping and draft-survival tests below), a genuinely new
+// throwaway type is created and removed within the test rather than
+// touching the real A/B types' history — per this task's own brief. Every
+// test cleans up after itself (removes any throwaway type/entry it made,
+// or restores original state) even on failure, via try/finally.
+// saveTemplates() (public/index.html) fires the toast BEFORE `await
+// reloadAppData()`, which asynchronously re-fetches config/templates and
+// REPLACES the in-memory `workoutTypes` array (applyAppData). A test that
+// only waits for the toast and then immediately mutates type state again
+// (e.g. a rename right after creating a type) can race that in-flight
+// reloadAppData() — it resolves moments later and silently clobbers the
+// mutation, which was reproduced directly while writing these tests (the
+// save-after-rename appeared to succeed but the pre-rename name came back
+// after a real reload). Waiting for the toast's own auto-hide (toast(),
+// 3000ms) reliably outlasts that async window.
+async function clickSaveAndSettle(page: import('@playwright/test').Page, buttonSelector: string) {
+  await page.locator(buttonSelector).click();
+  await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('#toast')).not.toHaveClass(/show/, { timeout: 6000 });
+}
+
+async function openWorkoutEditPanel(page: import('@playwright/test').Page) {
+  await page.locator('#nav-main').click();
+  await page.locator('#mainGearBtn').click();
+  await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+  await page.locator('button.settings-item[onclick="openWorkoutEdit()"]').click();
+  await expect(page.locator('#mainEditPanel')).toBeVisible({ timeout: 8000 });
+}
+
+test.describe('Type Identity — Rename', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+  });
+
+  // Spec §5.1/§8: renaming a type only updates its `name` (id/color/
+  // template untouched) and must persist across reload. Uses a throwaway
+  // type — see file header comment.
+  test('renaming a strength type persists across reload', async ({ page }) => {
+    const originalName = 'TID_' + Date.now();
+    const renamedName  = 'TID2_' + Date.now();
+    let typeId = '';
+
+    await openWorkoutEditPanel(page);
+    await page.locator('#editTabs .add-tab-btn').click();
+    await page.locator('#newTypeName').fill(originalName);
+    await page.locator('#addTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#editTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+    await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+
+    try {
+      // promptRenameType() uses window.prompt() (public/index.html) —
+      // register the dialog handler before the dblclick that triggers it.
+      page.once('dialog', dialog => dialog.accept(renamedName));
+      await page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-name`).dblclick();
+      await expect(page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-name`)).toHaveText(renamedName);
+      await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+
+      await page.reload();
+      await waitForAppReady(page);
+      await openWorkoutEditPanel(page);
+      await expect(page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-name`))
+        .toHaveText(renamedName, { timeout: 8000 });
+    } finally {
+      const removeBtn = page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+      }
+    }
+  });
+});
+
+test.describe('Type Identity — Reorder & Colors', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+  });
+
+  // Spec §5.2/§3.1/§8: reordering the type tabs must persist across reload
+  // AND must never change any type's stored `color` (colors are frozen at
+  // creation, not recomputed from array position). Color isn't rendered on
+  // the tab elements themselves anywhere in the DOM (only on saved-session
+  // dots/badges in History), so — matching this file's/running.spec.ts's
+  // own established use of window.__debugGetDoc for exactly this kind of
+  // otherwise-unobservable Firestore-shape assertion — the color check
+  // reads the raw config/templates doc directly.
+  //
+  // Uses the REAL account's A/B types (this scenario is inherently about
+  // reordering *existing* types, and every earlier task in this plan has
+  // already renamed/reordered A/B for live verification and always
+  // restored them — same precedent here). Scoped to accounts with exactly
+  // 2 strength types (this account's documented state) so the "drag once
+  // to swap, drag again to restore" logic is unambiguous; on any other
+  // shape the test skips itself rather than guessing.
+  test('reordering strength type tabs persists across reload without changing colors', async ({ page }) => {
+    const before = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'templates']));
+    test.skip(!before || !Array.isArray(before.types) || before.types.length !== 2,
+      'scoped to accounts with exactly 2 strength types (this account\'s documented A/B state)');
+    const idsBefore = before.types.map((t: any) => t.id);
+    const colorById: Record<string, number> = {};
+    before.types.forEach((t: any) => { colorById[t.id] = t.color; });
+
+    await openWorkoutEditPanel(page);
+
+    const dragFirstTabPastSecond = async () => {
+      const handles = page.locator('#editTabs .tab-item.edit-card .drag-handle');
+      const cards   = page.locator('#editTabs .tab-item.edit-card');
+      await handles.first().hover();
+      const startBox  = await handles.first().boundingBox();
+      const targetBox = await cards.nth(1).boundingBox();
+      await page.mouse.down();
+      await page.mouse.move(targetBox!.x + targetBox!.width / 2, startBox!.y + startBox!.height / 2, { steps: 10 });
+      await page.mouse.up();
+    };
+    const readTabOrder = async () =>
+      page.locator('#editTabs .tab-item.edit-card').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.id));
+
+    try {
+      await dragFirstTabPastSecond();
+      const idsAfterDrag = await readTabOrder();
+      expect(idsAfterDrag).toEqual([...idsBefore].reverse());
+
+      await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+
+      await page.reload();
+      await waitForAppReady(page);
+      const after = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'templates']));
+      expect(after.types.map((t: any) => t.id)).toEqual(idsAfterDrag);
+      // Colors must be exactly what they were before reordering.
+      after.types.forEach((t: any) => { expect(t.color).toBe(colorById[t.id]); });
+    } finally {
+      // Restore original order regardless of pass/fail above: dragging the
+      // first tab past the second is a pure transposition of a 2-element
+      // list, so repeating it once more always returns to idsBefore.
+      await openWorkoutEditPanel(page);
+      const currentIds = await readTabOrder();
+      if (currentIds[0] !== idsBefore[0]) {
+        await dragFirstTabPastSecond();
+        await expect.poll(readTabOrder).toEqual(idsBefore);
+        await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+      }
+    }
+  });
+});
+
+test.describe('Type Identity — History Reflects Renames', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+  });
+
+  // Spec §3.2/§8: display/grouping resolves through typeId → the CURRENT
+  // registry entry, so a session logged under a type's OLD name must show
+  // the NEW name in History after a rename — the whole reason typeId
+  // linkage exists (without it, a rename would silently split history into
+  // two disconnected buckets). Identifies the entry by a unique session-
+  // name marker throughout (never by position/count), per this project's
+  // standing data-safety rule for live verification against real data.
+  test('history badge shows a type\'s new name for an entry logged before the rename', async ({ page }) => {
+    const originalName  = 'TIDH_' + Date.now();
+    const renamedName   = 'TIDH2_' + Date.now();
+    const sessionMarker = 'TypeIdentityHistTest ' + Date.now();
+    let typeId = '';
+
+    await openWorkoutEditPanel(page);
+    await page.locator('#editTabs .add-tab-btn').click();
+    await page.locator('#newTypeName').fill(originalName);
+    await page.locator('#addTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#editTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+    await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+
+    try {
+      // Log a real entry under the type's ORIGINAL name via an ad-hoc
+      // exercise — the throwaway type has zero template exercises, same
+      // "+ הוסף תרגיל" pattern as this file's "Workout — Log Session" tests.
+      await page.locator('#nav-main').click();
+      await page.waitForFunction(() => (document.getElementById('typeRow')?.children.length || 0) > 0, { timeout: 10000 });
+      await page.locator(`#typeRow .type-btn[data-type="${typeId}"]`).click();
+      await page.locator('#addBtn').click();
+      const card = page.locator('#exerciseList .card').last();
+      await card.locator('.ex-name-input').fill('Squat');
+      await card.locator('.ex-weight').fill('40');
+      await page.locator('#sessionNameInput').fill(sessionMarker);
+      await page.locator('#saveBtn').click();
+      await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+
+      // Rename AFTER the entry was logged under the original name.
+      await openWorkoutEditPanel(page);
+      page.once('dialog', dialog => dialog.accept(renamedName));
+      await page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-name`).dblclick();
+      await expect(page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-name`)).toHaveText(renamedName);
+      await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+
+      await page.locator('#nav-history').click();
+      await expect(page.locator('#sec-history')).toHaveClass(/active/);
+      const sessionCard = page.locator('.session-card', { hasText: sessionMarker });
+      await expect(sessionCard).toBeVisible({ timeout: 15000 });
+      // Read the actual matched card's content before asserting on it —
+      // confirms this is genuinely the entry just created, not a
+      // coincidental match.
+      await expect(sessionCard.locator('.session-name-label')).toHaveText(sessionMarker);
+      await expect(sessionCard.locator('.session-badge')).toContainText(renamedName);
+      await expect(sessionCard.locator('.session-badge')).not.toContainText(originalName);
+    } finally {
+      await page.locator('#nav-history').click().catch(() => {});
+      const sessionCard = page.locator('.session-card', { hasText: sessionMarker });
+      if (await sessionCard.count() > 0) {
+        const header = sessionCard.locator('.session-header');
+        await header.scrollIntoViewIfNeeded();
+        const box = await header.boundingBox();
+        if (box) {
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
+          await page.mouse.up();
+          await page.locator('#histBulkBar .bulk-bar-del').click();
+          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+        }
+      }
+      await openWorkoutEditPanel(page);
+      const removeBtn = page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+      }
+    }
+  });
+});
+
+test.describe('Type Identity — Draft Survives Rename', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+  });
+
+  // Spec §3.3/§8: draft keys embed the type's id (not its name), so an
+  // in-flight, unsaved draft must survive a rename performed mid-session
+  // rather than becoming unreachable under a since-changed key.
+  test('a mid-session draft survives a rename of its own type', async ({ page }) => {
+    const originalName = 'TIDD_' + Date.now();
+    const renamedName  = 'TIDD2_' + Date.now();
+    const draftMarker  = 'DraftSurvivesRename ' + Date.now();
+    let typeId = '';
+
+    await openWorkoutEditPanel(page);
+    await page.locator('#editTabs .add-tab-btn').click();
+    await page.locator('#newTypeName').fill(originalName);
+    await page.locator('#addTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#editTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+    await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+
+    try {
+      await page.locator('#nav-main').click();
+      await page.waitForFunction(() => (document.getElementById('typeRow')?.children.length || 0) > 0, { timeout: 10000 });
+      await page.locator(`#typeRow .type-btn[data-type="${typeId}"]`).click();
+      await page.locator('#sessionNameInput').fill(draftMarker);
+      // Wait for the actual debounced (>300ms) localStorage draft write to
+      // land, keyed by the type's id — same wait pattern as this file's
+      // "draft round-trips workout name through localStorage" test.
+      await page.waitForFunction((expected) => {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith('draft_') && k.includes('_strength_'));
+        return keys.some(k => {
+          try { return JSON.parse(localStorage.getItem(k) || 'null')?.workoutName === expected; }
+          catch(e) { return false; }
+        });
+      }, draftMarker, { timeout: 5000 });
+
+      // Rename MID-SESSION — the draft above is still unsaved at this point.
+      await openWorkoutEditPanel(page);
+      page.once('dialog', dialog => dialog.accept(renamedName));
+      await page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-name`).dblclick();
+      await expect(page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-name`)).toHaveText(renamedName);
+      await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+
+      await page.reload();
+      await waitForAppReady(page);
+      await page.locator('#nav-main').click();
+      await page.waitForFunction(() => (document.getElementById('typeRow')?.children.length || 0) > 0, { timeout: 10000 });
+      await page.locator(`#typeRow .type-btn[data-type="${typeId}"]`).click();
+      // Draft keys are id-based, so the draft must still be reachable under
+      // the type's NEW name — silent restore, no modal, matching this
+      // file's existing "same-session reload restores silently" behavior.
+      await expect(page.locator('#sessionNameInput')).toHaveValue(draftMarker, { timeout: 8000 });
+    } finally {
+      await page.locator('#nav-main').click().catch(() => {});
+      const typeBtn = page.locator(`#typeRow .type-btn[data-type="${typeId}"]`);
+      if (await typeBtn.count() > 0) {
+        await typeBtn.click();
+        await page.locator('#clearFormBtn').click().catch(() => {}); // clears + deletes the draft doc
+      }
+      await openWorkoutEditPanel(page);
+      const removeBtn = page.locator(`#editTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#mainEditPanel button[onclick="saveTemplates()"]');
+      }
+    }
+  });
+});

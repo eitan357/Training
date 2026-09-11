@@ -374,3 +374,394 @@ test.describe('Cardio Template Editor', () => {
     expect(labelsAfter).not.toEqual(labelsBefore);
   });
 });
+
+// ─── Type Identity: Rename & Reorder — Migration (2026-09-10) ──────────
+// Cardio equivalents of workout.spec.ts's "Type Identity — ..." describes,
+// plus the shared (both-domain) migration idempotency check. See
+// docs/superpowers/specs/2026-09-10-type-identity-rename-reorder-design.md
+// §8 and workout.spec.ts's own header comment on this same date for the
+// no-emulator/real-account rationale and the throwaway-type cleanup
+// convention followed throughout.
+// See workout.spec.ts's identical helper (same file, same date) for why
+// this waits past the toast's own auto-hide rather than just its
+// appearance — saveCardioTemplates()'s reloadAppData() call races any
+// further in-memory type mutation otherwise.
+async function clickSaveAndSettle(page: import('@playwright/test').Page, buttonSelector: string) {
+  await page.locator(buttonSelector).click();
+  await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('#toast')).not.toHaveClass(/show/, { timeout: 6000 });
+}
+
+// #draftModal is deliberately global/section-independent (public/index.html,
+// docs/superpowers/specs/2026-09-08-cardio-visual-and-modal-fixes-design.md
+// §Issue4) — a fixed, full-viewport overlay that can appear regardless of
+// which section is active. Navigating away from a type with a genuine
+// in-flight qualifying draft (exactly what the draft-survives-rename test
+// below does, by design) can surface it; unlike strength's equivalent flow
+// (which restores silently within the same tab session), cardio's did show
+// it during manual verification of this test. Since resuming the draft is
+// what a real user would do and is orthogonal to what this test actually
+// checks (the id-keyed draft key survives a rename), dismiss it via the
+// same "המשך" resume action a user would take rather than assuming the
+// modal never appears.
+async function resumeDraftModalIfPresent(page: import('@playwright/test').Page) {
+  const modal = page.locator('#draftModal');
+  if (await modal.isVisible().catch(() => false)) {
+    await page.locator('.draft-modal-btn-resume').click();
+    await expect(modal).toBeHidden({ timeout: 5000 });
+  }
+}
+
+async function openCardioEditPanel(page: import('@playwright/test').Page) {
+  await page.locator('#nav-main').click();
+  await page.locator('#mainGearBtn').click();
+  await expect(page.locator('#sec-settings')).toHaveClass(/active/);
+  await page.locator('.settings-item', { hasText: 'אימוני אירובי' }).click();
+  await expect(page.locator('#cardioEditPanel')).toBeVisible({ timeout: 8000 });
+}
+
+test.describe('Cardio Type Identity — Rename', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+    await ensureRunningEnabled(page);
+  });
+
+  test('renaming a cardio type persists across reload', async ({ page }) => {
+    const originalName = 'CTID_' + Date.now();
+    const renamedName  = 'CTID2_' + Date.now();
+    let typeId = '';
+
+    await openCardioEditPanel(page);
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    await page.locator('#cardioNewTypeName').fill(originalName);
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#cardioEditTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+    await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+    try {
+      page.once('dialog', dialog => dialog.accept(renamedName));
+      await page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-name`).dblclick();
+      await expect(page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-name`)).toHaveText(renamedName);
+      await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+      await page.reload();
+      await waitForAppReady(page);
+      await openCardioEditPanel(page);
+      await expect(page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-name`))
+        .toHaveText(renamedName, { timeout: 8000 });
+    } finally {
+      const removeBtn = page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      }
+    }
+  });
+});
+
+test.describe('Cardio Type Identity — Reorder & Colors', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+    await ensureRunningEnabled(page);
+  });
+
+  // Mirrors workout.spec.ts's strength reorder+color test exactly — see
+  // that test's comments for the full rationale (__debugGetDoc for the
+  // otherwise-unobservable `color` field, real A/B-equivalent Running/
+  // Elliptical types, scoped to exactly-2-types accounts, drag-twice
+  // restore).
+  test('reordering cardio type tabs persists across reload without changing colors', async ({ page }) => {
+    const before = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'runningTemplates']));
+    test.skip(!before || !Array.isArray(before.types) || before.types.length !== 2,
+      'scoped to accounts with exactly 2 cardio types (this account\'s documented Running/Elliptical state)');
+    const idsBefore = before.types.map((t: any) => t.id);
+    const colorById: Record<string, number> = {};
+    before.types.forEach((t: any) => { colorById[t.id] = t.color; });
+
+    await openCardioEditPanel(page);
+
+    const dragFirstTabPastSecond = async () => {
+      const handles = page.locator('#cardioEditTabs .tab-item.edit-card .drag-handle');
+      const cards   = page.locator('#cardioEditTabs .tab-item.edit-card');
+      await handles.first().hover();
+      const startBox  = await handles.first().boundingBox();
+      const targetBox = await cards.nth(1).boundingBox();
+      await page.mouse.down();
+      await page.mouse.move(targetBox!.x + targetBox!.width / 2, startBox!.y + startBox!.height / 2, { steps: 10 });
+      await page.mouse.up();
+    };
+    const readTabOrder = async () =>
+      page.locator('#cardioEditTabs .tab-item.edit-card').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.id));
+
+    try {
+      await dragFirstTabPastSecond();
+      const idsAfterDrag = await readTabOrder();
+      expect(idsAfterDrag).toEqual([...idsBefore].reverse());
+
+      await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+      await page.reload();
+      await waitForAppReady(page);
+      const after = await page.evaluate(async () => (window as any).__debugGetDoc(['config', 'runningTemplates']));
+      expect(after.types.map((t: any) => t.id)).toEqual(idsAfterDrag);
+      after.types.forEach((t: any) => { expect(t.color).toBe(colorById[t.id]); });
+    } finally {
+      await openCardioEditPanel(page);
+      const currentIds = await readTabOrder();
+      if (currentIds[0] !== idsBefore[0]) {
+        await dragFirstTabPastSecond();
+        await expect.poll(readTabOrder).toEqual(idsBefore);
+        await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      }
+    }
+  });
+});
+
+test.describe('Cardio Type Identity — History Reflects Renames', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+    await ensureRunningEnabled(page);
+  });
+
+  // Cardio equivalent of workout.spec.ts's same-named test. A new cardio
+  // type is seeded with the 8 default fields by confirmAddCardioType (spec
+  // §4.2), so — unlike strength — no ad-hoc field is needed to log an entry.
+  test('history badge shows a cardio type\'s new name for an entry logged before the rename', async ({ page }) => {
+    const originalName  = 'CTIDH_' + Date.now();
+    const renamedName   = 'CTIDH2_' + Date.now();
+    const sessionMarker = 'CardioTypeIdentityHistTest ' + Date.now();
+    let typeId = '';
+
+    await openCardioEditPanel(page);
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    await page.locator('#cardioNewTypeName').fill(originalName);
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#cardioEditTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+    await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+    try {
+      await page.locator('#nav-running').click();
+      await expect(page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`)).toBeVisible({ timeout: 10000 });
+      await page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`).click();
+      const distRow = page.locator('#cardioFieldList .cardio-field-row', { hasText: 'מרחק' });
+      await distRow.locator('.cardio-field-input').fill('5.5');
+      await page.locator('#cardioSessionNameInput').fill(sessionMarker);
+      await page.locator('#cardioSaveBtn').click();
+      await expect(page.locator('#toast')).toContainText('נשמר');
+
+      await openCardioEditPanel(page);
+      page.once('dialog', dialog => dialog.accept(renamedName));
+      await page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-name`).dblclick();
+      await expect(page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-name`)).toHaveText(renamedName);
+      await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+      await page.locator('#nav-history').click();
+      await expect(page.locator('#sec-history')).toHaveClass(/active/);
+      await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+      await page.waitForFunction(() => document.querySelectorAll('.session-header').length > 0, { timeout: 15000 });
+      const sessionCard = page.locator('.session-card', { hasText: sessionMarker });
+      await expect(sessionCard).toBeVisible({ timeout: 15000 });
+      await expect(sessionCard.locator('.session-name-label')).toHaveText(sessionMarker);
+      await expect(sessionCard.locator('.session-badge')).toContainText(renamedName);
+      await expect(sessionCard.locator('.session-badge')).not.toContainText(originalName);
+    } finally {
+      await page.locator('#nav-history').click().catch(() => {});
+      const sessionCard = page.locator('.session-card', { hasText: sessionMarker });
+      if (await sessionCard.count() > 0) {
+        const header = sessionCard.locator('.session-header');
+        await header.scrollIntoViewIfNeeded();
+        const box = await header.boundingBox();
+        if (box) {
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.waitForTimeout(650);
+          await page.mouse.up();
+          await page.locator('#histBulkBar .bulk-bar-del').click();
+          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+        }
+      }
+      await openCardioEditPanel(page);
+      const removeBtn = page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      }
+    }
+  });
+});
+
+test.describe('Cardio Type Identity — Draft Survives Rename', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+    await ensureRunningEnabled(page);
+  });
+
+  test('a mid-session cardio draft survives a rename of its own type', async ({ page }) => {
+    const originalName = 'CTIDD_' + Date.now();
+    const renamedName  = 'CTIDD2_' + Date.now();
+    const draftMarker  = 'CardioDraftSurvivesRename ' + Date.now();
+    let typeId = '';
+
+    await openCardioEditPanel(page);
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    await page.locator('#cardioNewTypeName').fill(originalName);
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#cardioEditTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+    await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+    try {
+      await page.locator('#nav-running').click();
+      await expect(page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`)).toBeVisible({ timeout: 10000 });
+      await page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`).click();
+      await page.locator('#cardioSessionNameInput').fill(draftMarker);
+      await page.waitForFunction((expected) => {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith('draft_') && k.includes('_cardio_'));
+        return keys.some(k => {
+          try { return JSON.parse(localStorage.getItem(k) || 'null')?.workoutName === expected; }
+          catch(e) { return false; }
+        });
+      }, draftMarker, { timeout: 5000 });
+
+      // Reload BEFORE navigating to the edit panel: this account's own
+      // _isNewSession flag (public/index.html) only shows the draft-found
+      // MODAL on a genuinely fresh session (empty sessionStorage, true on
+      // this test's very first load). Opening the cardio template editor
+      // while still on that first, never-reloaded load re-triggers cardio's
+      // own draft-restore check (loadRunData()'s promise chain inside
+      // _setCardioEditPanel) and DID surface the modal here during manual
+      // verification of this test, blocking the rename dblclick underneath
+      // it (strength's editor has no equivalent reload-on-open step, so its
+      // own version of this test never hits this). A reload here flips
+      // _isNewSession false (sessionStorage survives same-tab reloads), so
+      // any further draft-restore check takes the silent-restore branch
+      // instead — matching this file's/workout.spec.ts's own "same-session
+      // reload restores silently" behavior — and doubles as an extra,
+      // earlier proof point that the draft already survives a reload before
+      // the rename even happens.
+      await page.reload();
+      await waitForAppReady(page);
+      await page.locator('#nav-running').click();
+      await expect(page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`)).toBeVisible({ timeout: 10000 });
+      await page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`).click();
+      await resumeDraftModalIfPresent(page); // safety net — should be a no-op after the reload above
+      await expect(page.locator('#cardioSessionNameInput')).toHaveValue(draftMarker, { timeout: 8000 });
+
+      await openCardioEditPanel(page);
+      page.once('dialog', dialog => dialog.accept(renamedName));
+      await page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-name`).dblclick();
+      await expect(page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-name`)).toHaveText(renamedName);
+      await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+      await page.reload();
+      await waitForAppReady(page);
+      await page.locator('#nav-running').click();
+      await expect(page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`)).toBeVisible({ timeout: 10000 });
+      await page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`).click();
+      await resumeDraftModalIfPresent(page);
+      await expect(page.locator('#cardioSessionNameInput')).toHaveValue(draftMarker, { timeout: 8000 });
+    } finally {
+      await page.locator('#nav-running').click().catch(() => {});
+      const typeBtn = page.locator(`#cardioTypeRow .type-btn[data-type="${typeId}"]`);
+      if (await typeBtn.count() > 0) {
+        await typeBtn.click();
+        await resumeDraftModalIfPresent(page).catch(() => {});
+        await page.locator('#sec-running button', { hasText: 'נקה טופס' }).click().catch(() => {});
+      }
+      await openCardioEditPanel(page);
+      const removeBtn = page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      }
+    }
+  });
+});
+
+// ─── Type Identity Migration (Rename/Reorder V1) ────────────────────────
+// Verifies the two idempotency guards inside _migrateTypeIdentityForDomain
+// (public/index.html, spec 2026-09-10-type-identity-rename-reorder-design.md
+// §4): Phase A skips re-deriving the registry once `types` entries are
+// already objects (not strings); Phase B's per-entry backfill skips any
+// entry that already has `typeId`. This account is ALREADY migrated
+// (typeIdentityMigratedV1 === true, set the first time this code ran
+// against it during this task's own implementation) — so, exactly matching
+// how the "Cardio Data Migration" describe block above verifies
+// migrateCardioDataV2's idempotency (reload + guard-flag/doc-shape
+// comparison, NOT reverting the account to a pre-migration shape and
+// re-running, which this task's brief explicitly rules out as a live
+// double-migration against real data), this exercises the guarded-retry
+// path via a real reload: the guard flag and both domains' registries must
+// be byte-for-byte identical before and after, proving a retry from
+// already-migrated state is a true no-op (Phase A's guard). Per-entry
+// idempotency (Phase B's guard) has no equivalent direct read hook (no
+// collection-query debug hook exists, only __debugGetDoc for single
+// documents) — this test's scope is registry-level, matching exactly what
+// the cardio migration test above verifies for migrateCardioDataV2.
+test.describe('Type Identity Migration (Rename/Reorder V1)', () => {
+  test.beforeEach(async ({ page }) => {
+    requiresCredentials();
+    await loginWithEmailPassword(page);
+    await waitForAppReady(page);
+  });
+
+  test('registry is {id,name,color}[] for both domains and the guard flag is set', async ({ page }) => {
+    await page.waitForFunction(async () => {
+      const s = await (window as any).__debugGetDoc(['config', 'settings']);
+      return !!s && s.typeIdentityMigratedV1 === true;
+    }, { timeout: 15000 });
+    const [settings, templates, runningTemplates] = await page.evaluate(async () => [
+      await (window as any).__debugGetDoc(['config', 'settings']),
+      await (window as any).__debugGetDoc(['config', 'templates']),
+      await (window as any).__debugGetDoc(['config', 'runningTemplates']),
+    ]);
+    expect(settings.typeIdentityMigratedV1).toBe(true);
+    for (const d of [templates, runningTemplates]) {
+      expect(Array.isArray(d.types)).toBe(true);
+      expect(d.types.length).toBeGreaterThan(0);
+      d.types.forEach((t: any) => {
+        expect(typeof t.id).toBe('string');
+        expect(t.id.length).toBeGreaterThan(0);
+        expect(typeof t.name).toBe('string');
+        expect(typeof t.color).toBe('number');
+      });
+    }
+  });
+
+  test('a guarded retry (reload) never re-derives either domain\'s registry', async ({ page }) => {
+    await page.waitForFunction(async () => {
+      const s = await (window as any).__debugGetDoc(['config', 'settings']);
+      return !!s && s.typeIdentityMigratedV1 === true;
+    }, { timeout: 15000 });
+    const before = await page.evaluate(async () => [
+      await (window as any).__debugGetDoc(['config', 'templates']),
+      await (window as any).__debugGetDoc(['config', 'runningTemplates']),
+    ]);
+
+    await page.reload();
+    await waitForAppReady(page);
+    await page.waitForFunction(async () => {
+      const s = await (window as any).__debugGetDoc(['config', 'settings']);
+      return !!s && s.typeIdentityMigratedV1 === true;
+    }, { timeout: 15000 });
+    const after = await page.evaluate(async () => [
+      await (window as any).__debugGetDoc(['config', 'templates']),
+      await (window as any).__debugGetDoc(['config', 'runningTemplates']),
+    ]);
+
+    // A re-derive would mint brand-new ids via genId() — exact equality of
+    // both domains' `types` arrays proves the Phase A guard held.
+    expect(after[0].types).toEqual(before[0].types);
+    expect(after[1].types).toEqual(before[1].types);
+  });
+});
