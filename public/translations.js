@@ -182,6 +182,9 @@ export const TRANSLATIONS = {
     'bulk.delete_btn': 'מחק נבחרים',
     'bulk.edit_btn':   'ערוך',
     'bulk.deleted':    'נמחקו',
+    'bulk.confirm_title':      'מחיקת פריטים',
+    'bulk.confirm_msg_suffix': 'פריטים יימחקו לצמיתות. להמשיך?',
+    'bulk.confirm_btn':        'מחק',
 
     // ── Settings ──────────────────────────────────────────────────
     'settings.section.edit':      'עריכה',
@@ -493,6 +496,9 @@ export const TRANSLATIONS = {
     'bulk.delete_btn': 'Delete selected',
     'bulk.edit_btn':   'Edit',
     'bulk.deleted':    'deleted',
+    'bulk.confirm_title':      'Delete Items',
+    'bulk.confirm_msg_suffix': 'items will be permanently deleted. Continue?',
+    'bulk.confirm_btn':        'Delete',
 
     // ── Settings ──────────────────────────────────────────────────
     'settings.section.edit':      'Edit',
