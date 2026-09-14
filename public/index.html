@@ -2332,6 +2332,17 @@ onAuthStateChanged(auth, async user => {
     if (typesEditorOpen)    toggleTypesEditor();
     if (cardioEditPanelOpen) _setCardioEditPanel(false);
 
+    // Re-showing #auth-screen (display:none -> visible) restarts CSS
+    // animations, including the :-webkit-autofill trick's animation. If the
+    // fields still held their previous autofilled values, that restart could
+    // re-fire 'animationstart' on both and, since both _authAutofilled flags
+    // are already true from before, silently log the user straight back in.
+    // Clearing .value (not just the flags) also clears Chromium's own
+    // autofill styling state, so no animation re-fires on next display.
+    document.getElementById('auth-email').value = '';
+    document.getElementById('auth-password').value = '';
+    _authAutofilled.email = _authAutofilled.password = false;
+
     // Remember what the user was trying to reach (if it's a real route)
     // so a fresh login can return them there, then reset the address bar
     // to '/' — a logged-out tab should never display a deep path in the
@@ -2353,6 +2364,11 @@ function switchAuthTab(mode) {
   document.getElementById('tab-register').classList.toggle('active', mode === 'register');
   document.getElementById('auth-submit-btn').textContent = mode === 'login' ? t('auth.submit_login') : t('auth.submit_register');
   setAuthMsg('');
+  // A stale flag from before the tab switch (e.g. an earlier email-only
+  // autofill) could otherwise combine with a later single-field autofill on
+  // the OTHER field to satisfy "both fields autofilled" with a stale value
+  // still sitting in the field that was never re-autofilled this round.
+  _authAutofilled.email = _authAutofilled.password = false;
 }
 
 async function handleAuthSubmit() {
