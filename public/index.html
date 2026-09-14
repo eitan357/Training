@@ -1426,8 +1426,45 @@
       </div>
     </div>
 
+    <div class="settings-group-label" style="margin-top:8px;" data-i18n="settings.section.privacy">פרטיות</div>
+    <button class="settings-item" onclick="openPrivacySettings()">
+      <span class="settings-item-icon"><svg class="icon" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-shield"/></svg></span>
+      <div class="settings-item-text">
+        <div class="settings-item-title" data-i18n="settings.privacy">פרטיות ומחיקת נתונים</div>
+        <div class="settings-item-sub" data-i18n="settings.privacy_sub">צפה בנתונים שנשמרים ומחק אותם או את החשבון</div>
+      </div>
+      <span class="settings-item-arrow">›</span>
+    </button>
+
     <button class="settings-logout-btn" onclick="handleLogout()" data-i18n="btn.logout">יציאה</button>
 
+  </div>
+</div>
+
+<div id="sec-privacy" class="section">
+  <div class="topbar">
+    <div><div class="topbar-title" data-i18n="title.privacy">פרטיות</div></div>
+    <button class="topbar-back-btn" onclick="goBack()" data-i18n="btn.back">← חזרה</button>
+  </div>
+  <div style="padding:16px; display:flex; flex-direction:column; gap:16px;">
+    <p style="font-size:13px; color:var(--sub); line-height:1.6; margin:0;" data-i18n="privacy.intro">
+      האפליקציה שומרת את הנתונים הבאים תחת החשבון שלך ב-Firebase. הנתונים אינם משותפים עם משתמשים אחרים ואינם נמכרים לצד שלישי.
+    </p>
+    <ul style="margin:0; padding-inline-start:20px; font-size:13px; color:var(--text); line-height:1.9;">
+      <li data-i18n="privacy.category_account">פרטי חשבון — כתובת מייל, שם תצוגה</li>
+      <li data-i18n="privacy.category_strength">אימוני כוח — תוכניות אימון, תרגילים, והיסטוריית כל אימון שנשמר</li>
+      <li data-i18n="privacy.category_cardio">אימוני אירובי — תוכניות אימון ושדות, והיסטוריית כל אימון שנשמר</li>
+      <li data-i18n="privacy.category_measurements">מדידות גוף — סוגי מדידה והיסטוריית כל מדידה שנשמרה</li>
+      <li data-i18n="privacy.category_drafts">טיוטות שמורות — אימונים שהתחלת להקליד ועדיין לא שמרת</li>
+    </ul>
+
+    <div style="border-top:1px solid var(--border); margin-top:8px; padding-top:16px; display:flex; flex-direction:column; gap:12px;">
+      <button id="privacyDataBtn" class="settings-logout-btn" style="margin:0; width:100%;" onclick="_openPrivacyConfirm('data')" data-i18n="privacy.data_btn">מחיקת נתונים</button>
+      <p style="font-size:12px; color:var(--sub); line-height:1.5; margin:0;" data-i18n="privacy.data_btn_sub">מוחק את כל האימונים, המדידות, התוכניות והטיוטות שלך לצמיתות. החשבון עצמו נשאר קיים ותוכל להתחיל להזין נתונים מחדש.</p>
+
+      <button id="privacyAccountBtn" class="settings-logout-btn" style="margin:0; width:100%;" onclick="_openPrivacyConfirm('account')" data-i18n="privacy.account_btn">מחיקה מלאה של הפרופיל</button>
+      <p style="font-size:12px; color:var(--sub); line-height:1.5; margin:0;" data-i18n="privacy.account_btn_sub">מוחק את כל הנתונים שלך וגם את החשבון עצמו לצמיתות. לא תוכל להתחבר שוב עם המייל הזה בלי להירשם מחדש מאפס.</p>
+    </div>
   </div>
 </div>
 
@@ -2939,7 +2976,7 @@ function applyAppData(data) {
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────
-const SECTION_ORDER = { main: 0, timer: 1, running: 2, measurements: 2, history: 3, settings: 4 };
+const SECTION_ORDER = { main: 0, timer: 1, running: 2, measurements: 2, history: 3, settings: 4, privacy: 5 };
 
 // Every top-level screen reachable by URL / bookmark / hardware back
 // button. Edit panels and running sub-views get real paths too, so the
@@ -2955,6 +2992,7 @@ const ROUTES = {
   '/settings/workout-plan':      { section: 'main', editPanel: 'workout' },
   '/settings/measurement-types': { section: 'measurements', editPanel: 'measurementTypes' },
   '/settings/cardio-plan':       { section: 'running', editPanel: 'cardio' },
+  '/settings/privacy':           { section: 'privacy' },
 };
 
 let currentSection = 'main';
@@ -5494,6 +5532,8 @@ function closeWorkoutEdit() { history.back(); }
 function openMeasurementsEdit()  { navigateTo('/settings/measurement-types'); }
 function closeMeasurementsEdit() { history.back(); }
 
+function openPrivacySettings() { navigateTo('/settings/privacy'); }
+
 // ─── COPY TARGET TO CARD ──────────────────────────────────────
 function copyTargetToCard(cardEl) {
   const tEl = cardEl.querySelector('.ex-target-text');
@@ -5927,7 +5967,7 @@ Object.assign(window, {
   _draftModalResume, _draftModalDiscard,
   _datePickerNav, _datePickerSelectDay, _openDatePicker, _setStrengthDateFieldHidden,
   navigateTo, goBack, setTheme, setLang, renderLangSelector, saveDisplayName,
-  toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit,
+  toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit, openPrivacySettings,
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
   filterHistory, switchHistoryDomain, toggleSess, toggleMonthGroup,
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,

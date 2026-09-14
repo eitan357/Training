@@ -67,12 +67,15 @@ test.describe('Settings Section', () => {
   });
 
   test('logout button is present', async ({ page }) => {
-    const logoutBtn = page.locator('.settings-logout-btn');
+    // Scoped to #sec-settings: .settings-logout-btn is also reused (by the
+    // Privacy page added in this task) for the two red delete buttons in
+    // #sec-privacy, which would otherwise make this a strict-mode violation.
+    const logoutBtn = page.locator('#sec-settings .settings-logout-btn');
     await expect(logoutBtn).toBeVisible();
   });
 
   test('logout button triggers sign-out', async ({ page }) => {
-    await page.locator('.settings-logout-btn').click();
+    await page.locator('#sec-settings .settings-logout-btn').click();
     // After logout, auth screen should become visible (Firebase removes .hidden class)
     await page.waitForFunction(
       () => !document.getElementById('auth-screen')?.classList.contains('hidden'),
@@ -110,5 +113,19 @@ test.describe('Settings Section', () => {
 
     // Restore Hebrew
     await langBtns.first().click();
+  });
+
+  test('privacy page is reachable from Settings and lists data categories', async ({ page }) => {
+    const privacyBtn = page.locator('.settings-item', { hasText: 'פרטיות ומחיקת נתונים' });
+    await privacyBtn.click();
+
+    await expect(page).toHaveURL(/\/settings\/privacy$/);
+    await expect(page.locator('#sec-privacy')).toHaveClass(/active/);
+    await expect(page.locator('#sec-privacy')).toContainText('פרטי חשבון');
+    await expect(page.locator('#privacyDataBtn')).toBeVisible();
+    await expect(page.locator('#privacyAccountBtn')).toBeVisible();
+
+    await page.goBack();
+    await expect(page.locator('#sec-settings')).toHaveClass(/active/);
   });
 });
