@@ -1527,7 +1527,8 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
          signInWithPopup, signInWithCredential,
          signOut, sendPasswordResetEmail,
-         deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
+         deleteUser, reauthenticateWithCredential, reauthenticateWithPopup,
+         EmailAuthProvider }                                            from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
 import { getFirestore, initializeFirestore, persistentLocalCache,
          doc, getDoc, setDoc, addDoc, updateDoc,
          deleteDoc, collection, query, orderBy,
@@ -2554,6 +2555,7 @@ function firebaseErrMsg(code) {
     'auth/user-not-found':        t('err.user_not_found'),
     'auth/wrong-password':        t('err.wrong_password'),
     'auth/invalid-credential':    t('err.invalid_credential'),
+    'auth/user-mismatch':         t('err.user_mismatch'),
     'auth/email-already-in-use':  t('err.email_in_use'),
     'auth/weak-password':         t('err.weak_password'),
     'auth/invalid-email':         t('err.invalid_email'),
@@ -4864,7 +4866,19 @@ async function deleteUserAccountFully() {
   }
 }
 
+// Set true whenever the reauth modal opens from deleteUserAccountFully()'s
+// catch — by that point _wipeUserFirestoreData()/_clearUserLocalStorage()
+// have already run, so if the user abandons/cancels this modal they're left
+// signed in with an intact account but zero data and no other explanation.
+// Cleared (with a reminder toast) when the modal closes without a
+// successful reauth-and-retry; cleared silently when a reauth succeeds and
+// flows straight into retrying the deletion, so that path doesn't also
+// show a redundant "data deleted" toast right before the real
+// "account deleted" message.
+let _privacyReauthAfterDataWipe = false;
+
 function _openPrivacyReauth() {
+  _privacyReauthAfterDataWipe = true;
   const isGoogle = currentUser?.providerData?.[0]?.providerId === 'google.com';
   document.getElementById('privacyReauthPassword').style.display    = isGoogle ? 'none' : 'block';
   document.getElementById('privacyReauthPasswordBtn').style.display = isGoogle ? 'none' : 'block';
@@ -4875,6 +4889,10 @@ function _openPrivacyReauth() {
 
 function _closePrivacyReauth() {
   document.getElementById('privacyReauthModal').style.display = 'none';
+  if (_privacyReauthAfterDataWipe) {
+    toast(t('privacy.data_deleted_ok'), 'success');
+  }
+  _privacyReauthAfterDataWipe = false;
 }
 
 // Retries the exact same delete after a successful reauth — deleteUser()
@@ -4887,35 +4905,44 @@ async function _privacyReauthWithPassword() {
   try {
     const credential = EmailAuthProvider.credential(currentUser.email, password);
     await reauthenticateWithCredential(currentUser, credential);
+    _privacyReauthAfterDataWipe = false; // continuing straight into the retry, not abandoning
     _closePrivacyReauth();
     await deleteUserAccountFully();
   } catch (err) {
-    toast(firebaseErrMsg(err.code), 'error');
+    toast(firebaseErrMsg(err?.code), 'error');
   }
 }
 
+// Native branch still needs the manual signInWithGoogle()+credential dance
+// (Google blocks OAuth inside a WebView, so the native Custom-Tab flow
+// handleGoogleLogin() already uses only signs in at the native layer —
+// reauthenticateWithPopup has no native equivalent). The web branch uses
+// reauthenticateWithPopup instead of signInWithPopup + a manually-extracted
+// credential: signInWithPopup would reassign currentUser to whatever
+// account the chooser returns, defeating the SDK's own auth/user-mismatch
+// check; reauthenticateWithPopup never does that.
 async function _privacyReauthWithGoogle() {
   try {
-    let credential;
     if (window.Capacitor?.isNativePlatform()) {
-      // Same native Custom-Tab flow handleGoogleLogin() uses — Google
-      // blocks OAuth inside a WebView, so this can't just be a plain
-      // popup even for reauth.
       const { FirebaseAuthentication } = window.Capacitor.Plugins;
-      const result  = await FirebaseAuthentication.signInWithGoogle();
-      credential = GoogleAuthProvider.credential(result.credential?.idToken);
+      const result     = await FirebaseAuthentication.signInWithGoogle();
+      const credential = GoogleAuthProvider.credential(result.credential?.idToken);
+      await reauthenticateWithCredential(currentUser, credential);
     } else {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      credential = GoogleAuthProvider.credential(
-        GoogleAuthProvider.credentialFromResult(result)?.idToken
-      );
+      await reauthenticateWithPopup(currentUser, provider);
     }
-    await reauthenticateWithCredential(currentUser, credential);
+    _privacyReauthAfterDataWipe = false; // continuing straight into the retry, not abandoning
     _closePrivacyReauth();
     await deleteUserAccountFully();
   } catch (err) {
-    toast(t('err.google_signin_failed'), 'error');
+    // auth/user-mismatch fires if the popup/native flow authenticated a
+    // DIFFERENT Google account than the one being deleted.
+    if (err?.code === 'auth/user-mismatch') {
+      toast(firebaseErrMsg(err.code), 'error');
+    } else {
+      toast(t('err.google_signin_failed'), 'error');
+    }
   }
 }
 
