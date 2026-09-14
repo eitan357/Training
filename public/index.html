@@ -1076,6 +1076,17 @@
   </div>
 </div>
 
+<div id="privacyReauthModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="privacyReauthTitle">
+  <div class="draft-modal-card">
+    <div id="privacyReauthTitle" class="draft-modal-title" data-i18n="privacy.reauth_title">נדרש אימות מחדש</div>
+    <div class="draft-modal-details" data-i18n="privacy.reauth_details">מטעמי אבטחה, מחיקת חשבון דורשת התחברות טרייה. אמת/י את הזהות שלך כדי להמשיך.</div>
+    <input type="password" id="privacyReauthPassword" class="privacy-confirm-input" autocomplete="current-password" data-i18n-ph="privacy.reauth_password_ph" placeholder="הזן סיסמה נוכחית">
+    <button id="privacyReauthPasswordBtn" class="privacy-confirm-btn" onclick="_privacyReauthWithPassword()" data-i18n="privacy.reauth_confirm_btn">אמת ומחק חשבון</button>
+    <button id="privacyReauthGoogleBtn" class="draft-modal-btn-resume" onclick="_privacyReauthWithGoogle()" data-i18n="privacy.reauth_google_btn" style="display:none;">התחבר עם Google שוב</button>
+    <button class="draft-modal-btn-discard" onclick="_closePrivacyReauth()" data-i18n="btn.cancel">ביטול</button>
+  </div>
+</div>
+
 <!-- Shared date-picker popover (Task 6) — same section-independent placement
      rationale as #draftModal above: a single global instance, opened/closed
      via _openDatePicker()/_closeDatePicker(), never nested in any .section. -->
@@ -1515,7 +1526,8 @@ import { initializeApp }                                          from 'https://
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
          createUserWithEmailAndPassword, GoogleAuthProvider,
          signInWithPopup, signInWithCredential,
-         signOut, sendPasswordResetEmail }                        from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
+         signOut, sendPasswordResetEmail,
+         deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
 import { getFirestore, initializeFirestore, persistentLocalCache,
          doc, getDoc, setDoc, addDoc, updateDoc,
          deleteDoc, collection, query, orderBy,
@@ -4829,6 +4841,84 @@ async function deleteAllUserData() {
   }
 }
 
+// ─── PRIVACY: FULL ACCOUNT DELETION ─────────────────────────────
+async function deleteUserAccountFully() {
+  const uid = currentUser?.uid;
+  if (!uid) return;
+  try {
+    await _wipeUserFirestoreData(uid);
+    _clearUserLocalStorage(uid);
+    await deleteUser(currentUser);
+    // onAuthStateChanged(auth, ...) fires with user=null right after this
+    // resolves, which already hides all content and shows #auth-screen —
+    // no navigation call needed here. setAuthMsg() writes into #auth-msg,
+    // which that null-user branch never touches, so this message survives
+    // the transition and is visible the moment the auth screen appears.
+    setAuthMsg(t('privacy.account_deleted_ok'), true);
+  } catch (err) {
+    if (err.code === 'auth/requires-recent-login') {
+      _openPrivacyReauth();
+    } else {
+      toast(t('error.save') + firestoreErrMsg(err), 'error');
+    }
+  }
+}
+
+function _openPrivacyReauth() {
+  const isGoogle = currentUser?.providerData?.[0]?.providerId === 'google.com';
+  document.getElementById('privacyReauthPassword').style.display    = isGoogle ? 'none' : 'block';
+  document.getElementById('privacyReauthPasswordBtn').style.display = isGoogle ? 'none' : 'block';
+  document.getElementById('privacyReauthGoogleBtn').style.display   = isGoogle ? 'block' : 'none';
+  document.getElementById('privacyReauthPassword').value = '';
+  document.getElementById('privacyReauthModal').style.display = 'flex';
+}
+
+function _closePrivacyReauth() {
+  document.getElementById('privacyReauthModal').style.display = 'none';
+}
+
+// Retries the exact same delete after a successful reauth — deleteUser()
+// only fails with auth/requires-recent-login on a stale session; once
+// reauthenticateWithCredential() succeeds, the SDK's session is fresh
+// again and the original call succeeds.
+async function _privacyReauthWithPassword() {
+  const password = document.getElementById('privacyReauthPassword').value;
+  if (!password) return;
+  try {
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await reauthenticateWithCredential(currentUser, credential);
+    _closePrivacyReauth();
+    await deleteUserAccountFully();
+  } catch (err) {
+    toast(firebaseErrMsg(err.code), 'error');
+  }
+}
+
+async function _privacyReauthWithGoogle() {
+  try {
+    let credential;
+    if (window.Capacitor?.isNativePlatform()) {
+      // Same native Custom-Tab flow handleGoogleLogin() uses — Google
+      // blocks OAuth inside a WebView, so this can't just be a plain
+      // popup even for reauth.
+      const { FirebaseAuthentication } = window.Capacitor.Plugins;
+      const result  = await FirebaseAuthentication.signInWithGoogle();
+      credential = GoogleAuthProvider.credential(result.credential?.idToken);
+    } else {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      credential = GoogleAuthProvider.credential(
+        GoogleAuthProvider.credentialFromResult(result)?.idToken
+      );
+    }
+    await reauthenticateWithCredential(currentUser, credential);
+    _closePrivacyReauth();
+    await deleteUserAccountFully();
+  } catch (err) {
+    toast(t('err.google_signin_failed'), 'error');
+  }
+}
+
 // ─── PRIVACY CONFIRM MODAL ─────────────────────────────────────
 // Shared by both destructive actions on the Privacy page (Task 2's
 // #privacyDataBtn/#privacyAccountBtn). Unlike armDelete()'s tap-twice
@@ -4862,14 +4952,11 @@ function _privacyConfirmInputChanged() {
   document.getElementById('privacyConfirmBtn').disabled = typed !== t('privacy.confirm_word');
 }
 
-// Task 5 replaces the 'account' branch with the real
-// deleteUserAccountFully() dispatch — stubbed here so the modal's
-// open/type/enable/cancel behavior is independently testable first.
 async function _privacyConfirmProceed() {
   const kind = _privacyConfirmKind;
   _closePrivacyConfirm();
   if (kind === 'data') await deleteAllUserData();
-  // kind === 'account' is wired in Task 5.
+  else if (kind === 'account') await deleteUserAccountFully();
 }
 
 // ─── EDIT TEMPLATES ───────────────────────────────────────────
@@ -6079,6 +6166,7 @@ Object.assign(window, {
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
   filterHistory, switchHistoryDomain, toggleSess, toggleMonthGroup,
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures, deleteAllUserData,
+  deleteUserAccountFully, _openPrivacyReauth, _closePrivacyReauth, _privacyReauthWithPassword, _privacyReauthWithGoogle,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   editMeasurement, saveMeasureEdit, cancelMeasureEdit,
   editSelectedSession, editSelectedMeasure,
