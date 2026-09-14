@@ -128,4 +128,44 @@ test.describe('Settings Section', () => {
     await page.goBack();
     await expect(page.locator('#sec-settings')).toHaveClass(/active/);
   });
+
+  test('privacy confirm modal requires typing the exact confirm word before enabling', async ({ page }) => {
+    await page.locator('.settings-item', { hasText: 'פרטיות ומחיקת נתונים' }).click();
+    await expect(page.locator('#sec-privacy')).toHaveClass(/active/);
+
+    await page.locator('#privacyDataBtn').click();
+    const modal = page.locator('#privacyConfirmModal');
+    await expect(modal).toBeVisible();
+    const confirmBtn = page.locator('#privacyConfirmBtn');
+    await expect(confirmBtn).toBeDisabled();
+
+    const input = page.locator('#privacyConfirmInput');
+    await input.fill('wrong');
+    await expect(confirmBtn).toBeDisabled();
+
+    await input.fill('מחק');
+    await expect(confirmBtn).toBeEnabled();
+
+    // Cancel instead of confirming — must not fire any deletion.
+    // Scoped to #privacyConfirmModal: the bare class also matches #draftModal's
+    // cancel button, which stays in the DOM (just display:none) and would
+    // otherwise make this a Playwright strict-mode violation.
+    await page.locator('#privacyConfirmModal .draft-modal-btn-discard').click();
+    await expect(modal).toBeHidden();
+
+    // The account/page must be completely unaffected by opening+cancelling.
+    await expect(page.locator('#sec-privacy')).toHaveClass(/active/);
+    await expect(page.locator('#privacyDataBtn')).toBeVisible();
+  });
+
+  test('privacy confirm modal shows distinct copy for the account-deletion action', async ({ page }) => {
+    await page.locator('.settings-item', { hasText: 'פרטיות ומחיקת נתונים' }).click();
+    await page.locator('#privacyAccountBtn').click();
+
+    await expect(page.locator('#privacyConfirmModal')).toBeVisible();
+    const title = await page.locator('#privacyConfirmTitle').textContent();
+    expect(title).toContain('חשבון');
+
+    await page.locator('#privacyConfirmModal .draft-modal-btn-discard').click();
+  });
 });
