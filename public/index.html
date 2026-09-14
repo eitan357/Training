@@ -4785,6 +4785,50 @@ function armDelete(btn, callback) {
   }
 }
 
+// ─── PRIVACY: DATA WIPE ─────────────────────────────────────────
+// Every Firestore path a user's account can have data under, per
+// docs/product/14-data-model-backend.md's collection map. Both
+// deleteAllUserData() and deleteUserAccountFully() (Task 5) call
+// _wipeUserFirestoreData() — full-account deletion is "wipe data,
+// then also delete the Auth user."
+const PRIVACY_CONFIG_DOCS        = ['templates', 'measurementTypes', 'profile', 'settings', 'runningTemplates'];
+const PRIVACY_ENTRY_COLLECTIONS  = ['workouts', 'measurements', 'runWorkouts', 'drafts'];
+
+async function _wipeUserFirestoreData(uid) {
+  for (const collName of PRIVACY_ENTRY_COLLECTIONS) {
+    const snap = await getDocs(collection(db, 'users', uid, collName));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  }
+  await Promise.all(PRIVACY_CONFIG_DOCS.map(name => deleteDoc(doc(db, 'users', uid, 'config', name))));
+}
+
+// Every localStorage key this app writes is either a bare device-only
+// setting (theme/lang/timer sound — not uid-scoped, left alone) or
+// contains the uid as a substring (displayName_<uid>, templates_<uid>,
+// lastWorkout_<uid>_<type>, running_enabled_<uid>, runningTemplates_<uid>,
+// draft_<uid>_<domain>_<type> — see docs/superpowers/specs/
+// 2026-09-14-privacy-data-deletion-design.md's "Data footprint" section
+// for the full enumeration this substring match is standing in for).
+function _clearUserLocalStorage(uid) {
+  Object.keys(localStorage)
+    .filter(k => k.includes(uid))
+    .forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+}
+
+async function deleteAllUserData() {
+  const uid = currentUser?.uid;
+  if (!uid) return;
+  try {
+    await _wipeUserFirestoreData(uid);
+    _clearUserLocalStorage(uid);
+    toast(t('privacy.data_deleted_ok'), 'success');
+    await reloadAppData();
+    navigateTo('/', { replace: true, isRoot: true });
+  } catch (err) {
+    toast(t('error.save') + firestoreErrMsg(err), 'error');
+  }
+}
+
 // ─── PRIVACY CONFIRM MODAL ─────────────────────────────────────
 // Shared by both destructive actions on the Privacy page (Task 2's
 // #privacyDataBtn/#privacyAccountBtn). Unlike armDelete()'s tap-twice
@@ -4818,13 +4862,14 @@ function _privacyConfirmInputChanged() {
   document.getElementById('privacyConfirmBtn').disabled = typed !== t('privacy.confirm_word');
 }
 
-// Task 4/5 replace this body with the real deleteAllUserData()/
+// Task 5 replaces the 'account' branch with the real
 // deleteUserAccountFully() dispatch — stubbed here so the modal's
 // open/type/enable/cancel behavior is independently testable first.
 async function _privacyConfirmProceed() {
   const kind = _privacyConfirmKind;
   _closePrivacyConfirm();
-  console.log('[privacy] confirmed:', kind);
+  if (kind === 'data') await deleteAllUserData();
+  // kind === 'account' is wired in Task 5.
 }
 
 // ─── EDIT TEMPLATES ───────────────────────────────────────────
@@ -6033,7 +6078,7 @@ Object.assign(window, {
   toggleEditPanel, openWorkoutEdit, closeWorkoutEdit, openMeasurementsEdit, closeMeasurementsEdit, openPrivacySettings,
   toggleTimer, setTimerPreset, tv2Start, tv2Stop, tv2TogglePause, tv2ToggleSound,
   filterHistory, switchHistoryDomain, toggleSess, toggleMonthGroup,
-  toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures,
+  toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures, deleteAllUserData,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   editMeasurement, saveMeasureEdit, cancelMeasureEdit,
   editSelectedSession, editSelectedMeasure,
