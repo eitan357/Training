@@ -169,3 +169,69 @@ test.describe('Settings Section', () => {
     await page.locator('#privacyConfirmModal .draft-modal-btn-discard').click();
   });
 });
+
+test.describe('Privacy page — destructive round trip (disposable account only)', () => {
+  // Never reuses TEST_EMAIL/TEST_PASSWORD — registers and destroys its
+  // own throwaway account so this test can never touch the shared
+  // accounts every other spec file in this repo depends on.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('Delete Data wipes Firestore but keeps the account; Delete Account Permanently removes it entirely', async ({ page }) => {
+    const email = `qa-privacy-delete-${Date.now()}@example.com`;
+    const password = 'QaPrivacyDelete123!';
+
+    try {
+      // ── Register a fresh disposable account ──
+      await page.goto('/');
+      await page.waitForSelector('#auth-screen');
+      await page.locator('#tab-register').click();
+      await page.locator('#auth-email').fill(email);
+      await page.locator('#auth-password').fill(password);
+      await page.locator('#auth-submit-btn').click();
+      await page.waitForFunction(() => document.getElementById('auth-screen')?.classList.contains('hidden'), { timeout: 20000 });
+      await expect(page.locator('#main-content')).toBeVisible();
+
+      // ── Add one throwaway workout so Delete Data has something real to remove ──
+      await page.waitForFunction(() => {
+        const row = document.getElementById('typeRow');
+        return row && row.children.length > 0;
+      }, { timeout: 10000 });
+      await page.locator('#typeRow button, #typeRow .type-btn').first().click();
+      await page.locator('.ex-weight').first().fill('10');
+      await page.locator('#saveBtn').click();
+      await expect(page.locator('#toast')).toHaveClass(/success/, { timeout: 10000 });
+
+      // ── Delete Data: account must survive, data must not ──
+      await page.evaluate(() => (window as any).navigateTo('/settings/privacy'));
+      await expect(page.locator('#sec-privacy')).toHaveClass(/active/);
+      await page.locator('#privacyDataBtn').click();
+      await page.locator('#privacyConfirmInput').fill('מחק');
+      await page.locator('#privacyConfirmBtn').click();
+      await expect(page.locator('#toast')).toContainText('נמחקו', { timeout: 10000 });
+      // Still logged in — the auth screen must stay hidden.
+      await expect(page.locator('#auth-screen')).toHaveClass(/hidden/);
+
+      // ── Delete Account Permanently: fresh login, so no reauth branch fires ──
+      await page.evaluate(() => (window as any).navigateTo('/settings/privacy'));
+      await page.locator('#privacyAccountBtn').click();
+      await page.locator('#privacyConfirmInput').fill('מחק');
+      await page.locator('#privacyConfirmBtn').click();
+      await page.waitForFunction(() => !document.getElementById('auth-screen')?.classList.contains('hidden'), { timeout: 15000 });
+      await expect(page.locator('#auth-msg')).toContainText('נמחק');
+
+      // ── The account must be genuinely gone, not just signed out ──
+      await page.locator('#tab-login').click();
+      await page.locator('#auth-email').fill(email);
+      await page.locator('#auth-password').fill(password);
+      await page.locator('#auth-submit-btn').click();
+      await expect(page.locator('#auth-msg')).not.toBeEmpty({ timeout: 10000 });
+      const loginFailed = await page.locator('#auth-screen').evaluate(el => !el.classList.contains('hidden'));
+      expect(loginFailed).toBe(true);
+    } finally {
+      // Belt-and-braces: guarantees no disposable account survives in
+      // production even if an assertion above failed mid-test.
+      const { execSync } = require('child_process');
+      try { execSync(`node scripts/force-delete-test-user.js ${email}`, { cwd: process.cwd(), stdio: 'inherit' }); } catch (e) {}
+    }
+  });
+});
