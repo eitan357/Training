@@ -236,4 +236,131 @@ test.describe('History Section', () => {
     await page.locator('#histBulkEditBtn').click();
     await expect(page.locator('.edit-session-wrap')).toBeVisible();
   });
+
+  test('bulk delete: selecting 2+ records shows a confirmation modal; cancel keeps them, confirm deletes them', async ({ page }) => {
+    const markerA = 'BulkDelA_' + Date.now();
+    const markerB = 'BulkDelB_' + Date.now();
+
+    async function logThrowawaySession(marker: string) {
+      await page.locator('#nav-main').click();
+      await page.waitForFunction(() => (document.getElementById('typeRow')?.children.length || 0) > 0, { timeout: 10000 });
+      await page.locator('#typeRow .type-btn').first().click();
+      // Baseline template-card count for this type, captured before adding
+      // the ad-hoc card below — used after save to confirm submitData()'s
+      // async reloadAppData()+clearWorkoutForm() has actually finished (see
+      // note after this function).
+      const baseline = await page.locator('#exerciseList .card').count();
+      await page.locator('#addBtn').click();
+      const card = page.locator('#exerciseList .card').last();
+      await card.locator('.ex-name-input').fill('BulkDeleteTestExercise');
+      await card.locator('.ex-weight').fill('1');
+      await page.locator('#sessionNameInput').fill(marker);
+      await page.locator('#saveBtn').click();
+      await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+      // submitData() awaits reloadAppData() (a real Firestore round-trip)
+      // before calling clearWorkoutForm(true), which rebuilds #exerciseList
+      // back down to just the type's template cards. That happens AFTER the
+      // save toast already appears, so without this wait, logging a second
+      // throwaway session immediately can select the same type (a no-op,
+      // since selectType() bails out when it's already selected) and add
+      // its own ad-hoc card while the previous save's exerciseList rebuild
+      // is still in flight — the delayed rebuild then wipes the new card
+      // out from under the in-progress second submitData() call, so it
+      // silently sees zero filled exercises and never saves. Waiting for
+      // the list to settle back to its baseline size closes that window.
+      await page.waitForFunction(
+        (n) => document.querySelectorAll('#exerciseList .card').length === n,
+        baseline,
+        { timeout: 10000 }
+      );
+    }
+
+    await logThrowawaySession(markerA);
+    await logThrowawaySession(markerB);
+
+    await page.locator('#nav-history').click();
+    await expect(page.locator('#sec-history')).toHaveClass(/active/);
+    const cardA = page.locator('.session-card', { hasText: markerA });
+    const cardB = page.locator('.session-card', { hasText: markerB });
+    await expect(cardA).toBeVisible({ timeout: 15000 });
+    await expect(cardB).toBeVisible({ timeout: 15000 });
+
+    // Long-press card A to enter multi-select, then a short click on card B
+    // adds it too — same pattern as this file's existing touch/mouse
+    // multi-select tests above.
+    const headerA = cardA.locator('.session-header');
+    await headerA.scrollIntoViewIfNeeded();
+    const boxA = await headerA.boundingBox();
+    await page.mouse.move(boxA!.x + boxA!.width / 2, boxA!.y + boxA!.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
+    await page.mouse.up();
+    await expect(cardA).toHaveClass(/sel-active/);
+
+    const headerB = cardB.locator('.session-header');
+    await headerB.scrollIntoViewIfNeeded();
+    await headerB.click();
+    await expect(cardB).toHaveClass(/sel-active/);
+    await expect(page.locator('#histBulkCount')).toContainText('2');
+
+    await page.locator('#histBulkBar .bulk-bar-del').click();
+
+    // Modal shown, nothing deleted yet.
+    await expect(page.locator('#bulkConfirmModal')).toBeVisible();
+    await expect(cardA).toBeVisible();
+    await expect(cardB).toBeVisible();
+
+    // Cancel: modal closes, both records and the selection survive.
+    await page.locator('#bulkConfirmModal .draft-modal-btn-discard').click();
+    await expect(page.locator('#bulkConfirmModal')).toBeHidden();
+    await expect(cardA).toBeVisible();
+    await expect(cardB).toBeVisible();
+    await expect(page.locator('#histBulkBar')).toBeVisible();
+    await expect(page.locator('#histBulkCount')).toContainText('2');
+
+    // Confirm: both records are actually deleted.
+    await page.locator('#histBulkBar .bulk-bar-del').click();
+    await expect(page.locator('#bulkConfirmModal')).toBeVisible();
+    await page.locator('#bulkConfirmModal .bulk-confirm-btn-delete').click();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    await expect(cardA).toHaveCount(0);
+    await expect(cardB).toHaveCount(0);
+  });
+
+  test('bulk delete: selecting exactly 1 record deletes immediately without showing the confirmation modal', async ({ page }) => {
+    const marker = 'BulkDelSingle_' + Date.now();
+
+    await page.locator('#nav-main').click();
+    await page.waitForFunction(() => (document.getElementById('typeRow')?.children.length || 0) > 0, { timeout: 10000 });
+    await page.locator('#typeRow .type-btn').first().click();
+    await page.locator('#addBtn').click();
+    const card = page.locator('#exerciseList .card').last();
+    await card.locator('.ex-name-input').fill('BulkDeleteTestExercise');
+    await card.locator('.ex-weight').fill('1');
+    await page.locator('#sessionNameInput').fill(marker);
+    await page.locator('#saveBtn').click();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+
+    await page.locator('#nav-history').click();
+    await expect(page.locator('#sec-history')).toHaveClass(/active/);
+    const sessionCard = page.locator('.session-card', { hasText: marker });
+    await expect(sessionCard).toBeVisible({ timeout: 15000 });
+
+    const header = sessionCard.locator('.session-header');
+    await header.scrollIntoViewIfNeeded();
+    const box = await header.boundingBox();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+    await expect(sessionCard).toHaveClass(/sel-active/);
+    await expect(page.locator('#histBulkCount')).toContainText('1');
+
+    await page.locator('#histBulkBar .bulk-bar-del').click();
+
+    // No confirmation dialog for a single record — deletes right away.
+    await expect(page.locator('#bulkConfirmModal')).toBeHidden();
+    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    await expect(sessionCard).toHaveCount(0);
+  });
 });
