@@ -201,6 +201,17 @@ test.describe('Privacy page — destructive round trip (disposable account only)
       await page.locator('#saveBtn').click();
       await expect(page.locator('#toast')).toHaveClass(/success/, { timeout: 10000 });
 
+      // ── Seed a legacy pre-migration doc no in-app UI path can create
+      // anymore, via the window.__debugSetDoc test hook (public/index.html) —
+      // this is exactly the runWorkoutTypes shape a not-yet-migrated account
+      // would still be carrying (see migrateCardioDataV2() and
+      // PRIVACY_ENTRY_COLLECTIONS). Deleting Data must remove it too, or
+      // migrateCardioDataV2() would resurrect it as real runningTemplates
+      // data on the next load.
+      await page.evaluate(() => (window as any).__debugSetDoc(['runWorkoutTypes', 'legacy-type-1'], { name: 'ריצה ישנה', order: 0 }));
+      const seededBefore = await page.evaluate(() => (window as any).__debugGetDoc(['runWorkoutTypes', 'legacy-type-1']));
+      expect(seededBefore).not.toBeNull();
+
       // ── Delete Data: account must survive, data must not ──
       await page.evaluate(() => (window as any).navigateTo('/settings/privacy'));
       await expect(page.locator('#sec-privacy')).toHaveClass(/active/);
@@ -210,6 +221,14 @@ test.describe('Privacy page — destructive round trip (disposable account only)
       await expect(page.locator('#toast')).toContainText('נמחקו', { timeout: 10000 });
       // Still logged in — the auth screen must stay hidden.
       await expect(page.locator('#auth-screen')).toHaveClass(/hidden/);
+
+      // ── The wipe must have removed real Firestore documents, not just
+      // shown a success toast — both a normal config doc (created at
+      // registration) and the seeded legacy runWorkoutTypes doc above.
+      const templatesAfterWipe = await page.evaluate(() => (window as any).__debugGetDoc(['config', 'templates']));
+      expect(templatesAfterWipe).toBeNull();
+      const legacyTypeAfterWipe = await page.evaluate(() => (window as any).__debugGetDoc(['runWorkoutTypes', 'legacy-type-1']));
+      expect(legacyTypeAfterWipe).toBeNull();
 
       // ── Delete Account Permanently: fresh login, so no reauth branch fires ──
       await page.evaluate(() => (window as any).navigateTo('/settings/privacy'));

@@ -1079,7 +1079,7 @@
 <div id="privacyReauthModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="privacyReauthTitle">
   <div class="draft-modal-card">
     <div id="privacyReauthTitle" class="draft-modal-title" data-i18n="privacy.reauth_title">נדרש אימות מחדש</div>
-    <div class="draft-modal-details" data-i18n="privacy.reauth_details">מטעמי אבטחה, מחיקת חשבון דורשת התחברות טרייה. אמת/י את הזהות שלך כדי להמשיך.</div>
+    <div class="draft-modal-details" data-i18n="privacy.reauth_details">מטעמי אבטחה, מחיקת חשבון דורשת התחברות טרייה. אמת/י את הזהות שלך כדי להמשיך. הנתונים שלך כבר נמחקו — ביטול הפעולה כאן לא ישחזר אותם.</div>
     <input type="password" id="privacyReauthPassword" class="privacy-confirm-input" autocomplete="current-password" data-i18n-ph="privacy.reauth_password_ph" placeholder="הזן סיסמה נוכחית">
     <button id="privacyReauthPasswordBtn" class="privacy-confirm-btn" onclick="_privacyReauthWithPassword()" data-i18n="privacy.reauth_confirm_btn">אמת ומחק חשבון</button>
     <button id="privacyReauthGoogleBtn" class="draft-modal-btn-resume" onclick="_privacyReauthWithGoogle()" data-i18n="privacy.reauth_google_btn" style="display:none;">התחבר עם Google שוב</button>
@@ -1744,6 +1744,17 @@ window.__debugGetDoc = async (pathParts) => {
   if (!currentUser) return null;
   const snap = await getDoc(doc(db, 'users', currentUser.uid, ...pathParts));
   return snap.exists() ? snap.data() : null;
+};
+
+// Test-only Firestore write hook, same convention as window.__debugGetDoc
+// above — lets Playwright seed document shapes that no in-app UI path can
+// create anymore (e.g. the legacy pre-migration runWorkoutTypes collection),
+// so a round-trip privacy-deletion test can assert real documents are
+// actually gone, not just that a success toast fired. No-ops in production
+// since nothing calls window.__debugSetDoc outside tests.
+window.__debugSetDoc = async (pathParts, data) => {
+  if (!currentUser) return;
+  await setDoc(doc(db, 'users', currentUser.uid, ...pathParts), data);
 };
 
 let db;
@@ -3100,12 +3111,28 @@ function pushSubState(patch) {
   _renderRoute(state);
 }
 
+// #privacyConfirmModal/#privacyReauthModal are global overlays outside any
+// .section (same as #draftModal), so plain back navigation (history.back()
+// → popstate → _renderRoute() → showSection()) never touches them on its
+// own — closing them here, in the one function every navigation funnels
+// through, covers hardware back and browser back in a single place. Closing
+// the reauth modal this way still runs _closePrivacyReauth()'s existing
+// "data already wiped, account wasn't" warning toast (Fix 2) — correct here
+// too, since navigating away is just another form of abandoning the modal.
+function _closePrivacyModalsIfOpen() {
+  const confirmModal = document.getElementById('privacyConfirmModal');
+  if (confirmModal && confirmModal.style.display !== 'none') _closePrivacyConfirm();
+  const reauthModal = document.getElementById('privacyReauthModal');
+  if (reauthModal && reauthModal.style.display !== 'none') _closePrivacyReauth();
+}
+
 // The single function that makes the DOM match ANY state object.
 // Called from navigateTo(), pushSubState(), the popstate listener
 // below, the Android hardware-back handler (Task 9), and app boot
 // (Task 6). This is what guarantees identical behavior across all of
 // those triggers — they all funnel through here.
 function _renderRoute(state) {
+  _closePrivacyModalsIfOpen();
   if (state.section === 'running' && !_isRunningAllowed()) { navigateTo('/', { replace: true, isRoot: true }); return; }
   showSection(state.section);
   _setWorkoutEditPanel(state.section === 'main' && state.editPanel === 'workout');
@@ -4806,7 +4833,7 @@ function armDelete(btn, callback) {
 // _wipeUserFirestoreData() — full-account deletion is "wipe data,
 // then also delete the Auth user."
 const PRIVACY_CONFIG_DOCS        = ['templates', 'measurementTypes', 'profile', 'settings', 'runningTemplates'];
-const PRIVACY_ENTRY_COLLECTIONS  = ['workouts', 'measurements', 'runWorkouts', 'drafts'];
+const PRIVACY_ENTRY_COLLECTIONS  = ['workouts', 'measurements', 'runWorkouts', 'drafts', 'runWorkoutTypes'];
 
 async function _wipeUserFirestoreData(uid) {
   for (const collName of PRIVACY_ENTRY_COLLECTIONS) {
@@ -4890,7 +4917,12 @@ function _openPrivacyReauth() {
 function _closePrivacyReauth() {
   document.getElementById('privacyReauthModal').style.display = 'none';
   if (_privacyReauthAfterDataWipe) {
-    toast(t('privacy.data_deleted_ok'), 'success');
+    // Data is already gone at this point (deleteUserAccountFully() wiped it
+    // before hitting auth/requires-recent-login) but the ACCOUNT itself is
+    // still alive — reusing privacy.data_deleted_ok/'success' here would
+    // read as "it worked" and mislead the user into thinking the account
+    // deletion succeeded. Use the dedicated warning copy/style instead.
+    toast(t('privacy.reauth_abandoned'), 'error');
   }
   _privacyReauthAfterDataWipe = false;
 }
