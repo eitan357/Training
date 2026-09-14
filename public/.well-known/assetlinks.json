@@ -1,0 +1,19 @@
+[
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "web",
+      "site": "https://training-diary.web.app"
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.eitanmonsa.trainingdiary",
+      "sha256_cert_fingerprints": [
+        "D0:BB:9E:4F:49:54:92:0A:BF:80:82:75:51:75:37:4B:87:38:4D:93:08:3B:01:84:6B:9F:59:C0:C2:89:3E:3F"
+      ]
+    }
+  }
+]

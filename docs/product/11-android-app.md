@@ -30,6 +30,17 @@
 
 האתר והאפליקציה **חולקים בדיוק את אותו פרויקט Firebase** (אותו Auth, אותו Firestore). משתמש שנרשם דרך האתר ומתחבר אחר כך דרך האפליקציה (או להפך) רואה בדיוק את אותם נתונים — אין הפרדת "משתמשי אפליקציה" מ"משתמשי אתר".
 
+## שיתוף סיסמאות שמורות בין האתר לאפליקציה (Cross-Surface Credential Sharing)
+
+כדי שסיסמה שנשמרה על ידי המשתמש באתר (`training-diary.web.app`) תוצע כאוטופיל גם בתוך ה-WebView של האפליקציה, אנדרואיד דורש הצהרה **דו-כיוונית** של Digital Asset Links — לא מספיק צד אחד:
+
+1. **צד האתר** — `public/.well-known/assetlinks.json` מכיל שתי הצהרות עם relation `delegate_permission/common.get_login_creds`: אחת עבור `namespace: "web"` (האתר עצמו) ואחת עבור `namespace: "android_app"` (חבילת האפליקציה + טביעת אצבע SHA-256 של מפתח החתימה).
+2. **צד האפליקציה** — `AndroidManifest.xml` מכיל `<meta-data android:name="asset_statements" ...>` המצביע (`"include"`) בחזרה לכתובת ה-`assetlinks.json` באתר, דרך `strings.xml`.
+
+**מגבלה ידועה, מכוונת:** ה-SHA-256 הרשום היום הוא **רק** של מפתח ה-debug (`~/.android/debug.keystore`) — אין עדיין מפתח release בפרויקט (ראו `01-auth-onboarding.md`'s הערת Google Sign-In). ברגע שייווצר מפתח release אמיתי או שתופעל Play App Signing, יש **להוסיף** את ה-SHA-256 שלו למערך `sha256_cert_fingerprints` (הוא תומך בכמה ערכים בו-זמנית) — לא להחליף את ערך ה-debug כל עוד עדיין נעשה שימוש ב-build-ים של debug לבדיקות.
+
+**לא ניתן לאמת קצה-לקצה בסביבת הפיתוח:** בדיקה אמיתית שסיסמה שמורה באתר אכן מוצעת בתוך האפליקציה דורשת מכשיר/אמולטור עם חשבון Google מחובר שבו "Autofill with Google" הוא שירות ה-autofill הפעיל, וסיסמה שמורה בפועל ל-`training-diary.web.app` — לא ניתן להקים את זה קצה-לקצה בסביבת הפיתוח האוטומטית. מה שכן אומת: הקובץ מוגש נכון מה-hosting (לא נבלע ע"י ה-`ignore`, לא מוסתר ע"י ה-SPA rewrite), וה-manifest מתמזג בהצלחה עם ה-meta-data החדש.
+
 ## Service Worker באפליקציה
 
 הקוד עדיין מנסה לרשום `sw.js` גם בתוך Capacitor, אך הרישום נכשל בשקט (`.catch(() => {})`) כי אין origin מקומי עם HTTPS בתוך ה-WebView הנייטיבי. אין בכך בעיה — ה-Service Worker משרת בעיקר caching ל-PWA באתר; באפליקציה הקבצים כבר מוטמעים מקומית ב-APK כך שהיתרון שלו מיותר שם ממילא.
