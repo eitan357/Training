@@ -94,6 +94,17 @@
       direction: ltr; text-align: left;
     }
     .auth-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+    /* Fires a (visually irrelevant) animation the instant the browser/OS
+       autofills this field -- never on manual typing -- so JS can tell the
+       two apart. See the "AUTOFILL AUTO-SUBMIT" script block below. */
+    @keyframes onAutoFillStart { from {} to {} }
+    .auth-input:-webkit-autofill { animation-name: onAutoFillStart; animation-duration: .001s; }
+    .auth-input:-webkit-autofill,
+    .auth-input:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--text);
+      box-shadow: 0 0 0 1000px var(--surface) inset;
+      transition: background-color 9999s ease-in-out 0s;
+    }
     .auth-btn {
       width: 100%; padding: 13px; border: none; border-radius: var(--radius);
       background: var(--primary); color: white; font-size: 15px; font-weight: 700;
@@ -2377,6 +2388,29 @@ async function handleAuthSubmit() {
     btn.disabled = false;
   }
 }
+
+// ─── AUTOFILL AUTO-SUBMIT ─────────────────────────────────────
+// Picking a saved credential from the browser's/Android's "use saved
+// password?" picker fills both fields in one action but never clicks
+// the submit button itself, forcing an extra tap. Naively auto-submitting
+// whenever both fields are non-empty would also fire during ordinary
+// manual typing (the instant the last password character is typed) --
+// instead this listens for the CSS animation the :-webkit-autofill rule
+// above fires, which only happens when the browser/OS itself sets the
+// value, never on a real keystroke. Only acts in login mode: autofill
+// matching the register tab's fields (e.g. email only) should never
+// auto-create an account.
+const _authAutofilled = { email: false, password: false };
+function _authAutofillDetect(e) {
+  if (e.animationName !== 'onAutoFillStart') return;
+  _authAutofilled[e.target.id === 'auth-email' ? 'email' : 'password'] = true;
+  if (authMode !== 'login' || !_authAutofilled.email || !_authAutofilled.password) return;
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  if (email && password) handleAuthSubmit();
+}
+document.getElementById('auth-email').addEventListener('animationstart', _authAutofillDetect);
+document.getElementById('auth-password').addEventListener('animationstart', _authAutofillDetect);
 
 async function handleGoogleLogin() {
   try {

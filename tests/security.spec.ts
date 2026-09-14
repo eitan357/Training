@@ -83,6 +83,50 @@ test.describe('Security — Auth Screen', () => {
     // (Firebase's default messages are acceptable; we flag if it's dangerously specific)
     expect(msgText).not.toMatch(/user\s+does\s+not\s+exist/i);
   });
+
+  test('selecting a saved credential (simulated autofill) auto-submits the login form', async ({ page }) => {
+    await page.goto('/');
+    await page.fill('#auth-email', 'nonexistent-autofill-test@example.com');
+    await page.fill('#auth-password', 'wrong-password-123');
+
+    // Playwright's fill() sets values via CDP and never triggers the browser's
+    // own autofill UI, so :-webkit-autofill never naturally engages here.
+    // Dispatch the same synthetic event the CSS trick produces on a REAL
+    // autofill, to test the detection-and-submit wiring in isolation from the
+    // browser's own credential picker (which no automated test can drive).
+    await page.evaluate(() => {
+      const fire = (id: string) => {
+        const el = document.getElementById(id)!;
+        el.dispatchEvent(new AnimationEvent('animationstart', { animationName: 'onAutoFillStart', bubbles: true }));
+      };
+      fire('auth-email');
+      fire('auth-password');
+    });
+
+    // A real login attempt fired iff the auth error message changes from
+    // empty to Firebase's "wrong credentials" text -- proves handleAuthSubmit()
+    // actually ran, without needing (or risking) a real account.
+    await expect(page.locator('#auth-msg')).not.toBeEmpty({ timeout: 5000 });
+  });
+
+  test('autofilled auth inputs use the theme surface color, not the browser default', async ({ page, context }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('theme', 'dark'));
+    await page.reload();
+
+    const cdp = await context.newCDPSession(page);
+    const email = page.locator('#auth-email');
+    // CSS.forcePseudoState needs a DOM.NodeId, obtained via DOM.getDocument + DOM.querySelector
+    // -- not the element handle Playwright itself uses internally.
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const { root } = await cdp.send('DOM.getDocument', {});
+    const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#auth-email' });
+    await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: ['autofill'] });
+
+    const boxShadow = await email.evaluate(el => getComputedStyle(el).boxShadow);
+    expect(boxShadow).toContain('1000px'); // inset spread matches the override rule, not the browser default
+  });
 });
 
 test.describe('Security — Authenticated App', () => {
