@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginWithEmailPassword, waitForAppReady, requiresCredentials } from './helpers/auth';
+import { loginWithEmailPassword, waitForAppReady, requiresCredentials, logout } from './helpers/auth';
 
 // Security Auth Screen tests check unauthenticated behavior — override global storageState.
 // The Authenticated App describe block still calls loginWithEmailPassword explicitly.
@@ -245,6 +245,46 @@ test.describe('Security — Authenticated App', () => {
         expect(log).not.toMatch(pattern);
       }
     }
+  });
+
+  test('logout clears autofilled auth field values so it cannot silently re-authenticate the user', async ({ page }) => {
+    // Regression test for the primary logout auto-resubmit bug (the more
+    // severe counterpart to the tab-switch test above): a real login just
+    // happened (beforeEach). Nothing has ever cleared #auth-email/
+    // #auth-password on a SUCCESSFUL login -- they still hold the just-used,
+    // valid credentials, exactly mirroring the real-world scenario: the
+    // fields sit unseen (#auth-screen is display:none) holding a real
+    // autofilled value for as long as the user stays logged in.
+    await logout(page);
+
+    // Real signOut() just went through -- this exercises the REAL
+    // onAuthStateChanged signed-out branch the fix modifies, not a
+    // simulation of it.
+    await expect(page.locator('#auth-screen')).toBeVisible();
+
+    expect(await page.locator('#auth-email').inputValue()).toBe('');
+    expect(await page.locator('#auth-password').inputValue()).toBe('');
+
+    // Re-fire the same synthetic autofill-detection event the CSS trick
+    // itself dispatches when the browser autofills a field (Playwright
+    // cannot drive the browser's own autofill UI -- see the other autofill
+    // tests in this file for the same technique). This simulates exactly
+    // what a real animation restart on redisplay of #auth-screen would
+    // send. If the fields still held the just-used, VALID credentials (the
+    // bug), this would silently log the user right back in.
+    await page.evaluate(() => {
+      const fire = (id: string) => document.getElementById(id)!.dispatchEvent(
+        new AnimationEvent('animationstart', { animationName: 'onAutoFillStart', bubbles: true })
+      );
+      fire('auth-email');
+      fire('auth-password');
+    });
+
+    // Give a would-be re-authentication time to complete before asserting
+    // it never happened.
+    await page.waitForTimeout(3000);
+    await expect(page.locator('#auth-screen')).toBeVisible();
+    await expect(page.locator('#auth-msg')).toBeEmpty();
   });
 
   test('unauthenticated direct URL access redirects to auth screen', async ({ browser }) => {
