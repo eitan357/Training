@@ -146,6 +146,7 @@
     .privacy-logout-link {
       display: block; text-align: center; font-size: 13px; color: var(--sub);
       background: none; border: none; cursor: pointer; padding: 4px; width: 100%;
+      text-decoration: underline;
     }
     .privacy-logout-link:hover { color: var(--text); }
     .topbar-back-btn {
@@ -2383,6 +2384,10 @@ if (_isNewSession) sessionStorage.setItem('session_active', '1');
 // asked for (deep link / bookmark) before we knew whether they were
 // logged in. Read once, right after successful login, then cleared.
 let _pendingPath = null;
+// Set true for the duration of a deliberate handleLogout() call so the
+// resulting onAuthStateChanged(null) branch (below) knows this was an
+// intentional sign-out, not a token expiring mid-session — see handleLogout().
+let _explicitLogout = false;
 
 onAuthStateChanged(auth, async user => {
   if (user) {
@@ -2443,7 +2448,8 @@ onAuthStateChanged(auth, async user => {
     // so a fresh login can return them there, then reset the address bar
     // to '/' — a logged-out tab should never display a deep path in the
     // URL while showing the auth screen.
-    _pendingPath = ROUTES[location.pathname] ? location.pathname : null;
+    _pendingPath = (!_explicitLogout && ROUTES[location.pathname]) ? location.pathname : null;
+    _explicitLogout = false;
     history.replaceState(null, '', '/');
 
     document.getElementById('auth-screen').classList.remove('hidden');
@@ -2585,6 +2591,7 @@ async function handleForgotPassword() {
 }
 
 async function handleLogout() {
+  _explicitLogout = true;
   await signOut(auth);
 }
 

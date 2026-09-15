@@ -69,8 +69,8 @@ test.describe('Settings Section', () => {
   test('logout button is not in the main Settings list', async ({ page }) => {
     // Relocated to the Privacy page (2026-09-15) — de-emphasized, no longer
     // grouped with the primary settings actions.
-    const logoutBtn = page.locator('#sec-settings #privacyLogoutBtn');
-    await expect(logoutBtn).toHaveCount(0);
+    await expect(page.locator('#sec-settings .settings-logout-btn')).toHaveCount(0);
+    await expect(page.locator('#sec-settings [data-i18n="btn.logout"]')).toHaveCount(0);
   });
 
   test('logout button is present on the Privacy page, styled as a quiet link', async ({ page }) => {
@@ -78,6 +78,8 @@ test.describe('Settings Section', () => {
     const logoutBtn = page.locator('#sec-privacy #privacyLogoutBtn');
     await expect(logoutBtn).toBeVisible();
     await expect(logoutBtn).toHaveClass(/privacy-logout-link/);
+    await expect(logoutBtn).toHaveCSS('text-decoration-line', 'underline');
+    await expect(logoutBtn).toHaveCSS('border-style', 'none');
   });
 
   test('logout button triggers sign-out from the Privacy page', async ({ page }) => {

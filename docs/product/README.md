@@ -13,7 +13,7 @@
 5. [`05-timer.md`](./05-timer.md) — טיימר מנוחה בין סטים
 6. [`06-measurements.md`](./06-measurements.md) — מדידות גוף + עורך סוגי מדידה
 7. [`07-running-cardio.md`](./07-running-cardio.md) — עמוד אירובי (feature-gated)
-8. [`08-settings.md`](./08-settings.md) — הגדרות: פרופיל, מראה, שפה, טיימר, יציאה
+8. [`08-settings.md`](./08-settings.md) — הגדרות: פרופיל, מראה, שפה, טיימר, פרטיות
 
 ## נושאי-רוחב (חוצים כמה עמודים)
 

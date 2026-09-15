@@ -64,7 +64,7 @@ English block (right after `'auth.loading': 'Loading data...',`):
 
 Local static server (`python -m http.server` in `public/`) + Playwright MCP: navigated in English (default), then set `localStorage.lang='he'` and reloaded. Both renders confirmed clean — text wraps correctly, divider visible, no layout breakage, no console errors introduced by the change.
 
-- [ ] **Step 4: Update `docs/product/01-auth-onboarding.md`**
+- [x] **Step 4: Update `docs/product/01-auth-onboarding.md`**
 
 Insert a new bullet after the existing Google sign-in bullet (the one ending "פירוט מלא ב-`11-android-app.md`.") and before "### הודעות שגיאה":
 
@@ -73,7 +73,7 @@ Insert a new bullet after the existing Google sign-in bullet (the one ending "פ
 - פסקת הסבר קצרה (`auth.why`) מתחת לכפתור Google, מופרדת בקו עליון — מסבירה שהחיבור לחשבון הוא מה ששומר את האימונים/המדידות בגיבוי בענן, כדי שהנתונים לא יאבדו בהחלפת מכשיר/מחיקת האפליקציה בטעות/ניקוי אחסון המכשיר. נוסח מרגיע (מציג תועלת), לא מאיים — וממוקם **אחרי** כל אפשרויות ההתחברות, כך שאינו מוסיף חיכוך לפני ה-CTA הראשי.
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add public/index.html public/translations.js docs/product/01-auth-onboarding.md docs/superpowers/specs/2026-09-15-auth-explain-and-logout-relocation-design.md docs/superpowers/plans/2026-09-15-auth-explain-and-logout-relocation.md
@@ -97,7 +97,7 @@ git commit -m "docs: add auth-screen trust-copy explanation to product docs"
 - Consumes: `handleLogout()` (`public/index.html:2582`, unchanged, already `window`-exported at `public/index.html:6333`).
 - Produces: new selector `#privacyLogoutBtn` (and class `.privacy-logout-link`) for any test or future code that needs to find the sign-out control — this replaces `.settings-logout-btn` as the way to reach logout specifically.
 
-- [ ] **Step 1: Update the failing tests first — `tests/settings.spec.ts`**
+- [x] **Step 1: Update the failing tests first — `tests/settings.spec.ts`**
 
 Replace the two tests at lines 69-85:
 ```ts
@@ -148,7 +148,7 @@ with:
   });
 ```
 
-- [ ] **Step 2: Run the updated tests to confirm they fail against current code**
+- [x] **Step 2: Run the updated tests to confirm they fail against current code**
 
 Run (requires `.env.test` credentials — see Global Constraints; if unavailable, skip this step and rely on Step 8's local structural check instead, noting the skip in the commit/report):
 ```bash
@@ -156,7 +156,7 @@ export $(grep -v '^#' .env.test | xargs) && npx playwright test tests/settings.s
 ```
 Expected: the two new/renamed tests fail — `#sec-settings #privacyLogoutBtn` still has count 0 for the wrong reason (no element by that id exists anywhere yet), and `openPrivacySettings` navigation test fails because `#privacyLogoutBtn` doesn't exist in `#sec-privacy` either.
 
-- [ ] **Step 3: Add the `.privacy-logout-link` CSS rule**
+- [x] **Step 3: Add the `.privacy-logout-link` CSS rule**
 
 In `public/index.html`, right after the existing `.settings-logout-btn:hover` rule (currently line 145):
 ```css
@@ -167,7 +167,7 @@ In `public/index.html`, right after the existing `.settings-logout-btn:hover` ru
     .privacy-logout-link:hover { color: var(--text); }
 ```
 
-- [ ] **Step 4: Remove the logout button from `#sec-settings`**
+- [x] **Step 4: Remove the logout button from `#sec-settings`**
 
 In `public/index.html`, delete this line (currently line 1497, immediately after the Privacy nav row's closing `</button>`):
 ```html
@@ -175,7 +175,7 @@ In `public/index.html`, delete this line (currently line 1497, immediately after
 ```
 Leave the blank line and the group's closing `</div></div>` as-is — just remove the button itself.
 
-- [ ] **Step 5: Add the relocated button to `#sec-privacy`**
+- [x] **Step 5: Add the relocated button to `#sec-privacy`**
 
 In `public/index.html`, immediately after the delete-actions block's closing `</div>` (currently line 1525, right before `#sec-privacy`'s own closing `</div></div>`), insert:
 ```html
@@ -184,7 +184,7 @@ In `public/index.html`, immediately after the delete-actions block's closing `</
 ```
 No `border-top` on this one — deliberate, per spec: a divider would visually group it with the two destructive delete buttons above it, which is the opposite of the intent.
 
-- [ ] **Step 6: Update `tests/helpers/auth.ts`'s `logout()` helper**
+- [x] **Step 6: Update `tests/helpers/auth.ts`'s `logout()` helper**
 
 Replace:
 ```ts
@@ -207,7 +207,7 @@ export async function logout(page: Page) {
 }
 ```
 
-- [ ] **Step 7: Run the full test suite's affected files to confirm they pass**
+- [x] **Step 7: Run the full test suite's affected files to confirm they pass**
 
 Requires `.env.test` credentials (see Global Constraints):
 ```bash
@@ -215,7 +215,7 @@ export $(grep -v '^#' .env.test | xargs) && npx playwright test tests/settings.s
 ```
 Expected: all pass, in particular the 3 tests from Step 1 and `security.spec.ts`'s two `logout(page)` call sites (multi-account session-isolation test). **If this session has no `.env.test` credentials, do not skip silently — say so explicitly in the task report, and do Step 8 instead as the best available substitute.**
 
-- [ ] **Step 8: Local structural/visual verification (fallback or supplement to Step 7)**
+- [x] **Step 8: Local structural/visual verification (fallback or supplement to Step 7)**
 
 ```bash
 cd public && python -m http.server 5502
@@ -231,7 +231,7 @@ Using Playwright MCP (or any browser), navigate to `http://localhost:5502/index.
 ```
 Expected: `{ inSettings: 0, inPrivacy: 1, hasHandler: "handleLogout()", classes: "privacy-logout-link" }`. Also take a screenshot of the Privacy page (`document.getElementById('sec-privacy').classList.add('active')` won't fully work without the router's other state, so prefer calling `openPrivacySettings()` via `browser_evaluate` if a logged-in session isn't available — otherwise this is a static markup check only, which is sufficient since Task 2 makes no logic change to `handleLogout()` itself). Stop the server after.
 
-- [ ] **Step 9: Update `docs/product/08-settings.md`**
+- [x] **Step 9: Update `docs/product/08-settings.md`**
 
 Remove the standalone section (currently lines 41-42):
 ```markdown
@@ -244,7 +244,7 @@ Add a new bullet to the end of "קבוצה 5: פרטיות" (currently ending at
   - **יציאה (`handleLogout`, הועבר לכאן 2026-09-15):** קישור טקסט שקט (`.privacy-logout-link`, לא כפתור אדום מובלט) בתחתית העמוד, מופרד מרווח בלבד (ללא קו מפריד) משני כפתורי המחיקה שמעליו — במכוון, כדי לא לקבץ אותו חזותית עם פעולות הרסניות: יציאה הפיכה לגמרי (ניתן להתחבר שוב בכל עת), בניגוד למחיקת נתונים/חשבון. **ללא דיאלוג אישור** (התנתקות מיידית בלחיצה אחת), בדיוק כמו קודם. מפורט מעברי המצב ב-`01-auth-onboarding.md`.
 ```
 
-- [ ] **Step 10: Update `docs/product/01-auth-onboarding.md`**
+- [x] **Step 10: Update `docs/product/01-auth-onboarding.md`**
 
 In "מעברי מצב (State Transitions)", update the existing bullet:
 ```markdown
@@ -255,7 +255,7 @@ to:
 - **התנתקות (`handleLogout` → `signOut`):** הכפתור עצמו נמצא בעמוד הגדרות → פרטיות (`#sec-privacy`, ראו `08-settings.md`), כקישור טקסט שקט — לא בעמוד ההגדרות הראשי (הועבר משם 2026-09-15). הלחיצה מפעילה `onAuthStateChanged` שמזהה `null` → איפוס מלא של state בזיכרון (סוג אימון נבחר, מצב טאבים, מסנן היסטוריה, נתוני ריצה) → אם פאנל עריכה היה פתוח, נסגר → הצגת `#auth-screen`.
 ```
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add public/index.html tests/helpers/auth.ts tests/settings.spec.ts docs/product/08-settings.md docs/product/01-auth-onboarding.md
