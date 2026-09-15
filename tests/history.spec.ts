@@ -275,92 +275,146 @@ test.describe('History Section', () => {
       );
     }
 
-    await logThrowawaySession(markerA);
-    await logThrowawaySession(markerB);
+    try {
+      await logThrowawaySession(markerA);
+      await logThrowawaySession(markerB);
 
-    await page.locator('#nav-history').click();
-    await expect(page.locator('#sec-history')).toHaveClass(/active/);
-    const cardA = page.locator('.session-card', { hasText: markerA });
-    const cardB = page.locator('.session-card', { hasText: markerB });
-    await expect(cardA).toBeVisible({ timeout: 15000 });
-    await expect(cardB).toBeVisible({ timeout: 15000 });
+      await page.locator('#nav-history').click();
+      await expect(page.locator('#sec-history')).toHaveClass(/active/);
+      const cardA = page.locator('.session-card', { hasText: markerA });
+      const cardB = page.locator('.session-card', { hasText: markerB });
+      await expect(cardA).toBeVisible({ timeout: 15000 });
+      await expect(cardB).toBeVisible({ timeout: 15000 });
 
-    // Long-press card A to enter multi-select, then a short click on card B
-    // adds it too — same pattern as this file's existing touch/mouse
-    // multi-select tests above.
-    const headerA = cardA.locator('.session-header');
-    await headerA.scrollIntoViewIfNeeded();
-    const boxA = await headerA.boundingBox();
-    await page.mouse.move(boxA!.x + boxA!.width / 2, boxA!.y + boxA!.height / 2);
-    await page.mouse.down();
-    await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
-    await page.mouse.up();
-    await expect(cardA).toHaveClass(/sel-active/);
+      // Long-press card A to enter multi-select, then a short click on card B
+      // adds it too — same pattern as this file's existing touch/mouse
+      // multi-select tests above.
+      const headerA = cardA.locator('.session-header');
+      await headerA.scrollIntoViewIfNeeded();
+      const boxA = await headerA.boundingBox();
+      await page.mouse.move(boxA!.x + boxA!.width / 2, boxA!.y + boxA!.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
+      await page.mouse.up();
+      await expect(cardA).toHaveClass(/sel-active/);
 
-    const headerB = cardB.locator('.session-header');
-    await headerB.scrollIntoViewIfNeeded();
-    await headerB.click();
-    await expect(cardB).toHaveClass(/sel-active/);
-    await expect(page.locator('#histBulkCount')).toContainText('2');
+      const headerB = cardB.locator('.session-header');
+      await headerB.scrollIntoViewIfNeeded();
+      await headerB.click();
+      await expect(cardB).toHaveClass(/sel-active/);
+      await expect(page.locator('#histBulkCount')).toContainText('2');
 
-    await page.locator('#histBulkBar .bulk-bar-del').click();
+      await page.locator('#histBulkBar .bulk-bar-del').click();
 
-    // Modal shown, nothing deleted yet.
-    await expect(page.locator('#bulkConfirmModal')).toBeVisible();
-    await expect(cardA).toBeVisible();
-    await expect(cardB).toBeVisible();
+      // Modal shown, nothing deleted yet.
+      await expect(page.locator('#bulkConfirmModal')).toBeVisible();
+      await expect(cardA).toBeVisible();
+      await expect(cardB).toBeVisible();
 
-    // Cancel: modal closes, both records and the selection survive.
-    await page.locator('#bulkConfirmModal .draft-modal-btn-discard').click();
-    await expect(page.locator('#bulkConfirmModal')).toBeHidden();
-    await expect(cardA).toBeVisible();
-    await expect(cardB).toBeVisible();
-    await expect(page.locator('#histBulkBar')).toBeVisible();
-    await expect(page.locator('#histBulkCount')).toContainText('2');
+      // Cancel: modal closes, both records and the selection survive.
+      await page.locator('#bulkConfirmModal .draft-modal-btn-discard').click();
+      await expect(page.locator('#bulkConfirmModal')).toBeHidden();
+      await expect(cardA).toBeVisible();
+      await expect(cardB).toBeVisible();
+      await expect(page.locator('#histBulkBar')).toBeVisible();
+      await expect(page.locator('#histBulkCount')).toContainText('2');
 
-    // Confirm: both records are actually deleted.
-    await page.locator('#histBulkBar .bulk-bar-del').click();
-    await expect(page.locator('#bulkConfirmModal')).toBeVisible();
-    await page.locator('#bulkConfirmModal .bulk-confirm-btn-delete').click();
-    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
-    await expect(cardA).toHaveCount(0);
-    await expect(cardB).toHaveCount(0);
+      // Confirm: both records are actually deleted.
+      await page.locator('#histBulkBar .bulk-bar-del').click();
+      await expect(page.locator('#bulkConfirmModal')).toBeVisible();
+      await page.locator('#bulkConfirmModal .bulk-confirm-btn-delete').click();
+      await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+      await expect(cardA).toHaveCount(0);
+      await expect(cardB).toHaveCount(0);
+    } finally {
+      // Throwaway records are only deleted as part of the happy path above.
+      // If an earlier assertion failed (e.g. right after the modal opened,
+      // before anything was actually deleted), clean up whatever is still
+      // stranded so it doesn't leak into future runs.
+      await page.locator('#nav-history').click().catch(() => {});
+      const confirmModal = page.locator('#bulkConfirmModal');
+      if (await confirmModal.isVisible().catch(() => false)) {
+        await confirmModal.locator('.bulk-confirm-btn-delete').click().catch(() => {});
+        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+      }
+      for (const marker of [markerA, markerB]) {
+        const sessionCard = page.locator('.session-card', { hasText: marker });
+        if (await sessionCard.count() > 0) {
+          const header = sessionCard.locator('.session-header');
+          await header.scrollIntoViewIfNeeded();
+          const box = await header.boundingBox();
+          if (box) {
+            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+            await page.mouse.down();
+            await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
+            await page.mouse.up();
+            await page.locator('#histBulkBar .bulk-bar-del').click();
+            await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+          }
+        }
+      }
+    }
   });
 
   test('bulk delete: selecting exactly 1 record deletes immediately without showing the confirmation modal', async ({ page }) => {
     const marker = 'BulkDelSingle_' + Date.now();
 
-    await page.locator('#nav-main').click();
-    await page.waitForFunction(() => (document.getElementById('typeRow')?.children.length || 0) > 0, { timeout: 10000 });
-    await page.locator('#typeRow .type-btn').first().click();
-    await page.locator('#addBtn').click();
-    const card = page.locator('#exerciseList .card').last();
-    await card.locator('.ex-name-input').fill('BulkDeleteTestExercise');
-    await card.locator('.ex-weight').fill('1');
-    await page.locator('#sessionNameInput').fill(marker);
-    await page.locator('#saveBtn').click();
-    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+    try {
+      await page.locator('#nav-main').click();
+      await page.waitForFunction(() => (document.getElementById('typeRow')?.children.length || 0) > 0, { timeout: 10000 });
+      await page.locator('#typeRow .type-btn').first().click();
+      await page.locator('#addBtn').click();
+      const card = page.locator('#exerciseList .card').last();
+      await card.locator('.ex-name-input').fill('BulkDeleteTestExercise');
+      await card.locator('.ex-weight').fill('1');
+      await page.locator('#sessionNameInput').fill(marker);
+      await page.locator('#saveBtn').click();
+      await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
 
-    await page.locator('#nav-history').click();
-    await expect(page.locator('#sec-history')).toHaveClass(/active/);
-    const sessionCard = page.locator('.session-card', { hasText: marker });
-    await expect(sessionCard).toBeVisible({ timeout: 15000 });
+      await page.locator('#nav-history').click();
+      await expect(page.locator('#sec-history')).toHaveClass(/active/);
+      const sessionCard = page.locator('.session-card', { hasText: marker });
+      await expect(sessionCard).toBeVisible({ timeout: 15000 });
 
-    const header = sessionCard.locator('.session-header');
-    await header.scrollIntoViewIfNeeded();
-    const box = await header.boundingBox();
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-    await page.mouse.down();
-    await page.waitForTimeout(650);
-    await page.mouse.up();
-    await expect(sessionCard).toHaveClass(/sel-active/);
-    await expect(page.locator('#histBulkCount')).toContainText('1');
+      const header = sessionCard.locator('.session-header');
+      await header.scrollIntoViewIfNeeded();
+      const box = await header.boundingBox();
+      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(650);
+      await page.mouse.up();
+      await expect(sessionCard).toHaveClass(/sel-active/);
+      await expect(page.locator('#histBulkCount')).toContainText('1');
 
-    await page.locator('#histBulkBar .bulk-bar-del').click();
+      await page.locator('#histBulkBar .bulk-bar-del').click();
 
-    // No confirmation dialog for a single record — deletes right away.
-    await expect(page.locator('#bulkConfirmModal')).toBeHidden();
-    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
-    await expect(sessionCard).toHaveCount(0);
+      // No confirmation dialog for a single record — deletes right away.
+      await expect(page.locator('#bulkConfirmModal')).toBeHidden();
+      await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+      await expect(sessionCard).toHaveCount(0);
+    } finally {
+      // Happy path above already deletes the single record via the
+      // immediate size===1 path; this only matters on early failure.
+      await page.locator('#nav-history').click().catch(() => {});
+      const confirmModal = page.locator('#bulkConfirmModal');
+      if (await confirmModal.isVisible().catch(() => false)) {
+        await confirmModal.locator('.bulk-confirm-btn-delete').click().catch(() => {});
+        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+      }
+      const sessionCard = page.locator('.session-card', { hasText: marker });
+      if (await sessionCard.count() > 0) {
+        const header = sessionCard.locator('.session-header');
+        await header.scrollIntoViewIfNeeded();
+        const box = await header.boundingBox();
+        if (box) {
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.waitForTimeout(650);
+          await page.mouse.up();
+          await page.locator('#histBulkBar .bulk-bar-del').click();
+          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+        }
+      }
+    }
   });
 });

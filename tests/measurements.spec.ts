@@ -144,56 +144,95 @@ test.describe('Measurements — Bulk Delete Confirmation', () => {
     const weightA = (700 + (ts % 200)) + '.' + (ts % 10);
     const weightB = (700 + (ts % 200) + 1) + '.' + (ts % 10);
 
-    await logThrowawayMeasurement(page, weightA);
-    await logThrowawayMeasurement(page, weightB);
+    try {
+      await logThrowawayMeasurement(page, weightA);
+      await logThrowawayMeasurement(page, weightB);
 
-    // Locate each throwaway entry by the distinctive value the test itself
-    // just entered — measurements have no name field, so position/count
-    // can't be trusted to identify "our" record.
-    const cardA = page.locator('.measure-card', { hasText: weightA });
-    const cardB = page.locator('.measure-card', { hasText: weightB });
-    await expect(cardA).toBeVisible({ timeout: 15000 });
-    await expect(cardB).toBeVisible({ timeout: 15000 });
+      // Locate each throwaway entry by the distinctive value the test itself
+      // just entered — measurements have no name field, so position/count
+      // can't be trusted to identify "our" record.
+      const cardA = page.locator('.measure-card', { hasText: weightA });
+      const cardB = page.locator('.measure-card', { hasText: weightB });
+      await expect(cardA).toBeVisible({ timeout: 15000 });
+      await expect(cardB).toBeVisible({ timeout: 15000 });
 
-    await cardA.locator('.sel-check').click();
-    await expect(cardA).toHaveClass(/sel-active/);
-    await cardB.locator('.sel-check').click();
-    await expect(cardB).toHaveClass(/sel-active/);
-    await expect(page.locator('#measBulkCount')).toContainText('2');
+      await cardA.locator('.sel-check').click();
+      await expect(cardA).toHaveClass(/sel-active/);
+      await cardB.locator('.sel-check').click();
+      await expect(cardB).toHaveClass(/sel-active/);
+      await expect(page.locator('#measBulkCount')).toContainText('2');
 
-    await page.locator('#measBulkBar .bulk-bar-del').click();
-    await expect(page.locator('#bulkConfirmModal')).toBeVisible();
-    await expect(cardA).toBeVisible();
-    await expect(cardB).toBeVisible();
+      await page.locator('#measBulkBar .bulk-bar-del').click();
+      await expect(page.locator('#bulkConfirmModal')).toBeVisible();
+      await expect(cardA).toBeVisible();
+      await expect(cardB).toBeVisible();
 
-    await page.locator('#bulkConfirmModal .draft-modal-btn-discard').click();
-    await expect(page.locator('#bulkConfirmModal')).toBeHidden();
-    await expect(cardA).toBeVisible();
-    await expect(cardB).toBeVisible();
-    await expect(page.locator('#measBulkBar')).toBeVisible();
+      await page.locator('#bulkConfirmModal .draft-modal-btn-discard').click();
+      await expect(page.locator('#bulkConfirmModal')).toBeHidden();
+      await expect(cardA).toBeVisible();
+      await expect(cardB).toBeVisible();
+      await expect(page.locator('#measBulkBar')).toBeVisible();
 
-    await page.locator('#measBulkBar .bulk-bar-del').click();
-    await expect(page.locator('#bulkConfirmModal')).toBeVisible();
-    await page.locator('#bulkConfirmModal .bulk-confirm-btn-delete').click();
-    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
-    await expect(cardA).toHaveCount(0);
-    await expect(cardB).toHaveCount(0);
+      await page.locator('#measBulkBar .bulk-bar-del').click();
+      await expect(page.locator('#bulkConfirmModal')).toBeVisible();
+      await page.locator('#bulkConfirmModal .bulk-confirm-btn-delete').click();
+      await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+      await expect(cardA).toHaveCount(0);
+      await expect(cardB).toHaveCount(0);
+    } finally {
+      // Throwaway records are only deleted as part of the happy path above.
+      // If an earlier assertion failed, clean up whatever is still
+      // stranded — an orphaned weight marker can collide with a future
+      // run's cyclic marker range and corrupt an unrelated hasText match.
+      await page.evaluate(() => (window as any).showSection && (window as any).showSection('measurements')).catch(() => {});
+      const confirmModal = page.locator('#bulkConfirmModal');
+      if (await confirmModal.isVisible().catch(() => false)) {
+        await confirmModal.locator('.bulk-confirm-btn-delete').click().catch(() => {});
+        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+      }
+      for (const weight of [weightA, weightB]) {
+        const card = page.locator('.measure-card', { hasText: weight });
+        if (await card.count() > 0) {
+          await card.locator('.sel-check').click().catch(() => {});
+          await page.locator('#measBulkBar .bulk-bar-del').click().catch(() => {});
+          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+        }
+      }
+    }
   });
 
   test('bulk delete: selecting exactly 1 measurement deletes immediately without showing the confirmation modal', async ({ page }) => {
     const ts = Date.now();
     const weight = (900 + (ts % 90)) + '.' + (ts % 10);
-    await logThrowawayMeasurement(page, weight);
 
-    const card = page.locator('.measure-card', { hasText: weight });
-    await expect(card).toBeVisible({ timeout: 15000 });
-    await card.locator('.sel-check').click();
-    await expect(card).toHaveClass(/sel-active/);
-    await expect(page.locator('#measBulkCount')).toContainText('1');
+    try {
+      await logThrowawayMeasurement(page, weight);
 
-    await page.locator('#measBulkBar .bulk-bar-del').click();
-    await expect(page.locator('#bulkConfirmModal')).toBeHidden();
-    await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
-    await expect(card).toHaveCount(0);
+      const card = page.locator('.measure-card', { hasText: weight });
+      await expect(card).toBeVisible({ timeout: 15000 });
+      await card.locator('.sel-check').click();
+      await expect(card).toHaveClass(/sel-active/);
+      await expect(page.locator('#measBulkCount')).toContainText('1');
+
+      await page.locator('#measBulkBar .bulk-bar-del').click();
+      await expect(page.locator('#bulkConfirmModal')).toBeHidden();
+      await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+      await expect(card).toHaveCount(0);
+    } finally {
+      // Happy path above already deletes the single record via the
+      // immediate size===1 path; this only matters on early failure.
+      await page.evaluate(() => (window as any).showSection && (window as any).showSection('measurements')).catch(() => {});
+      const confirmModal = page.locator('#bulkConfirmModal');
+      if (await confirmModal.isVisible().catch(() => false)) {
+        await confirmModal.locator('.bulk-confirm-btn-delete').click().catch(() => {});
+        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+      }
+      const card = page.locator('.measure-card', { hasText: weight });
+      if (await card.count() > 0) {
+        await card.locator('.sel-check').click().catch(() => {});
+        await page.locator('#measBulkBar .bulk-bar-del').click().catch(() => {});
+        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+      }
+    }
   });
 });

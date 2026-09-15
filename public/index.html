@@ -1785,7 +1785,7 @@ function renderCardioHistoryStats() {
 }
 let selectedSessions = new Set();
 let selectedMeasures = new Set();
-let _bulkConfirmSet = null, _bulkConfirmBarId = null, _bulkConfirmCollection = null;
+let _bulkConfirmSet = null, _bulkConfirmBarId = null, _bulkConfirmCollection = null, _bulkConfirmIds = null;
 let allMeasurements  = [];
 let measureTypes     = [];
 let typesEditorOpen  = false;
@@ -5924,14 +5924,16 @@ async function _bulkDelete(set, barId, collection) {
   if (!set.size) return;
   if (set.size === 1) { await _performBulkDelete(set, barId, collection); return; }
   _bulkConfirmSet = set; _bulkConfirmBarId = barId; _bulkConfirmCollection = collection;
+  _bulkConfirmIds = [...set];
   document.getElementById('bulkConfirmTitle').textContent = t('bulk.confirm_title');
   document.getElementById('bulkConfirmMsg').textContent = set.size + ' ' + t('bulk.confirm_msg_suffix');
   document.querySelector('#bulkConfirmModal .bulk-confirm-btn-delete').textContent = t('bulk.confirm_btn');
   document.querySelector('#bulkConfirmModal .draft-modal-btn-discard').textContent = t('btn.cancel');
   document.getElementById('bulkConfirmModal').style.display = 'flex';
 }
-async function _performBulkDelete(set, barId, collection) {
-  const ids = [...set];
+async function _performBulkDelete(set, barId, collection, ids) {
+  ids = ids || [...set];
+  if (!ids.length) return;
   document.getElementById(barId).style.display = 'none';
   try {
     await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, collection, id))));
@@ -5944,13 +5946,13 @@ async function _performBulkDelete(set, barId, collection) {
 }
 async function _bulkConfirmYes() {
   document.getElementById('bulkConfirmModal').style.display = 'none';
-  const set = _bulkConfirmSet, barId = _bulkConfirmBarId, collection = _bulkConfirmCollection;
-  _bulkConfirmSet = _bulkConfirmBarId = _bulkConfirmCollection = null;
-  if (set) await _performBulkDelete(set, barId, collection);
+  const set = _bulkConfirmSet, barId = _bulkConfirmBarId, collection = _bulkConfirmCollection, ids = _bulkConfirmIds;
+  _bulkConfirmSet = _bulkConfirmBarId = _bulkConfirmCollection = _bulkConfirmIds = null;
+  if (set && ids) await _performBulkDelete(set, barId, collection, ids);
 }
 function _bulkConfirmNo() {
   document.getElementById('bulkConfirmModal').style.display = 'none';
-  _bulkConfirmSet = _bulkConfirmBarId = _bulkConfirmCollection = null;
+  _bulkConfirmSet = _bulkConfirmBarId = _bulkConfirmCollection = _bulkConfirmIds = null;
 }
 async function bulkDeleteSessions() { await _bulkDelete(selectedSessions, 'histBulkBar', WORKOUT_DOMAINS[historyActiveDomain].entriesCollection); }
 async function bulkDeleteMeasures() { await _bulkDelete(selectedMeasures,  'measBulkBar', 'measurements'); }
