@@ -450,6 +450,41 @@ test.describe('Cardio Template Editor', () => {
     const labelsAfter = await page.locator('#cardioEditListContainer .edit-card .cardio-field-label-input').evaluateAll(els => (els as HTMLInputElement[]).map(e => e.value));
     expect(labelsAfter).not.toEqual(labelsBefore);
   });
+
+  test('a saved field is locked immediately after Save — no reload or navigation needed', async ({ page }) => {
+    await openCardioEditPanel(page);
+    const typeName = 'CTLOCK_' + Date.now();
+    let typeId = '';
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    await page.locator('#cardioNewTypeName').fill(typeName);
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#cardioEditTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+
+    try {
+      // Add one genuinely new field to the throwaway type — it shows the
+      // picker before saving, exactly like the read-only test above.
+      await page.locator('#cardioEditPanel button[onclick="addCardioEditField()"]').click();
+      const newField = page.locator('#cardioEditListContainer .edit-card').last();
+      await newField.locator('.cardio-field-label-input').fill('LockTest');
+      await expect(newField.locator('.field-type-picker')).toBeVisible();
+
+      // Save — the picker must be gone from THIS SAME row immediately,
+      // without a reload or navigating away and back.
+      await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      const savedField = page.locator('#cardioEditListContainer .edit-card').last();
+      await expect(savedField.locator('.field-type-picker')).toHaveCount(0);
+      // Still a text field underneath (its target input is still shown,
+      // just with no way left to change the type in place).
+      await expect(savedField.locator('.cardio-field-target-input')).toBeVisible();
+    } finally {
+      const removeBtn = page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      }
+    }
+  });
 });
 
 // ─── Type Identity: Rename & Reorder — Migration (2026-09-10) ──────────
