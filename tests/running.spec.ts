@@ -485,6 +485,66 @@ test.describe('Cardio Template Editor', () => {
       }
     }
   });
+
+  test('picker click after a drag reorder still targets the clicked field, not a stale index (date field stays protected)', async ({ page }) => {
+    await openCardioEditPanel(page);
+    const typeName = 'CTLOCK4_' + Date.now();
+    let typeId = '';
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    await page.locator('#cardioNewTypeName').fill(typeName);
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#cardioEditTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+
+    try {
+      // Strip down to just the locked date field — remove all 7 auto-seeded
+      // non-date defaults so the only two rows left are date (idx 0,
+      // protected) and one freshly-added field (idx 1, picker visible),
+      // matching the minimal repro for this bug exactly.
+      for (let i = 0; i < 7; i++) {
+        await page.locator('#cardioEditListContainer .edit-card').nth(1).locator('.edit-remove').click();
+      }
+      await expect(page.locator('#cardioEditListContainer .edit-card')).toHaveCount(1);
+
+      await page.locator('#cardioEditPanel button[onclick="addCardioEditField()"]').click();
+      const newField = page.locator('#cardioEditListContainer .edit-card').last();
+      await newField.locator('.cardio-field-label-input').fill('DragBugTest');
+      const newFieldId = await newField.getAttribute('data-id');
+      expect(newFieldId).toBeTruthy();
+
+      // Drag the new field (idx 1) above the date row (idx 0) — its onclick
+      // handlers were baked with idx=1 at render time; after this swap,
+      // index 1 in the live DOM is now the date row, not this field. The
+      // picker's buttons must still target the field that was actually
+      // clicked, not whatever row now happens to sit at that stale index.
+      const handle = newField.locator('.drag-handle');
+      await handle.hover();
+      const startBox = await handle.boundingBox();
+      const dateRowBox = await page.locator('#cardioEditListContainer .edit-card').first().boundingBox();
+      await page.mouse.down();
+      await page.mouse.move(startBox!.x + startBox!.width / 2, dateRowBox!.y + dateRowBox!.height / 2, { steps: 8 });
+      await page.mouse.up();
+
+      // Re-locate the dragged field by its stable data-id (position changed).
+      const draggedField = page.locator(`#cardioEditListContainer .edit-card[data-id="${newFieldId}"]`);
+      await draggedField.locator('.ftype-btn[data-ftype="checkbox"]').click();
+
+      // The click must have changed THIS field's type, not the date row's.
+      await expect(draggedField.locator('.ftype-btn[data-ftype="checkbox"]')).toHaveClass(/active/);
+
+      // The date field must be completely untouched: still locked (disabled
+      // label, no remove button) — never turned into a normal removable row.
+      const dateField = page.locator('#cardioEditListContainer .edit-card').filter({ has: page.locator('input[disabled]') });
+      await expect(dateField).toHaveCount(1);
+      await expect(dateField.locator('.edit-remove')).toHaveCount(0);
+    } finally {
+      const removeBtn = page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      }
+    }
+  });
 });
 
 // ─── Type Identity: Rename & Reorder — Migration (2026-09-10) ──────────

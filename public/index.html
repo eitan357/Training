@@ -584,7 +584,6 @@
       transition: all .15s;
     }
     .ftype-btn.active { border-color: var(--primary); color: var(--primary); background: var(--surface); }
-    .ftype-btn:disabled { opacity: .5; cursor: default; }
 
     /* ── SESSION EDIT ── */
     .edit-session-wrap  { padding: 4px 0 8px; }
@@ -3337,9 +3336,9 @@ const WORKOUT_DOMAINS = {
       // (removeCardioEditField) and add a fresh one.
       const typePickerHtml = f._isNew ? `
         <div class="field-type-picker" data-idx="${idx}">
-          <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(${idx},'text')">${t('edit.ftype_text')}</button>
-          <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(${idx},'number')">${t('edit.ftype_number')}</button>
-          <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(${idx},'checkbox')">${t('edit.ftype_checkbox')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(this,'text')">${t('edit.ftype_text')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(this,'number')">${t('edit.ftype_number')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(this,'checkbox')">${t('edit.ftype_checkbox')}</button>
         </div>` : '';
       return `
       <span class="drag-handle">⠿</span>
@@ -3348,7 +3347,7 @@ const WORKOUT_DOMAINS = {
         ${typePickerHtml}
         ${targetInputHtml}
       </div>
-      <button class="edit-remove" onclick="removeCardioEditField(${idx})">✕</button>`;
+      <button class="edit-remove" onclick="removeCardioEditField(this)">✕</button>`;
     },
     collectItemFromRow: c => {
       const labelInput = c.querySelector('.cardio-field-label-input');
@@ -3372,7 +3371,7 @@ const WORKOUT_DOMAINS = {
       // docs/superpowers/specs/2026-09-15-cardio-field-type-lock-design.md.
       const fieldType = isDate ? 'date'
         : isNew ? (c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text')
-        : c.dataset.fieldType;
+        : (c.dataset.fieldType || 'text');
       // renderItemRow shows the TRANSLATED text for an untouched default
       // field (cardioFieldDisplayLabel) — reverse that back to the
       // canonical stored label here, or a plain save while the UI happens
@@ -5005,7 +5004,15 @@ function addCardioEditField() {
   window.scrollTo(0, document.body.scrollHeight);
 }
 
-function removeCardioEditField(idx) {
+// Takes the clicked button itself (onclick="removeCardioEditField(this)"), not a
+// baked-in index — the index rendered into onclick is only correct until the next
+// drag reorder (startEditDrag moves DOM nodes directly, without a full re-render),
+// so trusting it here could target the wrong row — including silently bypassing
+// the date field's protected guard below if a reorder shifted it into that slot.
+// Deriving the row from the click and its LIVE position is always correct.
+function removeCardioEditField(btn) {
+  const card = btn.closest('.edit-card');
+  const idx = [...card.parentElement.children].indexOf(card);
   collectEdits('cardio');
   if (cardioEditTemplates[cardioEditTab][idx]?.fieldType === 'date') return; // date field is protected
   cardioEditTemplates[cardioEditTab].splice(idx, 1);
@@ -5013,9 +5020,12 @@ function removeCardioEditField(idx) {
   renderEditList('cardio', cardioEditTab);
 }
 
-function setCardioFieldType(idx, ftype) {
-  const container = document.getElementById('cardioEditListContainer');
-  const card = container.querySelectorAll('.edit-card')[idx];
+// Takes the clicked button itself (onclick="setCardioFieldType(this,'text')"), not a
+// baked-in index — see removeCardioEditField's identical fix for why a render-time
+// index goes stale after a drag reorder.
+function setCardioFieldType(btn, ftype) {
+  const card = btn.closest('.edit-card');
+  const idx = [...card.parentElement.children].indexOf(card);
   // Re-render the row's whole inner HTML (not just toggle .active classes on
   // the ftype buttons) — the target input's presence/absence (Task 9) is
   // decided by fieldType at render time, so a type change must re-run
@@ -5038,6 +5048,7 @@ function setCardioFieldType(idx, ftype) {
   // without assuming why this function was called.
   const isNew = card.dataset.isNew === '1';
   card.innerHTML = WORKOUT_DOMAINS.cardio.renderItemRow({ id: card.dataset.id, label, fieldType: ftype, target, _isNew: isNew }, idx);
+  card.dataset.fieldType = ftype; // keep the stamped type in sync with what was just rendered — this is the only other place besides renderEditList that can change a row's type, and it must not leave the two disagreeing
 }
 
 function confirmAddCardioType() {
@@ -5105,7 +5116,7 @@ async function saveCardioTemplates() {
     // happened to re-render the list. Re-render explicitly so it disappears
     // immediately, while still on this screen — see
     // docs/superpowers/specs/2026-09-15-cardio-field-type-lock-design.md.
-    if (cardioEditPanelOpen && cardioEditTab) renderEditList('cardio', cardioEditTab);
+    if (cardioEditPanelOpen && cardioEditTab) renderCardioEditAll();
   } catch (err) {
     toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
