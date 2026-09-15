@@ -277,7 +277,7 @@
       display: flex; flex-direction: column; gap: 12px;
     }
     .draft-modal-title   { font-size: 17px; font-weight: 800; color: var(--text); }
-    .draft-modal-details, .bulk-confirm-msg { font-size: 13px; color: var(--sub); line-height: 1.5; }
+    .draft-modal-details, .bulk-confirm-msg, .privacy-confirm-details { font-size: 13px; color: var(--sub); line-height: 1.5; }
     .draft-modal-btn-resume {
       width: 100%; padding: 13px; border: none; border-radius: var(--radius);
       background: var(--primary); color: white; font-size: 15px; font-weight: 700; cursor: pointer;
@@ -1074,7 +1074,7 @@
 <div id="privacyConfirmModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="privacyConfirmTitle">
   <div class="draft-modal-card">
     <div id="privacyConfirmTitle" class="draft-modal-title"></div>
-    <div id="privacyConfirmDetails" class="draft-modal-details"></div>
+    <div id="privacyConfirmDetails" class="privacy-confirm-details"></div>
     <input type="text" id="privacyConfirmInput" class="privacy-confirm-input" autocomplete="off" oninput="_privacyConfirmInputChanged()">
     <button id="privacyConfirmBtn" class="privacy-confirm-btn" disabled onclick="_privacyConfirmProceed()"></button>
     <button class="draft-modal-btn-discard" onclick="_closePrivacyConfirm()" data-i18n="btn.cancel">ביטול</button>
@@ -1084,7 +1084,7 @@
 <div id="privacyReauthModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="privacyReauthTitle">
   <div class="draft-modal-card">
     <div id="privacyReauthTitle" class="draft-modal-title" data-i18n="privacy.reauth_title">נדרש אימות מחדש</div>
-    <div class="draft-modal-details" data-i18n="privacy.reauth_details">מטעמי אבטחה, מחיקת חשבון דורשת התחברות טרייה. אמת/י את הזהות שלך כדי להמשיך. הנתונים שלך כבר נמחקו — ביטול הפעולה כאן לא ישחזר אותם.</div>
+    <div class="privacy-confirm-details" data-i18n="privacy.reauth_details">מטעמי אבטחה, מחיקת חשבון דורשת התחברות טרייה. אמת/י את הזהות שלך כדי להמשיך. הנתונים שלך כבר נמחקו — ביטול הפעולה כאן לא ישחזר אותם.</div>
     <input type="password" id="privacyReauthPassword" class="privacy-confirm-input" autocomplete="current-password" data-i18n-ph="privacy.reauth_password_ph" placeholder="הזן סיסמה נוכחית">
     <button id="privacyReauthPasswordBtn" class="privacy-confirm-btn" onclick="_privacyReauthWithPassword()" data-i18n="privacy.reauth_confirm_btn">אמת ומחק חשבון</button>
     <button id="privacyReauthGoogleBtn" class="draft-modal-btn-resume" onclick="_privacyReauthWithGoogle()" data-i18n="privacy.reauth_google_btn" style="display:none;">התחבר עם Google שוב</button>
