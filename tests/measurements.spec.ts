@@ -192,11 +192,19 @@ test.describe('Measurements — Bulk Delete Confirmation', () => {
       }
       for (const weight of [weightA, weightB]) {
         const card = page.locator('.measure-card', { hasText: weight });
-        if (await card.count() > 0) {
+        if (await card.count() === 0) continue;
+        const alreadySelected = await card.evaluate(el => el.classList.contains('sel-active')).catch(() => false);
+        if (!alreadySelected) {
           await card.locator('.sel-check').click().catch(() => {});
-          await page.locator('#measBulkBar .bulk-bar-del').click().catch(() => {});
-          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
         }
+      }
+      const bulkBar = page.locator('#measBulkBar');
+      if (await bulkBar.isVisible().catch(() => false)) {
+        await bulkBar.locator('.bulk-bar-del').click().catch(() => {});
+        if (await confirmModal.isVisible().catch(() => false)) {
+          await confirmModal.locator('.bulk-confirm-btn-delete').click().catch(() => {});
+        }
+        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
       }
     }
   });
@@ -229,9 +237,15 @@ test.describe('Measurements — Bulk Delete Confirmation', () => {
       }
       const card = page.locator('.measure-card', { hasText: weight });
       if (await card.count() > 0) {
-        await card.locator('.sel-check').click().catch(() => {});
-        await page.locator('#measBulkBar .bulk-bar-del').click().catch(() => {});
-        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+        const alreadySelected = await card.evaluate(el => el.classList.contains('sel-active')).catch(() => false);
+        if (!alreadySelected) {
+          await card.locator('.sel-check').click().catch(() => {});
+        }
+        const bulkBar = page.locator('#measBulkBar');
+        if (await bulkBar.isVisible().catch(() => false)) {
+          await bulkBar.locator('.bulk-bar-del').click().catch(() => {});
+          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
+        }
       }
     }
   });

@@ -339,19 +339,26 @@ test.describe('History Section', () => {
       }
       for (const marker of [markerA, markerB]) {
         const sessionCard = page.locator('.session-card', { hasText: marker });
-        if (await sessionCard.count() > 0) {
-          const header = sessionCard.locator('.session-header');
-          await header.scrollIntoViewIfNeeded();
-          const box = await header.boundingBox();
-          if (box) {
-            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-            await page.mouse.down();
-            await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
-            await page.mouse.up();
-            await page.locator('#histBulkBar .bulk-bar-del').click();
-            await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
-          }
+        if (await sessionCard.count() === 0) continue;
+        const alreadySelected = await sessionCard.evaluate(el => el.classList.contains('sel-active')).catch(() => false);
+        if (alreadySelected) continue;
+        const header = sessionCard.locator('.session-header');
+        await header.scrollIntoViewIfNeeded();
+        const box = await header.boundingBox();
+        if (box) {
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.waitForTimeout(650); // > HIST_LONG_PRESS_MS
+          await page.mouse.up();
         }
+      }
+      const bulkBar = page.locator('#histBulkBar');
+      if (await bulkBar.isVisible().catch(() => false)) {
+        await bulkBar.locator('.bulk-bar-del').click().catch(() => {});
+        if (await confirmModal.isVisible().catch(() => false)) {
+          await confirmModal.locator('.bulk-confirm-btn-delete').click().catch(() => {});
+        }
+        await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
       }
     }
   });
@@ -403,16 +410,22 @@ test.describe('History Section', () => {
       }
       const sessionCard = page.locator('.session-card', { hasText: marker });
       if (await sessionCard.count() > 0) {
-        const header = sessionCard.locator('.session-header');
-        await header.scrollIntoViewIfNeeded();
-        const box = await header.boundingBox();
-        if (box) {
-          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-          await page.mouse.down();
-          await page.waitForTimeout(650);
-          await page.mouse.up();
-          await page.locator('#histBulkBar .bulk-bar-del').click();
-          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 });
+        const alreadySelected = await sessionCard.evaluate(el => el.classList.contains('sel-active')).catch(() => false);
+        if (!alreadySelected) {
+          const header = sessionCard.locator('.session-header');
+          await header.scrollIntoViewIfNeeded();
+          const box = await header.boundingBox();
+          if (box) {
+            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+            await page.mouse.down();
+            await page.waitForTimeout(650);
+            await page.mouse.up();
+          }
+        }
+        const bulkBar = page.locator('#histBulkBar');
+        if (await bulkBar.isVisible().catch(() => false)) {
+          await bulkBar.locator('.bulk-bar-del').click().catch(() => {});
+          await expect(page.locator('#toast')).toBeVisible({ timeout: 5000 }).catch(() => {});
         }
       }
     }
