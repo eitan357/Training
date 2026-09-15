@@ -277,7 +277,7 @@
       display: flex; flex-direction: column; gap: 12px;
     }
     .draft-modal-title   { font-size: 17px; font-weight: 800; color: var(--text); }
-    .draft-modal-details { font-size: 13px; color: var(--sub); line-height: 1.5; }
+    .draft-modal-details, .bulk-confirm-msg { font-size: 13px; color: var(--sub); line-height: 1.5; }
     .draft-modal-btn-resume {
       width: 100%; padding: 13px; border: none; border-radius: var(--radius);
       background: var(--primary); color: white; font-size: 15px; font-weight: 700; cursor: pointer;
@@ -1069,7 +1069,7 @@
 <div id="bulkConfirmModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="bulkConfirmTitle" aria-describedby="bulkConfirmMsg" onclick="if(event.target===this)_bulkConfirmNo()">
   <div class="draft-modal-card">
     <div id="bulkConfirmTitle" class="draft-modal-title"></div>
-    <div id="bulkConfirmMsg" class="draft-modal-details"></div>
+    <div id="bulkConfirmMsg" class="bulk-confirm-msg"></div>
     <button class="bulk-confirm-btn-delete" onclick="_bulkConfirmYes()"></button>
     <button class="draft-modal-btn-discard" onclick="_bulkConfirmNo()"></button>
   </div>
