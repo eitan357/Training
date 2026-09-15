@@ -277,7 +277,7 @@
       display: flex; flex-direction: column; gap: 12px;
     }
     .draft-modal-title   { font-size: 17px; font-weight: 800; color: var(--text); }
-    .draft-modal-details { font-size: 13px; color: var(--sub); line-height: 1.5; }
+    .draft-modal-details, .bulk-confirm-msg { font-size: 13px; color: var(--sub); line-height: 1.5; }
     .draft-modal-btn-resume {
       width: 100%; padding: 13px; border: none; border-radius: var(--radius);
       background: var(--primary); color: white; font-size: 15px; font-weight: 700; cursor: pointer;
@@ -297,6 +297,11 @@
       font-size: 14px; background: var(--bg); color: var(--text); outline: none; box-sizing: border-box;
     }
     .privacy-confirm-input:focus { border-color: var(--red); }
+    .bulk-confirm-btn-delete {
+      width: 100%; padding: 13px; border: none; border-radius: var(--radius);
+      background: var(--red); color: white; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .bulk-confirm-btn-delete:active { opacity: .85; }
     /* ── DATE PICKER (Task 6) ── forced LTR: dates read the same digit order
        regardless of app language, matching every other date display in this app. */
     .date-picker-popover {
@@ -1087,6 +1092,24 @@
   </div>
 </div>
 
+<!-- Bulk-delete confirmation modal — shown only when 2+ records are selected
+     for bulk delete (History or Measurements share this one instance via
+     _bulkDelete()). Same global placement as #draftModal above and for the
+     same reason (see 2026-09-08-cardio-visual-and-modal-fixes-design.md
+     §Issue4): must not be a descendant of any .section, since a section
+     that isn't active is display:none and would hide this too. Unlike
+     #draftModal, backdrop click AND the Android hardware back button both
+     cancel here — canceling a delete is always the safe outcome, so there
+     is no need to force an explicit button choice. -->
+<div id="bulkConfirmModal" class="draft-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="bulkConfirmTitle" aria-describedby="bulkConfirmMsg" onclick="if(event.target===this)_bulkConfirmNo()">
+  <div class="draft-modal-card">
+    <div id="bulkConfirmTitle" class="draft-modal-title"></div>
+    <div id="bulkConfirmMsg" class="bulk-confirm-msg"></div>
+    <button class="bulk-confirm-btn-delete" onclick="_bulkConfirmYes()"></button>
+    <button class="draft-modal-btn-discard" onclick="_bulkConfirmNo()"></button>
+  </div>
+</div>
+
 <!-- Shared date-picker popover (Task 6) — same section-independent placement
      rationale as #draftModal above: a single global instance, opened/closed
      via _openDatePicker()/_closeDatePicker(), never nested in any .section. -->
@@ -1847,6 +1870,7 @@ function renderCardioHistoryStats() {
 }
 let selectedSessions = new Set();
 let selectedMeasures = new Set();
+let _bulkConfirmSet = null, _bulkConfirmBarId = null, _bulkConfirmCollection = null, _bulkConfirmIds = null;
 let allMeasurements  = [];
 let measureTypes     = [];
 let typesEditorOpen  = false;
@@ -6195,7 +6219,18 @@ function updateMeasBulkBar() { _updateBulkBar('measBulkBar', 'measBulkCount', 'm
 
 async function _bulkDelete(set, barId, collection) {
   if (!set.size) return;
-  const ids = [...set];
+  if (set.size === 1) { await _performBulkDelete(set, barId, collection); return; }
+  _bulkConfirmSet = set; _bulkConfirmBarId = barId; _bulkConfirmCollection = collection;
+  _bulkConfirmIds = [...set];
+  document.getElementById('bulkConfirmTitle').textContent = t('bulk.confirm_title');
+  document.getElementById('bulkConfirmMsg').textContent = set.size + ' ' + t('bulk.confirm_msg_suffix');
+  document.querySelector('#bulkConfirmModal .bulk-confirm-btn-delete').textContent = t('bulk.confirm_btn');
+  document.querySelector('#bulkConfirmModal .draft-modal-btn-discard').textContent = t('btn.cancel');
+  document.getElementById('bulkConfirmModal').style.display = 'flex';
+}
+async function _performBulkDelete(set, barId, collection, ids) {
+  ids = ids || [...set];
+  if (!ids.length) return;
   document.getElementById(barId).style.display = 'none';
   try {
     await Promise.all(ids.map(id => deleteDoc(doc(db, 'users', currentUser.uid, collection, id))));
@@ -6205,6 +6240,16 @@ async function _bulkDelete(set, barId, collection) {
   } catch (err) {
     toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
+}
+async function _bulkConfirmYes() {
+  document.getElementById('bulkConfirmModal').style.display = 'none';
+  const set = _bulkConfirmSet, barId = _bulkConfirmBarId, collection = _bulkConfirmCollection, ids = _bulkConfirmIds;
+  _bulkConfirmSet = _bulkConfirmBarId = _bulkConfirmCollection = _bulkConfirmIds = null;
+  if (set && ids) await _performBulkDelete(set, barId, collection, ids);
+}
+function _bulkConfirmNo() {
+  document.getElementById('bulkConfirmModal').style.display = 'none';
+  _bulkConfirmSet = _bulkConfirmBarId = _bulkConfirmCollection = _bulkConfirmIds = null;
 }
 async function bulkDeleteSessions() { await _bulkDelete(selectedSessions, 'histBulkBar', WORKOUT_DOMAINS[historyActiveDomain].entriesCollection); }
 async function bulkDeleteMeasures() { await _bulkDelete(selectedMeasures,  'measBulkBar', 'measurements'); }
@@ -6226,6 +6271,7 @@ Object.assign(window, {
   filterHistory, switchHistoryDomain, toggleSess, toggleMonthGroup,
   toggleSessionSelect, bulkDeleteSessions, toggleMeasureSelect, bulkDeleteMeasures, deleteAllUserData,
   deleteUserAccountFully, _openPrivacyReauth, _closePrivacyReauth, _privacyReauthWithPassword, _privacyReauthWithGoogle,
+  _bulkConfirmYes, _bulkConfirmNo,
   editSession, saveSessionEdit, cancelSessionEdit, removeEditRow, deleteSession,
   editMeasurement, saveMeasureEdit, cancelMeasureEdit,
   editSelectedSession, editSelectedMeasure,
@@ -6253,6 +6299,11 @@ Object.assign(window, {
 // history.back() every in-app "← back" button already uses (Tasks 2-5),
 // so there is exactly one back-navigation mechanism in the whole app.
 function handleHardwareBack() {
+  // Bulk-delete confirmation is always safe to cancel via back — unlike
+  // #draftModal below, there is no data-loss risk in dismissing it.
+  const bulkConfirmModal = document.getElementById('bulkConfirmModal');
+  if (bulkConfirmModal && bulkConfirmModal.style.display !== 'none') { _bulkConfirmNo(); return; }
+
   // Never dismiss the draft modal via hardware back — same rule as its
   // existing no-backdrop-dismiss behavior (data-loss protection).
   const draftModal = document.getElementById('draftModal');
