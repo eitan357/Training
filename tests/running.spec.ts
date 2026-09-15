@@ -317,14 +317,91 @@ test.describe('Cardio Template Editor', () => {
     await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
     await expect(page.locator('#cardioEditListContainer .edit-card')).toHaveCount(8);
     await expect(page.locator('#cardioEditListContainer .edit-card').first().locator('input[disabled]')).toBeVisible();
+    // Auto-seeded default fields are locked from the moment they're created
+    // — same as any already-saved field, never shown a type picker. This is
+    // a confirmed design decision (not an oversight): see
+    // docs/superpowers/specs/2026-09-15-cardio-field-type-lock-design.md.
+    await expect(page.locator('#cardioEditListContainer .edit-card .field-type-picker')).toHaveCount(0);
   });
 
-  test('field type picker toggles between text/number/checkbox', async ({ page }) => {
+  test('only a newly-added field shows the type picker; existing fields never do', async ({ page }) => {
     await page.locator('#mainGearBtn').click();
     await page.locator('.settings-item', { hasText: 'אימוני אירובי' }).click();
-    const secondField = page.locator('#cardioEditListContainer .edit-card').nth(1);
-    await secondField.locator('.ftype-btn[data-ftype="checkbox"]').click();
-    await expect(secondField.locator('.ftype-btn[data-ftype="checkbox"]')).toHaveClass(/active/);
+
+    // Baseline: whatever real, already-saved fields exist on the currently
+    // active type must show zero pickers.
+    const existingCount = await page.locator('#cardioEditListContainer .edit-card').count();
+    expect(existingCount).toBeGreaterThan(1); // at least the locked date field + one real field
+    await expect(page.locator('#cardioEditListContainer .edit-card .field-type-picker')).toHaveCount(0);
+
+    // Add a field this session — only THIS row shows the picker.
+    await page.locator('#cardioEditPanel button[onclick="addCardioEditField()"]').click();
+    const newField = page.locator('#cardioEditListContainer .edit-card').last();
+    await expect(newField.locator('.field-type-picker')).toBeVisible();
+    await expect(page.locator('#cardioEditListContainer .edit-card').first().locator('.field-type-picker')).toHaveCount(0);
+
+    // It can still be toggled between types before saving, and the target
+    // input (text/number/none) follows the current selection exactly as
+    // before this change.
+    await newField.locator('.ftype-btn[data-ftype="checkbox"]').click();
+    await expect(newField.locator('.ftype-btn[data-ftype="checkbox"]')).toHaveClass(/active/);
+    await expect(newField.locator('.cardio-field-target-input')).toHaveCount(0);
+    await newField.locator('.ftype-btn[data-ftype="number"]').click();
+    await expect(newField.locator('.ftype-btn[data-ftype="number"]')).toHaveClass(/active/);
+    await expect(newField.locator('.cardio-field-target-input')).toHaveAttribute('type', 'number');
+
+    // Never saved — remove the unsaved row so this test leaves no trace on
+    // the real account (nothing was ever written to Firestore; the type's
+    // template in memory reverts on next page load regardless, but removing
+    // it explicitly keeps this test's intent self-evident).
+    await newField.locator('.edit-remove').click();
+  });
+
+  test('an existing (already-saved) field keeps its number type across further edits in the same session', async ({ page }) => {
+    await page.locator('#mainGearBtn').click();
+    await page.locator('.settings-item', { hasText: 'אימוני אירובי' }).click();
+    const typeName = 'CTLOCK3_' + Date.now();
+    let typeId = '';
+    await page.locator('#cardioEditTabs .tab-btn.add-tab-btn').click();
+    await page.locator('#cardioNewTypeName').fill(typeName);
+    await page.locator('#cardioAddTypeForm button', { hasText: 'הוסף' }).click();
+    typeId = (await page.locator('#cardioEditTabs .tab-item.active').getAttribute('data-id')) || '';
+    expect(typeId).toBeTruthy();
+
+    try {
+      // Add and save a NUMBER field — this becomes "existing" and locked.
+      await page.locator('#cardioEditPanel button[onclick="addCardioEditField()"]').click();
+      const numberField = page.locator('#cardioEditListContainer .edit-card').last();
+      await numberField.locator('.cardio-field-label-input').fill('NumLockTest');
+      await numberField.locator('.ftype-btn[data-ftype="number"]').click();
+      await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+
+      // Identify it by its stable data-id (not position — a second field
+      // added below shifts what .last() means) so the same locator keeps
+      // pointing at the right row throughout the rest of this test.
+      const savedFieldId = await page.locator('#cardioEditListContainer .edit-card').last().getAttribute('data-id');
+      expect(savedFieldId).toBeTruthy();
+      const savedNumberField = page.locator(`#cardioEditListContainer .edit-card[data-id="${savedFieldId}"]`);
+      await expect(savedNumberField.locator('.cardio-field-target-input')).toHaveAttribute('type', 'number');
+      await expect(savedNumberField.locator('.field-type-picker')).toHaveCount(0);
+
+      // Add a second, still-unsaved field — this forces a collectEdits('cardio')
+      // round-trip (the exact call every add/remove/switch-tab/save makes)
+      // that must NOT coerce the first field's type back to 'text'.
+      await page.locator('#cardioEditPanel button[onclick="addCardioEditField()"]').click();
+      await expect(savedNumberField.locator('.cardio-field-target-input')).toHaveAttribute('type', 'number');
+      await expect(savedNumberField.locator('.field-type-picker')).toHaveCount(0);
+
+      // Remove the second (never-saved) field so only NumLockTest is left
+      // to clean up below.
+      await page.locator('#cardioEditListContainer .edit-card').last().locator('.edit-remove').click();
+    } finally {
+      const removeBtn = page.locator(`#cardioEditTabs .tab-item[data-id="${typeId}"] .tab-remove`);
+      if (await removeBtn.count() > 0) {
+        await removeBtn.click();
+        await clickSaveAndSettle(page, '#cardioEditPanel button[onclick="saveCardioTemplates()"]');
+      }
+    }
   });
 
   test('date field has no remove button', async ({ page }) => {
