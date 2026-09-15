@@ -255,6 +255,7 @@ export const TRANSLATIONS = {
     'auth.fill_email_pass':'נא למלא מייל וסיסמה',
     'auth.fill_email':     'הזן מייל לאיפוס הסיסמה',
     'auth.loading':        'טוען נתונים...',
+    'auth.why':            'החיבור לחשבון נדרש כדי לשמור את האימונים והמדידות שלך בבטחה בענן — כך שהנתונים שלך מגובים ולא יאבדו אם תחליף מכשיר, תמחק את האפליקציה בטעות, או תנקה את הזיכרון של המכשיר.',
 
     // ── Firebase errors ───────────────────────────────────────────
     'err.user_not_found':     'לא נמצא משתמש עם מייל זה',
@@ -601,6 +602,7 @@ export const TRANSLATIONS = {
     'auth.fill_email_pass':'Please fill in email and password',
     'auth.fill_email':     'Enter email to reset password',
     'auth.loading':        'Loading data...',
+    'auth.why':            'Signing in keeps your workouts and measurements safely backed up in the cloud — so your data won\'t be lost if you switch devices, accidentally delete the app, or clear your device storage.',
 
     // ── Firebase errors ───────────────────────────────────────────
     'err.user_not_found':     'No user found with this email',
