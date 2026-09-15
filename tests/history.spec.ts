@@ -236,4 +236,187 @@ test.describe('History Section', () => {
     await page.locator('#histBulkEditBtn').click();
     await expect(page.locator('.edit-session-wrap')).toBeVisible();
   });
+
+  // qa-state.json's TC-FUNC-040..048 describe these cardio stats as living on
+  // a standalone "/" dashboard page. That page does not exist (verified
+  // against public/index.html) — the streak/PR/period-filter block lives
+  // inside History's Cardio domain (#cardioHistoryStats), toggled by
+  // switchHistoryDomain('cardio'). These tests target that real structure.
+
+  test('TC-FUNC-040: switching to the cardio domain tab shows cardio stats and swaps the domain toggle state', { tag: ['@page-history', '@area-cardio', '@feature-domain-switch', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await expect(page.locator('.history-domain-btn[data-domain="strength"]')).toHaveClass(/active/);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await expect(page.locator('.history-domain-btn[data-domain="cardio"]')).toHaveClass(/active/);
+    await expect(page.locator('.history-domain-btn[data-domain="strength"]')).not.toHaveClass(/active/);
+    await expect(page.locator('#cardioHistoryStats')).toBeVisible();
+  });
+
+  test('TC-FUNC-041: cardio domain displays all four summary stats (streak, best distance, best pace, lowest HR)', { tag: ['@page-history', '@area-cardio', '@feature-cardio-stats', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await expect(page.locator('#run-streak-card .run-streak-num')).toBeVisible();
+    await expect(page.locator('#run-streak-card .run-streak-lbl')).not.toBeEmpty();
+
+    const stats = page.locator('#run-prs-card .run-stat');
+    await expect(stats).toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
+      await expect(stats.nth(i).locator('.run-stat-val')).not.toBeEmpty();
+      await expect(stats.nth(i).locator('.run-stat-lbl')).not.toBeEmpty();
+    }
+  });
+
+  test('TC-FUNC-042: cardio period filter - Month becomes the active range', { tag: ['@page-history', '@area-cardio', '@feature-period-filter', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await page.locator('.run-range-btn[data-range="month"]').click();
+    await expect(page.locator('.run-range-btn[data-range="month"]')).toHaveClass(/active/);
+    await expect(page.locator('.run-range-btn[data-range="year"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.run-range-btn[data-range="all"]')).not.toHaveClass(/active/);
+  });
+
+  test('TC-FUNC-043: cardio period filter - Year becomes the active range', { tag: ['@page-history', '@area-cardio', '@feature-period-filter', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    // Force a change away from Year first (it's the default-active range on
+    // load) so this assertion actually exercises runSetRange('year') rather
+    // than observing a class that was never touched.
+    await page.locator('.run-range-btn[data-range="month"]').click();
+    await page.locator('.run-range-btn[data-range="year"]').click();
+    await expect(page.locator('.run-range-btn[data-range="year"]')).toHaveClass(/active/);
+    await expect(page.locator('.run-range-btn[data-range="month"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.run-range-btn[data-range="all"]')).not.toHaveClass(/active/);
+  });
+
+  test('TC-FUNC-044: cardio period filter - All becomes the active range', { tag: ['@page-history', '@area-cardio', '@feature-period-filter', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await page.locator('.run-range-btn[data-range="all"]').click();
+    await expect(page.locator('.run-range-btn[data-range="all"]')).toHaveClass(/active/);
+    await expect(page.locator('.run-range-btn[data-range="month"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.run-range-btn[data-range="year"]')).not.toHaveClass(/active/);
+  });
+
+  // TC-FUNC-045..048: qa-state.json frames these as "dashboard stat is
+  // display-only with no navigation" (click it, assert URL unchanged). There
+  // is no dashboard and no navigation to not-happen — renderCardioHistoryStats()
+  // (index.html ~line 1744) builds these as plain <div>s with no onclick/href/role.
+  // The real-world equivalent is asserting they are inert markup, not links or
+  // buttons, rather than clicking and checking the URL.
+
+  test('TC-FUNC-045: the streak stat is a plain non-interactive element', { tag: ['@page-history', '@area-cardio', '@feature-cardio-stats', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    const streakNum = page.locator('#run-streak-card .run-streak-num');
+    await expect(streakNum).toBeVisible();
+    const info = await streakNum.evaluate(el => ({
+      tag: el.tagName,
+      hasOnclick: el.hasAttribute('onclick'),
+      role: el.getAttribute('role'),
+      href: el.getAttribute('href'),
+    }));
+    expect(['DIV', 'SPAN']).toContain(info.tag);
+    expect(info.hasOnclick).toBe(false);
+    expect(info.role).not.toBe('button');
+    expect(info.role).not.toBe('link');
+    expect(info.href).toBeNull();
+  });
+
+  test('TC-FUNC-046: the best-distance PR stat is a plain non-interactive element', { tag: ['@page-history', '@area-cardio', '@feature-cardio-stats', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    const bestDistance = page.locator('#run-prs-card .run-stat').nth(0);
+    await expect(bestDistance.locator('.run-stat-val')).toBeVisible();
+    const info = await bestDistance.evaluate(el => ({
+      tag: el.tagName,
+      hasOnclick: el.hasAttribute('onclick'),
+      role: el.getAttribute('role'),
+      href: el.getAttribute('href'),
+    }));
+    expect(['DIV', 'SPAN']).toContain(info.tag);
+    expect(info.hasOnclick).toBe(false);
+    expect(info.role).not.toBe('button');
+    expect(info.role).not.toBe('link');
+    expect(info.href).toBeNull();
+  });
+
+  test('TC-FUNC-047: the best-pace PR stat is a plain non-interactive element', { tag: ['@page-history', '@area-cardio', '@feature-cardio-stats', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    const bestPace = page.locator('#run-prs-card .run-stat').nth(1);
+    await expect(bestPace.locator('.run-stat-val')).toBeVisible();
+    const info = await bestPace.evaluate(el => ({
+      tag: el.tagName,
+      hasOnclick: el.hasAttribute('onclick'),
+      role: el.getAttribute('role'),
+      href: el.getAttribute('href'),
+    }));
+    expect(['DIV', 'SPAN']).toContain(info.tag);
+    expect(info.hasOnclick).toBe(false);
+    expect(info.role).not.toBe('button');
+    expect(info.role).not.toBe('link');
+    expect(info.href).toBeNull();
+  });
+
+  test('TC-FUNC-048: the lowest-HR PR stat is a plain non-interactive element', { tag: ['@page-history', '@area-cardio', '@feature-cardio-stats', '@type-functional'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    const lowestHr = page.locator('#run-prs-card .run-stat').nth(2);
+    await expect(lowestHr.locator('.run-stat-val')).toBeVisible();
+    const info = await lowestHr.evaluate(el => ({
+      tag: el.tagName,
+      hasOnclick: el.hasAttribute('onclick'),
+      role: el.getAttribute('role'),
+      href: el.getAttribute('href'),
+    }));
+    expect(['DIV', 'SPAN']).toContain(info.tag);
+    expect(info.hasOnclick).toBe(false);
+    expect(info.role).not.toBe('button');
+    expect(info.role).not.toBe('link');
+    expect(info.href).toBeNull();
+  });
+
+  // TC-NEG-041..043: period filter equivalence classes (month/year/all) —
+  // each valid value must both activate its own button and deactivate the
+  // other two, so no two range buttons are ever simultaneously active.
+
+  test('TC-NEG-041: period filter valid value "month" activates only the Month button', { tag: ['@page-history', '@area-cardio', '@feature-period-filter', '@type-negative'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await page.locator('.run-range-btn[data-range="month"]').click();
+    const activeButtons = page.locator('.run-range-btn.active');
+    await expect(activeButtons).toHaveCount(1);
+    await expect(activeButtons.first()).toHaveAttribute('data-range', 'month');
+  });
+
+  test('TC-NEG-042: period filter valid value "year" activates only the Year button', { tag: ['@page-history', '@area-cardio', '@feature-period-filter', '@type-negative'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await page.locator('.run-range-btn[data-range="month"]').click();
+    await page.locator('.run-range-btn[data-range="year"]').click();
+    const activeButtons = page.locator('.run-range-btn.active');
+    await expect(activeButtons).toHaveCount(1);
+    await expect(activeButtons.first()).toHaveAttribute('data-range', 'year');
+  });
+
+  test('TC-NEG-043: period filter valid value "all" activates only the All button', { tag: ['@page-history', '@area-cardio', '@feature-period-filter', '@type-negative'] }, async ({ page }) => {
+    await ensureRunningEnabled(page);
+    await page.locator('.history-domain-btn[data-domain="cardio"]').click();
+    await page.locator('.run-range-btn[data-range="all"]').click();
+    const activeButtons = page.locator('.run-range-btn.active');
+    await expect(activeButtons).toHaveCount(1);
+    await expect(activeButtons.first()).toHaveAttribute('data-range', 'all');
+  });
+
+  // TC-NEG-044: qa-state.json's case injects an invalid `period` value via
+  // the URL query string (/history?type=cardio&period=bogus). Verified there
+  // is no URLSearchParams/location.search reader anywhere in index.html —
+  // runSetRange() is only ever invoked from the range buttons' onclick
+  // handlers, never from URL state. There is no query-param injection point
+  // for this app to gracefully fall back from, so the case doesn't apply.
+  test.fixme('TC-NEG-044: invalid period value via URL query param manipulation', async () => {
+    // App does not expose period/range via a URL query param — no injection
+    // point exists (confirmed: no URLSearchParams/location.search usage in
+    // public/index.html). runSetRange() is driven only by in-app button clicks.
+  });
 });

@@ -110,3 +110,76 @@ test.describe('Authentication', () => {
     await expect(msg).not.toBeEmpty({ timeout: 10000 });
   });
 });
+
+test.describe('Auth entry points — forgot password & Google sign-in', () => {
+  // These run on the anonymous login screen — override the global storageState
+  // so the suite doesn't pick up an already-authenticated session.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BASE_URL);
+  });
+
+  test('TC-FUNC-028: forgot password link visible and clickable on Sign In tab', { tag: ['@page-login', '@area-auth', '@feature-forgot-password', '@type-functional'] }, async ({ page }) => {
+    await page.waitForSelector('#auth-screen');
+    // Sign In tab is active by default.
+    await expect(page.locator('#tab-login')).toHaveClass(/active/);
+    const forgotBtn = page.locator('.auth-forgot');
+    await expect(forgotBtn).toBeVisible();
+    await expect(forgotBtn).toBeEnabled();
+  });
+
+  test('TC-FUNC-029: forgot password link visible and clickable on Register tab', { tag: ['@page-login', '@area-auth', '@feature-forgot-password', '@type-functional'] }, async ({ page }) => {
+    await page.waitForSelector('#auth-screen');
+    await page.locator('#tab-register').click();
+    await expect(page.locator('#tab-register')).toHaveClass(/active/);
+    const forgotBtn = page.locator('.auth-forgot');
+    await expect(forgotBtn).toBeVisible();
+    await expect(forgotBtn).toBeEnabled();
+  });
+
+  test('TC-FUNC-030: forgot password link is consistent across Sign In and Register tabs', { tag: ['@page-login', '@area-auth', '@feature-forgot-password', '@type-functional'] }, async ({ page }) => {
+    await page.waitForSelector('#auth-screen');
+    const forgotBtn = page.locator('.auth-forgot');
+    await expect(forgotBtn).toBeVisible();
+    const onclickFromLogin = await forgotBtn.getAttribute('onclick');
+
+    await page.locator('#tab-register').click();
+    await expect(forgotBtn).toBeVisible();
+    const onclickFromRegister = await forgotBtn.getAttribute('onclick');
+
+    expect(onclickFromLogin).toBe('handleForgotPassword()');
+    expect(onclickFromRegister).toBe(onclickFromLogin);
+  });
+
+  test('TC-FUNC-031: Google sign-in button visible and clickable on Sign In tab', { tag: ['@page-login', '@area-auth', '@feature-google-signin', '@type-functional'] }, async ({ page }) => {
+    await page.waitForSelector('#auth-screen');
+    await expect(page.locator('#tab-login')).toHaveClass(/active/);
+    const googleBtn = page.locator('.auth-google-btn');
+    await expect(googleBtn).toBeVisible();
+    await expect(googleBtn).toBeEnabled();
+  });
+
+  test('TC-FUNC-032: Google sign-in button visible and clickable on Register tab', { tag: ['@page-login', '@area-auth', '@feature-google-signin', '@type-functional'] }, async ({ page }) => {
+    await page.waitForSelector('#auth-screen');
+    await page.locator('#tab-register').click();
+    await expect(page.locator('#tab-register')).toHaveClass(/active/);
+    const googleBtn = page.locator('.auth-google-btn');
+    await expect(googleBtn).toBeVisible();
+    await expect(googleBtn).toBeEnabled();
+  });
+
+  test('TC-FUNC-033: Google sign-in button is consistent across Sign In and Register tabs', { tag: ['@page-login', '@area-auth', '@feature-google-signin', '@type-functional'] }, async ({ page }) => {
+    await page.waitForSelector('#auth-screen');
+    const googleBtn = page.locator('.auth-google-btn');
+    await expect(googleBtn).toBeVisible();
+    const onclickFromLogin = await googleBtn.getAttribute('onclick');
+
+    await page.locator('#tab-register').click();
+    await expect(googleBtn).toBeVisible();
+    const onclickFromRegister = await googleBtn.getAttribute('onclick');
+
+    expect(onclickFromLogin).toBe('handleGoogleLogin()');
+    expect(onclickFromRegister).toBe(onclickFromLogin);
+  });
+});
