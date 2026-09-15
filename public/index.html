@@ -599,7 +599,6 @@
       transition: all .15s;
     }
     .ftype-btn.active { border-color: var(--primary); color: var(--primary); background: var(--surface); }
-    .ftype-btn:disabled { opacity: .5; cursor: default; }
 
     /* ── SESSION EDIT ── */
     .edit-session-wrap  { padding: 4px 0 8px; }
@@ -3433,7 +3432,7 @@ const WORKOUT_DOMAINS = {
       };
     },
     getSelectedType: () => cardioSelectedType,
-    newItem: () => ({ id: genId(), label: '', fieldType: 'text', target: '' }),
+    newItem: () => ({ id: genId(), label: '', fieldType: 'text', target: '', _isNew: true }),
     renderItemRow: (f, idx) => {
       if (f.fieldType === 'date') {
         // No drag handle, no remove button, label locked — same rules as
@@ -3454,18 +3453,28 @@ const WORKOUT_DOMAINS = {
       }
       const targetInputHtml = f.fieldType === 'checkbox' ? '' :
         `<input class="cardio-field-target-input" type="${f.fieldType === 'number' ? 'number' : 'text'}" value="${escHtml(f.target || '')}" placeholder="${t('col.target')}">`;
+      // The type picker only ever appears on a field the user is actively
+      // creating (added this session via addCardioEditField, never yet
+      // saved) — see
+      // docs/superpowers/specs/2026-09-15-cardio-field-type-lock-design.md.
+      // Once a field has been through one successful saveCardioTemplates(),
+      // it's reloaded from Firestore without this flag and is locked
+      // forever after — the only way to change its type is to delete it
+      // (removeCardioEditField) and add a fresh one.
+      const typePickerHtml = f._isNew ? `
+        <div class="field-type-picker" data-idx="${idx}">
+          <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(this,'text')">${t('edit.ftype_text')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(this,'number')">${t('edit.ftype_number')}</button>
+          <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(this,'checkbox')">${t('edit.ftype_checkbox')}</button>
+        </div>` : '';
       return `
       <span class="drag-handle">⠿</span>
       <div class="edit-fields">
         <input class="cardio-field-label-input" value="${escHtml(cardioFieldDisplayLabel(f))}" placeholder="${t('edit.field_label_ph')}">
-        <div class="field-type-picker" data-idx="${idx}">
-          <button type="button" class="ftype-btn${f.fieldType==='text'?' active':''}" data-ftype="text" onclick="setCardioFieldType(${idx},'text')">${t('edit.ftype_text')}</button>
-          <button type="button" class="ftype-btn${f.fieldType==='number'?' active':''}" data-ftype="number" onclick="setCardioFieldType(${idx},'number')">${t('edit.ftype_number')}</button>
-          <button type="button" class="ftype-btn${f.fieldType==='checkbox'?' active':''}" data-ftype="checkbox" onclick="setCardioFieldType(${idx},'checkbox')">${t('edit.ftype_checkbox')}</button>
-        </div>
+        ${typePickerHtml}
         ${targetInputHtml}
       </div>
-      <button class="edit-remove" onclick="removeCardioEditField(${idx})">✕</button>`;
+      <button class="edit-remove" onclick="removeCardioEditField(this)">✕</button>`;
     },
     collectItemFromRow: c => {
       const labelInput = c.querySelector('.cardio-field-label-input');
@@ -3476,7 +3485,20 @@ const WORKOUT_DOMAINS = {
       // guard entirely. renderItemRow's own `disabled` marker on this input is the
       // one reliable signal that survives the round-trip, so read fieldType off of it.
       const isDate = labelInput.disabled;
-      const fieldType = isDate ? 'date' : (c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text');
+      const isNew  = c.dataset.isNew === '1';
+      // A new (unsaved) row's picker is the live source of truth for its
+      // fieldType — the user can still be clicking between text/number/
+      // checkbox. A locked (already-saved) row has no picker in the DOM at
+      // all (see renderItemRow), so its fieldType must come from the value
+      // stamped on the card at render time (renderEditList) instead —
+      // falling through to the old `|| 'text'` default here would silently
+      // rewrite every existing number/checkbox field back to 'text' on the
+      // very next collectEdits() call (switch tab, add/remove a field, or
+      // Save itself). See
+      // docs/superpowers/specs/2026-09-15-cardio-field-type-lock-design.md.
+      const fieldType = isDate ? 'date'
+        : isNew ? (c.querySelector('.field-type-picker .ftype-btn.active')?.dataset.ftype || 'text')
+        : (c.dataset.fieldType || 'text');
       // renderItemRow shows the TRANSLATED text for an untouched default
       // field (cardioFieldDisplayLabel) — reverse that back to the
       // canonical stored label here, or a plain save while the UI happens
@@ -3486,12 +3508,20 @@ const WORKOUT_DOMAINS = {
       const result = { id: c.dataset.id || '', label, fieldType };
       if (isDate) result.hidden = !c.querySelector('.cardio-date-hidden-toggle').checked;
       else result.target = c.querySelector('.cardio-field-target-input')?.value || '';
+      if (isNew) result._isNew = true;
       return result;
     },
     buildSaveDoc: (types, templates) => {
       const templateData = { types };
       types.forEach(type => {
-        templateData[type.id] = (templates[type.id] || []).filter(f => f.label.trim());
+        templateData[type.id] = (templates[type.id] || [])
+          .filter(f => f.label.trim())
+          // Strip the transient _isNew marker (renderItemRow/collectItemFromRow's
+          // own in-memory "still being created, not yet saved" flag) — it must
+          // never reach Firestore. Built as a fresh object (not an in-place
+          // `delete`) so a failed setDoc() doesn't leave the in-memory
+          // cardioEditTemplates state mutated as if it had already saved.
+          .map(f => { const { _isNew, ...rest } = f; return rest; });
       });
       return templateData;
     },
@@ -5102,6 +5132,13 @@ function renderEditList(domain, type) {
     card.className            = 'edit-card';
     card.dataset.id           = ex.id           || '';
     card.dataset.legacyTarget = ex._legacyTarget || '';
+    // Cardio-only (harmless no-op for strength, whose items never carry
+    // fieldType/_isNew): data-field-type is the stable, locked-in source of
+    // truth for an existing row's type once its picker is gone; data-is-new
+    // marks a row created this session and not yet saved, per
+    // docs/superpowers/specs/2026-09-15-cardio-field-type-lock-design.md.
+    card.dataset.fieldType    = ex.fieldType     || '';
+    card.dataset.isNew        = ex._isNew ? '1' : '';
     card.innerHTML = D.renderItemRow(ex, idx);
     el.appendChild(card);
   });
@@ -5286,7 +5323,15 @@ function addCardioEditField() {
   window.scrollTo(0, document.body.scrollHeight);
 }
 
-function removeCardioEditField(idx) {
+// Takes the clicked button itself (onclick="removeCardioEditField(this)"), not a
+// baked-in index — the index rendered into onclick is only correct until the next
+// drag reorder (startEditDrag moves DOM nodes directly, without a full re-render),
+// so trusting it here could target the wrong row — including silently bypassing
+// the date field's protected guard below if a reorder shifted it into that slot.
+// Deriving the row from the click and its LIVE position is always correct.
+function removeCardioEditField(btn) {
+  const card = btn.closest('.edit-card');
+  const idx = [...card.parentElement.children].indexOf(card);
   collectEdits('cardio');
   if (cardioEditTemplates[cardioEditTab][idx]?.fieldType === 'date') return; // date field is protected
   cardioEditTemplates[cardioEditTab].splice(idx, 1);
@@ -5294,9 +5339,12 @@ function removeCardioEditField(idx) {
   renderEditList('cardio', cardioEditTab);
 }
 
-function setCardioFieldType(idx, ftype) {
-  const container = document.getElementById('cardioEditListContainer');
-  const card = container.querySelectorAll('.edit-card')[idx];
+// Takes the clicked button itself (onclick="setCardioFieldType(this,'text')"), not a
+// baked-in index — see removeCardioEditField's identical fix for why a render-time
+// index goes stale after a drag reorder.
+function setCardioFieldType(btn, ftype) {
+  const card = btn.closest('.edit-card');
+  const idx = [...card.parentElement.children].indexOf(card);
   // Re-render the row's whole inner HTML (not just toggle .active classes on
   // the ftype buttons) — the target input's presence/absence (Task 9) is
   // decided by fieldType at render time, so a type change must re-run
@@ -5312,7 +5360,14 @@ function setCardioFieldType(idx, ftype) {
   // still equals the canonical Hebrew original).
   const label  = _cardioFieldSaveLabel(card.dataset.id || '', card.querySelector('.cardio-field-label-input')?.value || '');
   const target = card.querySelector('.cardio-field-target-input')?.value || '';
-  card.innerHTML = WORKOUT_DOMAINS.cardio.renderItemRow({ id: card.dataset.id, label, fieldType: ftype, target }, idx);
+  // This function is only ever reachable by clicking a .ftype-btn, which
+  // renderItemRow only renders when f._isNew is true — so card.dataset.isNew
+  // is always '1' here in practice. Reading it back explicitly (rather than
+  // hardcoding true) keeps the row's picker visible for further clicks
+  // without assuming why this function was called.
+  const isNew = card.dataset.isNew === '1';
+  card.innerHTML = WORKOUT_DOMAINS.cardio.renderItemRow({ id: card.dataset.id, label, fieldType: ftype, target, _isNew: isNew }, idx);
+  card.dataset.fieldType = ftype; // keep the stamped type in sync with what was just rendered — this is the only other place besides renderEditList that can change a row's type, and it must not leave the two disagreeing
 }
 
 function confirmAddCardioType() {
@@ -5369,6 +5424,18 @@ async function saveCardioTemplates() {
     await setDoc(doc(db, 'users', currentUser.uid, 'config', 'runningTemplates'), templateData);
     toast(t('edit.saved_ok'), 'success');
     await reloadAppData();
+    // reloadAppData() -> loadRunData() rebuilds cardioEditTemplates fresh
+    // from what was just written to Firestore, which never carries the
+    // transient _isNew marker (buildSaveDoc strips it before the write) —
+    // so any field the user just added and saved is now "existing" in that
+    // in-memory data. But nothing re-draws #cardioEditListContainer itself
+    // (reloadAppData()'s own selectType() call only touches the strength
+    // daily-entry page) — without this, a just-saved field's type picker
+    // would keep showing, stale, until the user did something else that
+    // happened to re-render the list. Re-render explicitly so it disappears
+    // immediately, while still on this screen — see
+    // docs/superpowers/specs/2026-09-15-cardio-field-type-lock-design.md.
+    if (cardioEditPanelOpen && cardioEditTab) renderCardioEditAll();
   } catch (err) {
     toast(t('error.save') + firestoreErrMsg(err), 'error');
   }
