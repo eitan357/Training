@@ -66,16 +66,23 @@ test.describe('Settings Section', () => {
     await expect(label).toHaveText('עריכת תוכנית אימוני כוח');
   });
 
-  test('logout button is present', async ({ page }) => {
-    // Scoped to #sec-settings: .settings-logout-btn is also reused (by the
-    // Privacy page added in this task) for the two red delete buttons in
-    // #sec-privacy, which would otherwise make this a strict-mode violation.
-    const logoutBtn = page.locator('#sec-settings .settings-logout-btn');
-    await expect(logoutBtn).toBeVisible();
+  test('logout button is not in the main Settings list', async ({ page }) => {
+    // Relocated to the Privacy page (2026-09-15) — de-emphasized, no longer
+    // grouped with the primary settings actions.
+    const logoutBtn = page.locator('#sec-settings #privacyLogoutBtn');
+    await expect(logoutBtn).toHaveCount(0);
   });
 
-  test('logout button triggers sign-out', async ({ page }) => {
-    await page.locator('#sec-settings .settings-logout-btn').click();
+  test('logout button is present on the Privacy page, styled as a quiet link', async ({ page }) => {
+    await page.evaluate(() => (window as any).openPrivacySettings());
+    const logoutBtn = page.locator('#sec-privacy #privacyLogoutBtn');
+    await expect(logoutBtn).toBeVisible();
+    await expect(logoutBtn).toHaveClass(/privacy-logout-link/);
+  });
+
+  test('logout button triggers sign-out from the Privacy page', async ({ page }) => {
+    await page.evaluate(() => (window as any).openPrivacySettings());
+    await page.locator('#sec-privacy #privacyLogoutBtn').click();
     // After logout, auth screen should become visible (Firebase removes .hidden class)
     await page.waitForFunction(
       () => !document.getElementById('auth-screen')?.classList.contains('hidden'),

@@ -62,8 +62,8 @@ export async function waitForAppReady(page: Page) {
 
 export async function logout(page: Page) {
   await page.locator('#nav-main').click().catch(() => {});
-  // Navigate to settings and click logout
-  await page.evaluate(() => (window as any).showSection('settings'));
-  await page.locator('.settings-logout-btn').click();
+  // Logout now lives on the Privacy page, not the main Settings list (relocated 2026-09-15).
+  await page.evaluate(() => (window as any).openPrivacySettings());
+  await page.locator('#privacyLogoutBtn').click();
   await page.waitForSelector('#auth-screen:not(.hidden)', { timeout: 10000 });
 }
