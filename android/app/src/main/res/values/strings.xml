@@ -4,4 +4,7 @@
     <string name="title_activity_main">Training Diary</string>
     <string name="package_name">com.eitanmonsa.trainingdiary</string>
     <string name="custom_url_scheme">com.eitanmonsa.trainingdiary</string>
+    <string name="asset_statements" translatable="false">
+        [{\"include\": \"https://training-diary.web.app/.well-known/assetlinks.json\"}]
+    </string>
 </resources>

@@ -213,6 +213,126 @@ test.describe('Security — Auth Screen', () => {
     // (Firebase's default messages are acceptable; we flag if it's dangerously specific)
     expect(msgText).not.toMatch(/user\s+does\s+not\s+exist/i);
   });
+
+  test('selecting a saved credential (simulated autofill) auto-submits the login form', async ({ page }) => {
+    await page.goto('/');
+    await page.fill('#auth-email', 'nonexistent-autofill-test@example.com');
+    await page.fill('#auth-password', 'wrong-password-123');
+
+    // Playwright's fill() sets values via CDP and never triggers the browser's
+    // own autofill UI, so :-webkit-autofill never naturally engages here.
+    // Dispatch the same synthetic event the CSS trick produces on a REAL
+    // autofill, to test the detection-and-submit wiring in isolation from the
+    // browser's own credential picker (which no automated test can drive).
+    await page.evaluate(() => {
+      const fire = (id: string) => {
+        const el = document.getElementById(id)!;
+        el.dispatchEvent(new AnimationEvent('animationstart', { animationName: 'onAutoFillStart', bubbles: true }));
+      };
+      fire('auth-email');
+      fire('auth-password');
+    });
+
+    // A real login attempt fired iff the auth error message changes from
+    // empty to Firebase's "wrong credentials" text -- proves handleAuthSubmit()
+    // actually ran, without needing (or risking) a real account.
+    await expect(page.locator('#auth-msg')).not.toBeEmpty({ timeout: 5000 });
+  });
+
+  test('autofilled auth inputs use the theme surface color, not the browser default', async ({ page, context }) => {
+    // Forces the autofill pseudo-state in both themes and checks the box-shadow's
+    // actual color against the theme's live --surface value (read from the page,
+    // not a hardcoded hex) -- a plain '1000px' spread check alone can't tell a
+    // correct `var(--surface)` reference apart from a hardcoded color, since the
+    // spread distance is identical in both themes and only the color differs.
+    const probeAutofillColor = async (theme: 'light' | 'dark') => {
+      await page.goto('/');
+      await page.evaluate((t) => localStorage.setItem('theme', t), theme);
+      await page.reload();
+
+      const cdp = await context.newCDPSession(page);
+      const email = page.locator('#auth-email');
+      // CSS.forcePseudoState needs a DOM.NodeId, obtained via DOM.getDocument + DOM.querySelector
+      // -- not the element handle Playwright itself uses internally.
+      await cdp.send('DOM.enable');
+      await cdp.send('CSS.enable');
+      const { root } = await cdp.send('DOM.getDocument', {});
+      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#auth-email' });
+      await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: ['autofill'] });
+
+      const boxShadow = await email.evaluate(el => getComputedStyle(el).boxShadow);
+      // Resolve --surface's actual rendered color the same way the browser would,
+      // via a throwaway element, instead of guessing/hardcoding a hex value that
+      // could silently drift out of sync with the real CSS.
+      const surfaceColor = await page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.backgroundColor = 'var(--surface)';
+        document.body.appendChild(probe);
+        const rgb = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return rgb;
+      });
+      return { boxShadow, surfaceColor };
+    };
+
+    const light = await probeAutofillColor('light');
+    expect(light.boxShadow).toContain('1000px'); // inset spread matches the override rule, not the browser default
+    expect(light.boxShadow).toContain(light.surfaceColor);
+
+    const dark = await probeAutofillColor('dark');
+    expect(dark.boxShadow).toContain('1000px');
+    expect(dark.boxShadow).toContain(dark.surfaceColor);
+
+    // Genuinely distinguishes a theme-aware `var(--surface)` reference from a
+    // hardcoded color: if the CSS rule were ever replaced with a fixed hex,
+    // light and dark would resolve to the identical color and this would fail.
+    expect(dark.surfaceColor).not.toBe(light.surfaceColor);
+  });
+
+  test('switching auth tabs resets autofill-detected flags to prevent a stale-field auto-submit', async ({ page }) => {
+    // Regression test for the logout/tab-switch auto-resubmit bug: the
+    // _authAutofilled.email/.password flags used to persist across a tab
+    // switch, so an EARLIER single-field autofill (e.g. email only) combined
+    // with a LATER single-field autofill on the other field (while both
+    // fields still held their earlier values) could satisfy the "both fields
+    // autofilled" guard and fire a spurious handleAuthSubmit() with stale
+    // credentials. switchAuthTab() must reset both flags on every tab switch.
+    await page.goto('/');
+
+    await page.fill('#auth-email', 'stale-autofill-test@example.com');
+    await page.fill('#auth-password', 'stale-password-123');
+
+    // "Autofill" only the email field while still on the login tab.
+    await page.evaluate(() => {
+      document.getElementById('auth-email')!.dispatchEvent(
+        new AnimationEvent('animationstart', { animationName: 'onAutoFillStart', bubbles: true })
+      );
+    });
+    // Only one of the two fields has been "autofilled" so far -- no submit yet.
+    await expect(page.locator('#auth-msg')).toBeEmpty();
+
+    // Switch to register and back to login, the way a user poking around the
+    // form would. Per the fix, this must clear both autofill-detected flags.
+    await page.evaluate(() => {
+      (window as any).switchAuthTab('register');
+      (window as any).switchAuthTab('login');
+    });
+
+    // Now "autofill" only the password field. The fields still hold their
+    // earlier (non-empty) values. If the email flag were still true from
+    // before the tab switch, this alone would satisfy "both fields
+    // autofilled" and fire an unwanted handleAuthSubmit() with stale values.
+    await page.evaluate(() => {
+      document.getElementById('auth-password')!.dispatchEvent(
+        new AnimationEvent('animationstart', { animationName: 'onAutoFillStart', bubbles: true })
+      );
+    });
+
+    // Give a (would-be, incorrect) submit attempt time to hit Firebase and
+    // populate #auth-msg before asserting it never did.
+    await page.waitForTimeout(3000);
+    await expect(page.locator('#auth-msg')).toBeEmpty();
+  });
 });
 
 test.describe('Security — Authenticated App', () => {
@@ -255,6 +375,46 @@ test.describe('Security — Authenticated App', () => {
         expect(log).not.toMatch(pattern);
       }
     }
+  });
+
+  test('logout clears autofilled auth field values so it cannot silently re-authenticate the user', async ({ page }) => {
+    // Regression test for the primary logout auto-resubmit bug (the more
+    // severe counterpart to the tab-switch test above): a real login just
+    // happened (beforeEach). Nothing has ever cleared #auth-email/
+    // #auth-password on a SUCCESSFUL login -- they still hold the just-used,
+    // valid credentials, exactly mirroring the real-world scenario: the
+    // fields sit unseen (#auth-screen is display:none) holding a real
+    // autofilled value for as long as the user stays logged in.
+    await logout(page);
+
+    // Real signOut() just went through -- this exercises the REAL
+    // onAuthStateChanged signed-out branch the fix modifies, not a
+    // simulation of it.
+    await expect(page.locator('#auth-screen')).toBeVisible();
+
+    expect(await page.locator('#auth-email').inputValue()).toBe('');
+    expect(await page.locator('#auth-password').inputValue()).toBe('');
+
+    // Re-fire the same synthetic autofill-detection event the CSS trick
+    // itself dispatches when the browser autofills a field (Playwright
+    // cannot drive the browser's own autofill UI -- see the other autofill
+    // tests in this file for the same technique). This simulates exactly
+    // what a real animation restart on redisplay of #auth-screen would
+    // send. If the fields still held the just-used, VALID credentials (the
+    // bug), this would silently log the user right back in.
+    await page.evaluate(() => {
+      const fire = (id: string) => document.getElementById(id)!.dispatchEvent(
+        new AnimationEvent('animationstart', { animationName: 'onAutoFillStart', bubbles: true })
+      );
+      fire('auth-email');
+      fire('auth-password');
+    });
+
+    // Give a would-be re-authentication time to complete before asserting
+    // it never happened.
+    await page.waitForTimeout(3000);
+    await expect(page.locator('#auth-screen')).toBeVisible();
+    await expect(page.locator('#auth-msg')).toBeEmpty();
   });
 
   test('unauthenticated direct URL access redirects to auth screen', async ({ browser }) => {
